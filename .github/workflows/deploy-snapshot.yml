@@ -1,0 +1,35 @@
+name: Publish Snapshot to GitHub Packages
+on:
+  workflow_dispatch: {}
+  push:
+    branches:
+      - develop
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write 
+      packages: write 
+    
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: maven
+          server-id: github-snapshots
+          server-username: github
+          server-password: GITHUB_TOKEN
+
+      - name: Build and Deploy
+        # Running 'deploy' automatically runs 'verify' first
+        run: mvn -U --B -ntp -DskipTests=false -DdeployAtEnd=true clean deploy
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Submit Dependency Snapshot
+        uses: advanced-security/maven-dependency-submission-action@v5
