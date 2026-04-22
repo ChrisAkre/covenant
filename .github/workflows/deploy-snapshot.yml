@@ -22,7 +22,7 @@ jobs:
           distribution: 'temurin'
           cache: maven
           server-id: github-snapshots
-          server-username: github
+          server-username: GITHUB_ACTOR
           server-password: GITHUB_TOKEN
 
       - name: Build and Deploy
