@@ -1,3 +1,28 @@
+### Intro
+
+> [!WARNING]
+> This is not an application, and it is not a programming language. It is a pure, stateless algebraic type engine.
+
+Q. What can I do with it?  
+A. Given a set of input types and an expected output constraint, you can mathematically prove the type safety of
+decidable programs.
+
+Q. What?  
+A. You can type check expressions.
+
+Q. Why?  
+A. Maybe you are a language designer and you want to provide strict compile-time guarantees without writing a
+unification engine from scratch. Or maybe you are embedding an existing scripting language into your application, and
+you want to mathematically verify user-provided expressions before they ever hit the runtime.
+
+Q. How would I do that?  
+A. Glad you asked. Take a look at the [JavaScript Typechecker Example](example/README.md).
+
+If you need a practical type validation system to embed in your application, or if you're just really into type algebra,
+continue reading.
+
+-----
+
 # Covenant
 
 **A Pure, Stateless Type Engine for Expression-Oriented Languages**
@@ -70,8 +95,8 @@ Evaluates explicitly declared identity.
 
 Evaluates physical layout and subsumption rather than declared names.
 
-* Supports positional variadic tuples and both open and closed property maps. The can be used to model structs, arrays, 
-  objects, lists, etc.  
+* Supports positional variadic tuples and both open and closed property maps. The can be used to model structs, arrays,
+  objects, lists, etc.
 
 ### 4. Algebraic Composition
 
