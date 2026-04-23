@@ -74,7 +74,7 @@ public abstract class AbstractTypeSystemBuilder<B extends AbstractTypeSystemBuil
     }
 
     private void validateName(String name) {
-        if (!name.matches("[a-zA-Z][a-zA-Z0-9_-]*")) {
+        if (!com.google.re2j.Pattern.matches("[a-zA-Z][a-zA-Z0-9_-]*", name)) {
             throw new IllegalArgumentException("Invalid atom name: " + name + ". Names must be identifiers.");
         }
     }

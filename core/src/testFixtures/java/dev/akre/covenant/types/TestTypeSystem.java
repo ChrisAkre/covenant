@@ -4,6 +4,7 @@ import dev.akre.covenant.api.Type;
 import dev.akre.covenant.api.TypeSystem;
 import dev.akre.covenant.api.TypeUtilities;
 
+import com.google.re2j.Pattern;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -244,8 +245,8 @@ public class TestTypeSystem implements AbstractTypeSystem {
     }
 
     private static void compareIgnoringWhitespace(String message, String expected, String actual) {
-        String expectedClean = expected.strip().replaceAll("\\s+", " ");
-        String actualClean = actual.strip().replaceAll("\\s+", " ");
+        String expectedClean = Pattern.compile("\\s+").matcher(expected.strip()).replaceAll(" ");
+        String actualClean = Pattern.compile("\\s+").matcher(actual.strip()).replaceAll(" ");
         if (!expectedClean.equals(actualClean)) {
             String prefix = message == null ? "" : message + ": ";
             throw new AssertionError(prefix + String.format("Expected [%s] to match [%s] (ignoring whitespace), but it did not.\nExpected (normalized): [%s]\nActual (normalized): [%s]",

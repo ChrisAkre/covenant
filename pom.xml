@@ -68,6 +68,11 @@
                 <version>0.1.0</version>
                 <scope>test</scope>
             </dependency>
+            <dependency>
+                <groupId>com.google.re2j</groupId>
+                <artifactId>re2j</artifactId>
+                <version>1.8</version>
+            </dependency>
         </dependencies>
     </dependencyManagement>
     <build>
