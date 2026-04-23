@@ -1,7 +1,7 @@
 ### Intro
 
-[!WARNING]
-This is not an application, and it is not a programming language. It is a pure, stateless algebraic type engine.
+> [!WARNING]
+> This is not an application, and it is not a programming language. It is a pure, stateless algebraic type engine.
 
 Q. What can I do with it?  
 A. Given a set of input types and an expected output constraint, you can mathematically prove the type safety of
