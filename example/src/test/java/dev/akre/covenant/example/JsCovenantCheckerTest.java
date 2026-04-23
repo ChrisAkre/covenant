@@ -3,14 +3,10 @@ package dev.akre.covenant.example;
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import tools.jackson.databind.ObjectMapper;
-import tools.jackson.databind.JsonNode;
 
 public class JsCovenantCheckerTest {
 
-    @Test
-    public void testValidContract() throws Exception {
-        String js = """
+    public static final String CATEGORY_FUNCTION = """
             (user) => {
                 let category = "Minor";
                 if (user.age >= 18) {
@@ -24,7 +20,7 @@ public class JsCovenantCheckerTest {
             }
         """;
 
-        String inputSchemaStr = """
+    public static final String USER_SCHEMA = """
         {
             "type": "object",
             "properties": {
@@ -35,54 +31,79 @@ public class JsCovenantCheckerTest {
         }
         """;
 
-        String outputSchemaStr = """
+    public static final String STRING_SCHEMA = """
         {
             "type": "string"
         }
         """;
 
-        ObjectMapper mapper = new ObjectMapper();
-        JsonNode inputSchema = mapper.readTree(inputSchemaStr);
-        JsonNode outputSchema = mapper.readTree(outputSchemaStr);
+    public static final String NESTED_USER_SCHEMA = """
+        {
+            "type": "object",
+            "properties": {
+                "profile": {
+                    "type": "object",
+                    "properties": {
+                        "status": {"enum": ["active", "inactive"]},
+                        "accessLevel": {"type": "integer"}
+                    },
+                    "required": ["status", "accessLevel"]
+                }
+            },
+            "required": ["profile"]
+        }
+        """;
 
+    public static final String NESTED_VALID_FUNCTION = """
+            (user) => {
+                if (user.profile.status === "inactive") {
+                    return "Archived Account";
+                }
+                return "Active Account";
+            }
+        """;
+
+    public static final String NESTED_INVALID_FUNCTION = """
+            (user) => {
+                if (user.profile.status === "inactive") {
+                    return "Archived Account";
+                }
+                // Bug: Returning an integer when the contract expects a String
+                return user.profile.accessLevel;
+            }
+        """;
+
+    @Test
+    public void testValidContract() {
         JsCovenantChecker checker = new JsCovenantChecker();
-        boolean isValid = checker.verify(js, inputSchema, outputSchema);
-
-        assertTrue(isValid, "The JavaScript function should satisfy the String output schema.");
+        assertTrue(checker.verify(CATEGORY_FUNCTION, USER_SCHEMA, STRING_SCHEMA),
+                "The JavaScript function should satisfy the String output schema.");
     }
 
     @Test
-    public void testInvalidContractReturnsNumber() throws Exception {
-        String js = """
+    public void testInvalidContractReturnsNumber() {
+        String getAge = """
             (user) => {
                 return user.age;
             }
         """;
 
-        String inputSchemaStr = """
-        {
-            "type": "object",
-            "properties": {
-                "age": {"type": "integer"},
-                "status": {"enum": ["active", "inactive"]}
-            },
-            "required": ["age", "status"]
-        }
-        """;
-
-        String outputSchemaStr = """
-        {
-            "type": "string"
-        }
-        """;
-
-        ObjectMapper mapper = new ObjectMapper();
-        JsonNode inputSchema = mapper.readTree(inputSchemaStr);
-        JsonNode outputSchema = mapper.readTree(outputSchemaStr);
-
         JsCovenantChecker checker = new JsCovenantChecker();
-        boolean isValid = checker.verify(js, inputSchema, outputSchema);
+        assertFalse(checker.verify(getAge, USER_SCHEMA, STRING_SCHEMA),
+                "The JavaScript function returning a Number should NOT satisfy the String output schema.");
+    }
 
-        assertFalse(isValid, "The JavaScript function returning a Number should NOT satisfy the String output schema.");
+    @Test
+    public void testValidNestedPathNarrowing() {
+        JsCovenantChecker checker = new JsCovenantChecker();
+        assertTrue(checker.verify(NESTED_VALID_FUNCTION, NESTED_USER_SCHEMA, STRING_SCHEMA),
+                "The JavaScript function should successfully evaluate the nested path and satisfy the String output schema.");
+    }
+
+    @Test
+    public void testInvalidNestedPathReturnsNumber() {
+        JsCovenantChecker checker = new JsCovenantChecker();
+        assertFalse(checker.verify(NESTED_INVALID_FUNCTION, NESTED_USER_SCHEMA, STRING_SCHEMA),
+                "The JavaScript function returning the nested accessLevel (Number) should NOT satisfy the String output schema.");
     }
 }

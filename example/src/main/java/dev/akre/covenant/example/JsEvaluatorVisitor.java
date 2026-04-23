@@ -1,11 +1,15 @@
 package dev.akre.covenant.example;
 
+import dev.akre.covenant.api.Parameter;
 import dev.akre.covenant.api.Type;
 import dev.akre.covenant.types.AbstractTypeSystem;
-import dev.akre.covenant.types.OwnedTypeDef;
+import dev.akre.covenant.types.GenericTypeDef;
 import dev.akre.covenant.types.StringConstraint;
 import dev.akre.covenant.types.NumberConstraint;
 import dev.akre.covenant.types.BooleanConstraint;
+import dev.akre.covenant.types.TypeDef;
+import dev.akre.covenant.types.TypeDefParam;
+import dev.akre.covenant.types.UnionType;
 import dev.akre.covenant.types.ValueConstraint.Operator;
 
 import java.math.BigDecimal;
@@ -14,21 +18,21 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class JsEvaluatorVisitor extends JSBaseVisitor<OwnedTypeDef> {
+public class JsEvaluatorVisitor extends JSBaseVisitor<Type> {
     private final AbstractTypeSystem system;
     private Environment currentEnv;
-    private final List<OwnedTypeDef> reachableReturns = new ArrayList<>();
+    private final List<Type> reachableReturns = new ArrayList<>();
 
     public JsEvaluatorVisitor(AbstractTypeSystem system, Environment rootEnv) {
         this.system = system;
         this.currentEnv = rootEnv;
     }
 
-    public OwnedTypeDef getFinalType() {
+    public Type getFinalType() {
         if (reachableReturns.isEmpty()) {
-            return (OwnedTypeDef) system.type("Null"); // Fallback
+            return system.type("Null"); // Fallback
         }
-        OwnedTypeDef result = reachableReturns.get(0);
+        Type result = reachableReturns.getFirst();
         for (int i = 1; i < reachableReturns.size(); i++) {
             result = result.union(reachableReturns.get(i));
         }
@@ -36,20 +40,20 @@ public class JsEvaluatorVisitor extends JSBaseVisitor<OwnedTypeDef> {
     }
 
     @Override
-    public OwnedTypeDef visitProgram(JSParser.ProgramContext ctx) {
+    public Type visitProgram(JSParser.ProgramContext ctx) {
         visit(ctx.arrowFunction());
         return null;
     }
 
     @Override
-    public OwnedTypeDef visitArrowFunction(JSParser.ArrowFunctionContext ctx) {
+    public Type visitArrowFunction(JSParser.ArrowFunctionContext ctx) {
         // Assume parameters are pre-bound in the root environment.
         visit(ctx.block());
         return null;
     }
 
     @Override
-    public OwnedTypeDef visitBlock(JSParser.BlockContext ctx) {
+    public Type visitBlock(JSParser.BlockContext ctx) {
         Environment prevEnv = currentEnv;
         currentEnv = new Environment(prevEnv);
 
@@ -69,25 +73,23 @@ public class JsEvaluatorVisitor extends JSBaseVisitor<OwnedTypeDef> {
     }
 
     @Override
-    public OwnedTypeDef visitAssignment(JSParser.AssignmentContext ctx) {
+    public Type visitAssignment(JSParser.AssignmentContext ctx) {
         String varName = ctx.identifier().getText();
-        OwnedTypeDef type = visit(ctx.expression());
+        Type type = visit(ctx.expression());
         currentEnv.shadow(varName, type);
         return type;
     }
 
     @Override
-    public OwnedTypeDef visitVariableDeclaration(JSParser.VariableDeclarationContext ctx) {
+    public Type visitVariableDeclaration(JSParser.VariableDeclarationContext ctx) {
         String name = ctx.identifier().getText();
-        OwnedTypeDef type = visit(ctx.expression());
+        Type type = visit(ctx.expression());
         currentEnv.declare(name, type);
         return type;
     }
 
     @Override
-    public OwnedTypeDef visitIfStatement(JSParser.IfStatementContext ctx) {
-        OwnedTypeDef conditionType = visit(ctx.expression());
-
+    public Type visitIfStatement(JSParser.IfStatementContext ctx) {
         Environment preEnv = currentEnv.cloneEnv();
 
         currentEnv = new Environment(preEnv);
@@ -116,7 +118,7 @@ public class JsEvaluatorVisitor extends JSBaseVisitor<OwnedTypeDef> {
                 if (thenVar.version > currentEnv.variables.get(key).version ||
                     altVar.version > currentEnv.variables.get(key).version) {
 
-                    OwnedTypeDef mergedType = thenVar.type.union(altVar.type);
+                    Type mergedType = thenVar.type.union(altVar.type);
                     currentEnv.shadow(key, mergedType);
                 }
             }
@@ -129,39 +131,55 @@ public class JsEvaluatorVisitor extends JSBaseVisitor<OwnedTypeDef> {
         if (exprCtx.getChildCount() == 3 && (exprCtx.getChild(1).getText().equals("===") || exprCtx.getChild(1).getText().equals("!=="))) {
             String op = exprCtx.getChild(1).getText();
             boolean isEq = op.equals("===");
-            boolean checkTrue = isTruthy ? isEq : !isEq;
 
             JSParser.ExpressionContext leftCtx = (JSParser.ExpressionContext) exprCtx.getChild(0);
             JSParser.ExpressionContext rightCtx = (JSParser.ExpressionContext) exprCtx.getChild(2);
 
-            if (leftCtx.getChildCount() == 3 && leftCtx.getChild(1).getText().equals(".")) {
-                String objName = leftCtx.getChild(0).getText();
-                String propName = leftCtx.getChild(2).getText();
+            Type rightType = visit(rightCtx);
 
-                OwnedTypeDef rightType = visit(rightCtx);
+            // Determine if we are intersecting with the type, or its negation
+            Type targetConstraint = isTruthy == isEq ? rightType : rightType.negate();
 
-                if (currentEnv.has(objName)) {
-                    OwnedTypeDef objType = currentEnv.get(objName);
+            applyPathConstraint(leftCtx, targetConstraint);
+        }
+    }
 
-                    OwnedTypeDef propConstraint = system.wrap(system.constructDef("Object", List.of(system.unwrap(rightType)), List.of(new dev.akre.covenant.api.Parameter.Named(propName, 0, false), new dev.akre.covenant.api.Parameter.Spread())));
-
-                    OwnedTypeDef narrowedObjType;
-                    if (checkTrue) {
-                        narrowedObjType = objType.intersect(propConstraint);
-                    } else {
-                        narrowedObjType = objType.intersect(propConstraint.negate());
-                    }
-
-                    currentEnv.shadow(objName, narrowedObjType);
-                }
+    private void applyPathConstraint(JSParser.ExpressionContext pathCtx, Type constraint) {
+        // Base Case 1: It's a direct identifier (e.g., `status === "active"`)
+        if (pathCtx.getChildCount() == 1) {
+            String varName = pathCtx.getText();
+            if (currentEnv.has(varName)) {
+                Type currentType = currentEnv.get(varName);
+                currentEnv.shadow(varName, currentType.intersect(constraint));
             }
+            return;
+        }
+
+        // Recursive Case: It's a property access (e.g., `user.profile.status`)
+        if (pathCtx.getChildCount() == 3 && pathCtx.getChild(1).getText().equals(".")) {
+            JSParser.ExpressionContext nextPath = (JSParser.ExpressionContext) pathCtx.getChild(0);
+            String propName = pathCtx.getChild(2).getText();
+
+            // Wrap the constraint in a new Object bound: Object<propName: constraint, ...Spread>
+            Type parentConstraint = system.wrap(
+                    system.constructDef("Object",
+                            List.of(system.unwrap(constraint)),
+                            List.of(
+                                    new Parameter.Named(propName, 0, false),
+                                    new Parameter.Spread()
+                            )
+                    )
+            );
+
+            // Recurse up the AST tree
+            applyPathConstraint(nextPath, parentConstraint);
         }
     }
 
     @Override
-    public OwnedTypeDef visitReturnStatement(JSParser.ReturnStatementContext ctx) {
+    public Type visitReturnStatement(JSParser.ReturnStatementContext ctx) {
         if (ctx.expression() != null) {
-            OwnedTypeDef retType = visit(ctx.expression());
+            Type retType = visit(ctx.expression());
             reachableReturns.add(retType);
             return retType;
         }
@@ -169,12 +187,12 @@ public class JsEvaluatorVisitor extends JSBaseVisitor<OwnedTypeDef> {
     }
 
     @Override
-    public OwnedTypeDef visitExpressionStatement(JSParser.ExpressionStatementContext ctx) {
+    public Type visitExpressionStatement(JSParser.ExpressionStatementContext ctx) {
         return visit(ctx.expression());
     }
 
     @Override
-    public OwnedTypeDef visitExpression(JSParser.ExpressionContext ctx) {
+    public Type visitExpression(JSParser.ExpressionContext ctx) {
         if (ctx.getChildCount() == 1) {
             return visit(ctx.getChild(0)); // literal or identifier
         }
@@ -185,13 +203,13 @@ public class JsEvaluatorVisitor extends JSBaseVisitor<OwnedTypeDef> {
 
         if (ctx.getChildCount() == 3 && ctx.getChild(1).getText().equals(".")) {
             // identifier . identifier
-            OwnedTypeDef objType = visit(ctx.getChild(0));
+            Type objType = visit(ctx.getChild(0));
             String propName = ctx.getChild(2).getText();
 
-            dev.akre.covenant.types.TypeDef rawObj = system.unwrap(objType);
-            if (rawObj instanceof dev.akre.covenant.types.GenericTypeDef gen) {
-                for (dev.akre.covenant.types.TypeDefParam param : gen.parameters()) {
-                    if (param.parameter() instanceof dev.akre.covenant.api.Parameter.Named named && named.name().equals(propName)) {
+            TypeDef rawObj = system.unwrap(objType);
+            if (rawObj instanceof GenericTypeDef gen) {
+                for (TypeDefParam param : gen.parameters()) {
+                    if (param.parameter() instanceof Parameter.Named named && named.name().equals(propName)) {
                         return system.wrap(param.type());
                     }
                 }
@@ -201,32 +219,32 @@ public class JsEvaluatorVisitor extends JSBaseVisitor<OwnedTypeDef> {
             }
             // In a more robust implementation, we would recursively check parents or unions of GenericTypeDef.
             // For schemas parsed as unions, we distribute the extraction.
-            if (rawObj instanceof dev.akre.covenant.types.UnionType union) {
-                List<OwnedTypeDef> extracted = new ArrayList<>();
-                for (dev.akre.covenant.types.TypeDef member : union.members()) {
-                    if (member instanceof dev.akre.covenant.types.GenericTypeDef gen) {
-                        for (dev.akre.covenant.types.TypeDefParam param : gen.parameters()) {
-                            if (param.parameter() instanceof dev.akre.covenant.api.Parameter.Named named && named.name().equals(propName)) {
+            if (rawObj instanceof UnionType union) {
+                List<Type> extracted = new ArrayList<>();
+                for (TypeDef member : union.members()) {
+                    if (member instanceof GenericTypeDef gen) {
+                        for (TypeDefParam param : gen.parameters()) {
+                            if (param.parameter() instanceof Parameter.Named named && named.name().equals(propName)) {
                                 extracted.add(system.wrap(param.type()));
                             }
                         }
                     }
                 }
                 if (!extracted.isEmpty()) {
-                    OwnedTypeDef res = extracted.get(0);
+                    Type res = extracted.getFirst();
                     for (int i = 1; i < extracted.size(); i++) {
                         res = res.union(extracted.get(i));
                     }
                     return res;
                 }
             }
-            return (OwnedTypeDef) system.type("Any");
+            return system.type("Any");
         }
 
         if (ctx.getChildCount() == 3) {
             String op = ctx.getChild(1).getText();
-            OwnedTypeDef left = visit(ctx.getChild(0));
-            OwnedTypeDef right = visit(ctx.getChild(2));
+            Type left = visit(ctx.getChild(0));
+            Type right = visit(ctx.getChild(2));
 
             String funcName = switch (op) {
                 case "+" -> "plus";
@@ -245,7 +263,7 @@ public class JsEvaluatorVisitor extends JSBaseVisitor<OwnedTypeDef> {
             };
 
             if (funcName != null) {
-                OwnedTypeDef res = system.evaluate(funcName, left, right);
+                Type res = system.evaluate(funcName, left, right);
                 if (op.equals("!==")) {
                     res = system.evaluate("not", res);
                 }
@@ -258,26 +276,16 @@ public class JsEvaluatorVisitor extends JSBaseVisitor<OwnedTypeDef> {
             String funcName = ctx.getChild(0).getText();
             JSParser.ArgumentListContext argsCtx = ctx.argumentList();
 
-            List<dev.akre.covenant.api.Type> args = new ArrayList<>();
-            if (argsCtx != null) {
-                for (JSParser.ExpressionContext argExpr : argsCtx.expression()) {
-                    args.add(visit(argExpr));
-                }
-            }
+            Type[] args = argsCtx.expression().stream().map(this::visit).toArray(Type[]::new);
 
             // Check if function is available in current environment
             if (currentEnv.has(funcName)) {
-                OwnedTypeDef funcType = currentEnv.get(funcName);
-                if (funcType.def() instanceof dev.akre.covenant.types.ApplicableDef applicable) {
-                    return system.wrap(applicable.evaluate(system, args.stream().map(t -> system.unwrap(t)).toList()));
+                Type funcType = currentEnv.get(funcName);
+                if (funcType instanceof Type.TypeFunction applicable) {
+                    return applicable.evaluate(args);
                 }
-            }
-
-            // Fallback to TypeSystem built-in functions
-            try {
-                return system.evaluate(funcName, args.toArray(new dev.akre.covenant.api.Type[0]));
-            } catch (Exception e) {
-                return (OwnedTypeDef) system.type("Any");
+            } else {
+                return system.typeFunction(funcName).evaluate(args);
             }
         }
 
@@ -285,12 +293,12 @@ public class JsEvaluatorVisitor extends JSBaseVisitor<OwnedTypeDef> {
     }
 
     @Override
-    public OwnedTypeDef visitIdentifier(JSParser.IdentifierContext ctx) {
+    public Type visitIdentifier(JSParser.IdentifierContext ctx) {
         return currentEnv.get(ctx.getText());
     }
 
     @Override
-    public OwnedTypeDef visitLiteral(JSParser.LiteralContext ctx) {
+    public Type visitLiteral(JSParser.LiteralContext ctx) {
         if (ctx.StringLiteral() != null) {
             String text = ctx.StringLiteral().getText();
             String val = text.substring(1, text.length() - 1); // remove quotes
@@ -302,7 +310,7 @@ public class JsEvaluatorVisitor extends JSBaseVisitor<OwnedTypeDef> {
             boolean val = Boolean.parseBoolean(ctx.BooleanLiteral().getText());
             return system.wrap(system.intersectDef(system.unwrap(system.type("Bool")), new BooleanConstraint(Operator.EQ, val)));
         } else if (ctx.NullLiteral() != null) {
-            return (OwnedTypeDef) system.type("Null");
+            return system.type("Null");
         }
         return system.wrap(system.bottomDef());
     }
@@ -312,9 +320,9 @@ public class JsEvaluatorVisitor extends JSBaseVisitor<OwnedTypeDef> {
         static class Var {
             String name;
             int version;
-            OwnedTypeDef type;
+            Type type;
 
-            Var(String name, int version, OwnedTypeDef type) {
+            Var(String name, int version, Type type) {
                 this.name = name;
                 this.version = version;
                 this.type = type;
@@ -328,11 +336,11 @@ public class JsEvaluatorVisitor extends JSBaseVisitor<OwnedTypeDef> {
             this.parent = parent;
         }
 
-        public void declare(String name, OwnedTypeDef type) {
+        public void declare(String name, Type type) {
             variables.put(name, new Var(name, 0, type));
         }
 
-        public void shadow(String name, OwnedTypeDef type) {
+        public void shadow(String name, Type type) {
             Var existing = getVar(name);
             int newVersion = existing != null ? existing.version + 1 : 0;
             variables.put(name, new Var(name, newVersion, type));
@@ -342,7 +350,7 @@ public class JsEvaluatorVisitor extends JSBaseVisitor<OwnedTypeDef> {
             return getVar(name) != null;
         }
 
-        public OwnedTypeDef get(String name) {
+        public Type get(String name) {
             Var v = getVar(name);
             if (v == null) {
                 throw new RuntimeException("Undefined variable: " + name);

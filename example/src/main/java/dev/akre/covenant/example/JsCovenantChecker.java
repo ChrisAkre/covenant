@@ -7,18 +7,33 @@ import dev.akre.covenant.types.JsonSchemaParser;
 import dev.akre.covenant.types.OwnedTypeDef;
 import org.antlr.v4.runtime.CharStreams;
 import org.antlr.v4.runtime.CommonTokenStream;
-import org.antlr.v4.runtime.tree.ParseTree;
+import tools.jackson.databind.ObjectMapper;
+
 
 public class JsCovenantChecker {
 
+    public static final AbstractTypeSystem TYPE_SYSTEM = JavaSubscriptTypeSystem.INSTANCE;
+
+    public boolean verify(String sourceJs, String inputSchema, String outputSchema) {
+        ObjectMapper mapper = new ObjectMapper();
+        JsonNode inputNode = mapper.readTree(inputSchema);
+        JsonNode outputNode = mapper.readTree(outputSchema);
+
+        return verify(sourceJs, inputNode, outputNode);
+    }
+
     public boolean verify(String sourceJs, JsonNode inputSchema, JsonNode outputSchema) {
-        // 1. Setup system and parsers
-        AbstractTypeSystem system = JavaSubscriptTypeSystem.INSTANCE;
-        JsonSchemaParser schemaParser = new JsonSchemaParser(system);
+        JsonSchemaParser schemaParser = new JsonSchemaParser(JavaSubscriptTypeSystem.INSTANCE);
 
         // 2. Parse Schemas
-        OwnedTypeDef inputType = system.wrap(schemaParser.parse(inputSchema));
-        OwnedTypeDef expectedOutputType = system.wrap(schemaParser.parse(outputSchema));
+        OwnedTypeDef inputType = TYPE_SYSTEM.wrap(schemaParser.parse(inputSchema));
+        OwnedTypeDef expectedOutputType = JavaSubscriptTypeSystem.INSTANCE.wrap(schemaParser.parse(outputSchema));
+
+        return verify(sourceJs, inputType, expectedOutputType);
+    }
+
+    public boolean verify(String sourceJs, Type inputType, Type expectedOutputType) {
+        // 1. Setup system and parsers
 
         // 3. Setup AST Parsing
         JSLexer lexer = new JSLexer(CharStreams.fromString(sourceJs));
@@ -26,22 +41,24 @@ public class JsCovenantChecker {
         JSParser.ProgramContext tree = parser.program();
 
         // Extract parameter name from arrow function
-        String paramName = "user"; // Fallback
-        if (tree.arrowFunction() != null && tree.arrowFunction().parameterList() != null) {
-            paramName = tree.arrowFunction().parameterList().identifier(0).getText();
+        if (tree.arrowFunction() == null || tree.arrowFunction().parameterList() == null || tree.arrowFunction().parameterList().getChildCount() != 1) {
+            throw new IllegalArgumentException("unsupported expression type");
         }
+        String paramName = tree.arrowFunction().parameterList().identifier(0).getText();
 
         // 4. Setup Root Environment
         JsEvaluatorVisitor.Environment rootEnv = new JsEvaluatorVisitor.Environment(null);
         rootEnv.declare(paramName, inputType);
 
         // 5. Evaluate
-        JsEvaluatorVisitor visitor = new JsEvaluatorVisitor(system, rootEnv);
+        JsEvaluatorVisitor visitor = new JsEvaluatorVisitor(TYPE_SYSTEM, rootEnv);
         visitor.visit(tree);
 
-        OwnedTypeDef finalType = visitor.getFinalType();
+        Type finalType = visitor.getFinalType();
 
         // 6. Final Verification
-        return system.isAssignableTo(finalType, expectedOutputType);
+        return TYPE_SYSTEM.isAssignableTo(finalType, expectedOutputType);
     }
+
+
 }
