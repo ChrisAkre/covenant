@@ -18,6 +18,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          token: ${{ secrets.RELEASE_TOKEN }}
 
       - name: Set up Java
         uses: actions/setup-java@v5
@@ -44,8 +45,8 @@ jobs:
         run: |
           mvn --batch-mode release:prepare release:perform \
             -Prelease \
-            -Dusername=${{ github.actor }} \
-            -Dpassword=${{ secrets.GITHUB_TOKEN }} \
+            -Dusername=ignored \
+            -Dpassword=${{ secrets.RELEASE_TOKEN }} \
             -DscmCommentPrefix="[skip-ci] [maven-release-plugin] " \
             -Dgpg.passphrase="${GPG_PASSPHRASE}" \
             -Darguments="-DskipTests -Dprotoc.skip=true -Dgpg.loopback=true -Prelease"
@@ -54,12 +55,11 @@ jobs:
           MAVEN_USERNAME: ${{ secrets.OSSRH_USERNAME }}
           MAVEN_PASSWORD: ${{ secrets.OSSRH_TOKEN }}
 
-      - name: Create Sync PR (main -> develop)
+      - name: Sync main back to develop
         run: |
-          gh pr create \
-            --base develop \
-            --head main \
-            --title "chore: sync main back to develop [skip ci]" \
-            --body "Automated PR to sync version bumps and release commits from main back to develop after a successful release." || echo "PR already exists or no changes to sync"
+          git fetch origin develop
+          git checkout develop
+          git merge origin/main
+          git push origin develop
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}

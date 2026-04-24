@@ -126,7 +126,7 @@ public interface AbstractTypeSystem extends TypeSystem {
     TypeParser parser();
 
     /**
-     * Parses a type expression string (e.g., "String & ~Null") into a TypeDef.
+     * Parses a type expression string (e.g., {@code "String & ~Null"}) into a TypeDef.
      */
     default TypeDef typeExpressionDef(String expression) {
         return parser().parseDef(this, expression);

@@ -24,3 +24,6 @@ jobs:
       run: mvn -B verify --file pom.xml
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Verify Javadoc
+      run: mvn javadoc:aggregate
