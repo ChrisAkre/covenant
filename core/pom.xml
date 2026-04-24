@@ -8,6 +8,8 @@
     </parent>
 
     <artifactId>covenant-core</artifactId>
+    <name>Convenant Type System</name>
+    <description>A Pure, Stateless Type Engine for Expression-Oriented Languages</description>
 
     <dependencies>
         <dependency>
