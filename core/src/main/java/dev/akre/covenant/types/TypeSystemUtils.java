@@ -1,11 +1,12 @@
 package dev.akre.covenant.types;
 
 import dev.akre.covenant.api.Parameter;
-import dev.akre.covenant.api.Type;
+import dev.akre.covenant.api.TypeAttribute;
 import dev.akre.covenant.types.FunctionType.Signature;
+
 import java.util.*;
-import java.util.function.*;
-import java.util.stream.Collectors;
+import java.util.function.BiFunction;
+import java.util.function.Function;
 import java.util.stream.Stream;
 
 public class TypeSystemUtils {
@@ -41,12 +42,14 @@ public class TypeSystemUtils {
                 };
             case GenericTypeDef g -> {
                 String resolvedSegment = null;
-                if (segment instanceof SymbolType(String value)) {
-                    resolvedSegment = value;
-                } else if (segment instanceof StringConstraint s && s.operator() == ValueConstraint.Operator.EQ) {
-                    resolvedSegment = s.value();
-                } else if (segment instanceof NumberConstraint n && n.operator() == ValueConstraint.Operator.EQ) {
-                    resolvedSegment = n.value().toPlainString();
+                switch (segment) {
+                    case SymbolType(String value) -> resolvedSegment = value;
+                    case StringConstraint s when s.operator() == ValueConstraint.Operator.EQ ->
+                            resolvedSegment = s.value();
+                    case NumberConstraint n when n.operator() == ValueConstraint.Operator.EQ ->
+                            resolvedSegment = n.value().toPlainString();
+                    default -> {
+                    }
                 }
 
                 if (resolvedSegment == null) yield system.bottomDef();
@@ -105,10 +108,10 @@ public class TypeSystemUtils {
                     yield system.bottomDef();
                 }
             }
-            case ApplicableDef a -> system.bottomDef();
-            case NominalDef n -> system.bottomDef();
-            case ValueConstraint nc -> system.bottomDef();
-            case SymbolType s -> system.bottomDef();
+            case ApplicableDef ignored -> system.bottomDef();
+            case NominalDef ignored -> system.bottomDef();
+            case ValueConstraint ignored -> system.bottomDef();
+            case SymbolType ignored -> system.bottomDef();
         };
     }
 
@@ -186,22 +189,22 @@ public class TypeSystemUtils {
     }
 
     public static NominalDef updateNominalDef(
-            AbstractTypeSystem system,
+            AbstractTypeSystem ignoredSystem,
             NominalDef type,
             Collection<String> parentNames,
-            dev.akre.covenant.api.TypeAttribute attribute) {
-        EnumSet<dev.akre.covenant.api.TypeAttribute> newAttributes = append(type.attributes(), attribute);
+            TypeAttribute attribute) {
+        EnumSet<TypeAttribute> newAttributes = append(type.attributes(), attribute);
         Set<String> newNames = concat(type.parentNames(), parentNames);
         return switch (type) {
-            case TopType __ -> throw new IllegalArgumentException("cannot modify " + type.getClass());
-            case BottomType __ -> throw new IllegalArgumentException("cannot modify " + type.getClass());
+            case TopType ignored -> throw new IllegalArgumentException("cannot modify " + type.getClass());
+            case BottomType ignored -> throw new IllegalArgumentException("cannot modify " + type.getClass());
             case AtomType a -> new AtomType(a.name(), newNames, newAttributes);
             case TemplateType t -> new TemplateType(t.name(), newNames, t.constructor(), newAttributes);
         };
     }
 
     public static TemplateType updateTemplate(
-            AbstractTypeSystem system,
+            AbstractTypeSystem ignoredSystem,
             NominalDef last,
             AbstractTypeSystemBuilder.PatternConstructor.Pattern pattern,
             Integer min,
@@ -226,10 +229,5 @@ public class TypeSystemUtils {
                                 .flatMap(prefix -> unionStream(arg).map(member -> append(prefix, member)))
                                 .toList(),
                         TypeSystemUtils::concat);
-    }
-
-    public static Map<String, TypeDef> asTypesDef(Map<String, Type> types) {
-        return types.entrySet().stream()
-                .collect(Collectors.toMap(Map.Entry::getKey, e -> ((OwnedTypeDef) e.getValue()).def()));
     }
 }

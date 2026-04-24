@@ -22,19 +22,21 @@ public class TestTypeSystem implements AbstractTypeSystem {
     }
 
     private final Map<String, TypeDef> types;
+    private final TypeParser parser;
     private final TypeDef top;
     private final TypeDef bottom;
     private final TypeDef nil;
 
     protected TestTypeSystem(AbstractTypeSystem other) {
-        this(other.typesDef());
+        this(other.typesDef(), other.parser());
     }
 
-    TestTypeSystem(Map<String, TypeDef> foreignTypes) {
-        types = new HashMap<>(foreignTypes);
-        top = types.values().stream().filter(TopType.class::isInstance).findFirst().orElseThrow();
-        bottom = types.values().stream().filter(BottomType.class::isInstance).findFirst().orElseThrow();
-        nil = types.values().stream().filter(t -> t.attributes().contains(dev.akre.covenant.api.TypeAttribute.NULL_SEMANTICS)).findFirst().orElse(null);
+    TestTypeSystem(Map<String, TypeDef> foreignTypes, TypeParser parser) {
+        this.types = new HashMap<>(foreignTypes);
+        this.parser = parser;
+        this.top = types.values().stream().filter(TopType.class::isInstance).findFirst().orElseThrow();
+        this.bottom = types.values().stream().filter(BottomType.class::isInstance).findFirst().orElseThrow();
+        this.nil = types.values().stream().filter(t -> t.attributes().contains(dev.akre.covenant.api.TypeAttribute.NULL_SEMANTICS)).findFirst().orElse(null);
     }
 
     @Override
@@ -55,6 +57,11 @@ public class TestTypeSystem implements AbstractTypeSystem {
     @Override
     public TypeDef nilDef() {
         return nil;
+    }
+
+    @Override
+    public TypeParser parser() {
+        return parser;
     }
 
     public TypeAssertion assertThat(String expression) {
