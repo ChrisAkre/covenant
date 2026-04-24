@@ -10,6 +10,10 @@
     </parent>
 
     <artifactId>covenant-api</artifactId>
+    <name>Convenant Type System API</name>
+    <description>A Pure, Stateless Type Engine for Expression-Oriented Languages</description>
+
+
     <dependencies>
         <dependency>
             <groupId>tools.jackson.core</groupId>

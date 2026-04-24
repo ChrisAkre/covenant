@@ -12,7 +12,7 @@
     </modules>
     <packaging>pom</packaging>
 
-    <name>Convenant Type System</name>
+    <name>Convenant Type System parent pom</name>
     <description>A Pure, Stateless Type Engine for Expression-Oriented Languages</description>
     <url>https://github.com/ChrisAkre/covenant</url>
 
@@ -129,10 +129,10 @@
             </plugin>
         </plugins>
     </build>
-    <repositories>
-        <repository>
-            <id>github-snapshots</id>
-            <url>https://maven.pkg.github.com/ChrisAkre/covenant</url>
+    <pluginRepositories>
+        <pluginRepository>
+            <id>test-fixtures-maven-plugin</id>
+            <url>https://maven.pkg.github.com/ChrisAkre/test-fixtures-maven-plugin/</url>
             <releases>
                 <enabled>false</enabled>
             </releases>
@@ -140,8 +140,8 @@
                 <enabled>true</enabled>
                 <updatePolicy>always</updatePolicy>
             </snapshots>
-        </repository>
-    </repositories>
+        </pluginRepository>
+    </pluginRepositories>
     <profiles>
         <profile>
             <id>release</id>
