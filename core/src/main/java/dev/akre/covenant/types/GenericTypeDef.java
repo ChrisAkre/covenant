@@ -235,7 +235,7 @@ public record GenericTypeDef(TemplateType template, Pattern pattern, List<TypeDe
                     if (p instanceof Parameter.Named named) {
                         String name = named.name();
                         // Quote if contains spaces or is a number
-                        if (name.contains(" ") || name.matches("\\d+")) {
+                        if (name.contains(" ") || com.google.re2j.Pattern.matches("\\d+", name)) {
                             name = "'" + name.replace("'", "''") + "'";
                         }
                         return name
@@ -244,7 +244,7 @@ public record GenericTypeDef(TemplateType template, Pattern pattern, List<TypeDe
                     }
                     if (p instanceof Parameter.Constrained constrained) {
                         String name = constrained.value();
-                        if (name.contains(" ") || name.matches("\\d+")) {
+                        if (name.contains(" ") || com.google.re2j.Pattern.matches("\\d+", name)) {
                             name = "'" + name.replace("'", "''") + "'";
                         }
                         return "[" + constrained.keyword() + " " + name + "]" + (constrained.optional() ? "?: " : ": ")
