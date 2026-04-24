@@ -1,0 +1,65 @@
+name: Publish Release to Maven Central
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+      pull-requests: write
+
+    steps:
+      - name: Checkout Source
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Java
+        uses: actions/setup-java@v5
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          server-id: ossrh
+          server-username: MAVEN_USERNAME
+          server-password: MAVEN_PASSWORD
+          cache: maven
+
+      - name: Import GPG Key
+        uses: crazy-max/ghaction-import-gpg@v6
+        with:
+          gpg_private_key: ${{ secrets.GPG_SIGNING_KEY }}
+          passphrase: ${{ secrets.GPG_SIGNING_KEY_PASSPHRASE }}
+
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Execute Release
+        run: |
+          mvn --batch-mode release:prepare release:perform \
+            -Prelease \
+            -Dusername=${{ github.actor }} \
+            -Dpassword=${{ secrets.GITHUB_TOKEN }} \
+            -DscmCommentPrefix="[skip-ci] [maven-release-plugin] " \
+            -Dgpg.passphrase="${GPG_PASSPHRASE}" \
+            -Darguments="-DskipTests -Dprotoc.skip=true -Dgpg.loopback=true -Prelease"
+        env:
+          GPG_PASSPHRASE: ${{ secrets.GPG_SIGNING_KEY_PASSPHRASE }}
+          MAVEN_USERNAME: ${{ secrets.OSSRH_USERNAME }}
+          MAVEN_PASSWORD: ${{ secrets.OSSRH_TOKEN }}
+
+      - name: Create Sync PR (main -> develop)
+        run: |
+          gh pr create \
+            --base develop \
+            --head main \
+            --title "chore: sync main back to develop [skip ci]" \
+            --body "Automated PR to sync version bumps and release commits from main back to develop after a successful release." || echo "PR already exists or no changes to sync"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
