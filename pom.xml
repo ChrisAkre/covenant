@@ -4,7 +4,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>dev.akre</groupId>
     <artifactId>covenant-parent</artifactId>
-    <version>0.1.7</version>
+    <version>0.1.8-SNAPSHOT</version>
     <modules>
         <module>api</module>
         <module>core</module>
@@ -237,7 +237,7 @@
         <connection>scm:git:https://github.com/ChrisAkre/covenant.git</connection>
         <developerConnection>scm:git:https://github.com/ChrisAkre/covenant.git</developerConnection>
         <url>https://github.com/ChrisAkre/covenant</url>
-        <tag>covenant-parent-0.1.7</tag>
+        <tag>covenant-0.1.1</tag>
     </scm>
     <distributionManagement>
         <repository>
