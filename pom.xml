@@ -12,7 +12,7 @@
     </modules>
     <packaging>pom</packaging>
 
-    <name>Convenant Type System</name>
+    <name>Convenant Type System parent pom</name>
     <description>A Pure, Stateless Type Engine for Expression-Oriented Languages</description>
     <url>https://github.com/ChrisAkre/covenant</url>
 
