@@ -7,6 +7,7 @@ import static java.util.Optional.*;
 import dev.akre.covenant.api.Parameter;
 import dev.akre.covenant.api.Type;
 import dev.akre.covenant.api.TypeSystem;
+import dev.akre.covenant.types.parser.Parser;
 import java.util.*;
 import java.util.function.BinaryOperator;
 import java.util.stream.Collectors;
@@ -51,6 +52,10 @@ public interface AbstractTypeSystem extends TypeSystem {
      * Returns the complete map of types in this system.
      */
     Map<String, TypeDef> typesDef();
+
+    default List<Parser<TypeExpr>> customConstraints() {
+        return List.of();
+    }
 
     default Map<String, Type> types() {
         return Collections.unmodifiableMap(
@@ -117,12 +122,17 @@ public interface AbstractTypeSystem extends TypeSystem {
         return wrap(constructDef(name, members, parameters));
     }
 
+
+    TypeParser parser();
+
     /**
      * Parses a type expression string (e.g., "String & ~Null") into a TypeDef.
      */
     default TypeDef typeExpressionDef(String expression) {
-        return new TypeExprVisitor().parseDef(this, expression);
+        return parser().parseDef(this, expression);
     }
+
+
 
     default OwnedTypeDef typeExpression(String expression) {
         return wrap(typeExpressionDef(expression));

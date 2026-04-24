@@ -35,8 +35,6 @@ By acting as a pure data transformer, Covenant provides language creators with a
 predictable type checker capable of modeling complex domain logic—such as enums, branded types, and flow-sensitive
 narrowing—without requiring special-case syntax.
 
----
-
 ## Core Philosophy
 
 * **100% Expression-Based:** Designed exclusively for reducible, expression-based ASTs structured as Directed Acyclic
@@ -49,8 +47,6 @@ narrowing—without requiring special-case syntax.
   structural template must be explicitly defined by the host language via the Builder API.
 * **Stateless & Unidirectional:** Types are immutable structural nodes. The unifier handles covariance, contravariance,
   and generic substitution through strict positional extraction without ever mutating the underlying type graph.
-
----
 
 ## Architecture: Axioms vs. Proofs
 
@@ -68,8 +64,6 @@ e.g., `Result<T, E>`), and built-in function overloads.
 Application authors do not define types; they compose expressions. As authors write application logic (such as `switch`
 or `guard` statements), the host language evaluator queries Covenant to mathematically prove whether the user's composed
 graph satisfies the required inputs.
-
----
 
 ## Type System Semantics
 
