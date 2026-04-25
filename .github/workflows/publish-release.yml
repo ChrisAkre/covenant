@@ -60,7 +60,7 @@ jobs:
 
       - name: Execute Release
         run: |
-          mvn --batch-mode release:prepare release:perform \
+          mvn --batch-mode release:prepare replacer:replace release:perform \
             -Prelease \
             -Dusername=ignored \
             -Dpassword=${{ secrets.RELEASE_TOKEN }} \
@@ -75,9 +75,8 @@ jobs:
 
       - name: Sync main back to develop
         run: |
-          git fetch origin develop
           git checkout develop
-          git merge origin/main
+          git merge -X theirs origin/main --no-ff -m "chore: sync develop with main"
           git push origin develop
         env:
           GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
