@@ -25,10 +25,27 @@ jobs:
         with:
           java-version: '21'
           distribution: 'temurin'
-          server-id: ossrh
-          server-username: MAVEN_USERNAME
-          server-password: MAVEN_PASSWORD
           cache: maven
+
+      - name: Configure Maven Settings
+        uses: s4u/maven-settings-action@v4.0.0
+        with:
+          servers: |
+            [{
+              "id": "ossrh",
+              "username": "${env.MAVEN_USERNAME}",
+              "password": "${env.MAVEN_PASSWORD}"
+            },
+            {
+              "id": "github-snapshots",
+              "username": "${env.GITHUB_ACTOR}",
+              "password": "${env.GITHUB_TOKEN}"
+            },
+            {
+              "id": "test-fixtures-maven-plugin",
+              "username": "${env.GITHUB_ACTOR}",
+              "password": "${env.GITHUB_TOKEN}"
+            }]
 
       - name: Import GPG Key
         uses: crazy-max/ghaction-import-gpg@v6
@@ -47,13 +64,14 @@ jobs:
             -Prelease \
             -Dusername=ignored \
             -Dpassword=${{ secrets.RELEASE_TOKEN }} \
-            -DscmCommentPrefix="[skip-ci] [maven-release-plugin] " \
+            -DscmCommentPrefix="[skip ci] [maven-release-plugin] " \
             -Dgpg.passphrase="${GPG_PASSPHRASE}" \
             -Darguments="-DskipTests -Dprotoc.skip=true -Dgpg.loopback=true -Prelease"
         env:
           GPG_PASSPHRASE: ${{ secrets.GPG_SIGNING_KEY_PASSPHRASE }}
           MAVEN_USERNAME: ${{ secrets.OSSRH_USERNAME }}
           MAVEN_PASSWORD: ${{ secrets.OSSRH_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
 
       - name: Sync main back to develop
         run: |

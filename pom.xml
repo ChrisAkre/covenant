@@ -128,10 +128,10 @@
             </plugin>
         </plugins>
     </build>
-    <repositories>
-        <repository>
-            <id>github-snapshots</id>
-            <url>https://maven.pkg.github.com/ChrisAkre/covenant</url>
+    <pluginRepositories>
+        <pluginRepository>
+            <id>test-fixtures-maven-plugin</id>
+            <url>https://maven.pkg.github.com/ChrisAkre/test-fixtures-maven-plugin/</url>
             <releases>
                 <enabled>false</enabled>
             </releases>
@@ -139,8 +139,8 @@
                 <enabled>true</enabled>
                 <updatePolicy>always</updatePolicy>
             </snapshots>
-        </repository>
-    </repositories>
+        </pluginRepository>
+    </pluginRepositories>
     <profiles>
         <profile>
             <id>release</id>
