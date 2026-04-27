@@ -12,7 +12,7 @@
     <packaging>pom</packaging>
 
     <name>Convenant Type System parent pom</name>
-    <description>A Pure, Stateless Type Engine for Expression-Oriented Languages</description>
+    <description>A Customizable Type Engine for Expression-Oriented Languages</description>
     <url>https://github.com/ChrisAkre/covenant</url>
 
     <licenses>
@@ -240,10 +240,10 @@
         <tag>covenant-0.1.1</tag>
     </scm>
     <distributionManagement>
-        <repository>
-            <id>ossrh</id>
-            <url>https://central.sonatype.com/service/local/staging/deploy/maven2/</url>
-        </repository>
+<!--        <repository>-->
+<!--            <id>ossrh</id>-->
+<!--            <url>https://central.sonatype.com/service/local/staging/deploy/maven2/</url>-->
+<!--        </repository>-->
         <snapshotRepository>
             <id>github-snapshots</id>
             <name>GitHub Packages</name>
