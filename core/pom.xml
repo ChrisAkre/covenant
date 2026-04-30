@@ -4,7 +4,7 @@
     <parent>
         <groupId>dev.akre</groupId>
         <artifactId>covenant-parent</artifactId>
-        <version>0.1.15-SNAPSHOT</version>
+        <version>0.1.14</version>
     </parent>
 
     <artifactId>covenant-core</artifactId>
