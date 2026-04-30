@@ -65,6 +65,8 @@ jobs:
             -DscmCommentPrefix="[skip ci] [maven-release-plugin] " \
             -Dgpg.passphrase="${GPG_PASSPHRASE}" \
             -Darguments="-DskipTests -Dprotoc.skip=true -Dgpg.loopback=true -Dgpg.passphrase=${GPG_PASSPHRASE} -Prelease"
+
+          find . -name "pom.xml"
         env:
           GPG_PASSPHRASE: ${{ secrets.GPG_SIGNING_KEY_PASSPHRASE }}
           MAVEN_USERNAME: ${{ secrets.OSSRH_USERNAME }}
