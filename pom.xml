@@ -2,9 +2,9 @@
 
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
-    <groupId>dev.akre</groupId>
+    <groupId>dev.akre.covenant</groupId>
     <artifactId>covenant-parent</artifactId>
-    <version>0.1.14</version>
+    <version>0.1.15-SNAPSHOT</version>
     <modules>
         <module>api</module>
         <module>core</module>
@@ -240,10 +240,10 @@
         <tag>covenant-0.1.1</tag>
     </scm>
     <distributionManagement>
-<!--        <repository>-->
-<!--            <id>ossrh</id>-->
-<!--            <url>https://central.sonatype.com/service/local/staging/deploy/maven2/</url>-->
-<!--        </repository>-->
+        <repository>
+            <id>ossrh</id>
+            <url>https://central.sonatype.com/service/local/staging/deploy/maven2/</url>
+        </repository>
         <snapshotRepository>
             <id>github-snapshots</id>
             <name>GitHub Packages</name>

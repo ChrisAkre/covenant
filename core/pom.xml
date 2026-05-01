@@ -2,12 +2,12 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <parent>
-        <groupId>dev.akre</groupId>
+        <groupId>dev.akre.covenant</groupId>
         <artifactId>covenant-parent</artifactId>
-        <version>0.1.14</version>
+        <version>0.1.15-SNAPSHOT</version>
     </parent>
 
-    <artifactId>covenant-core</artifactId>
+    <artifactId>typesystem-core</artifactId>
     <name>Convenant Type System</name>
     <description>A Pure, Stateless Type Engine for Expression-Oriented Languages</description>
 
@@ -62,6 +62,8 @@
                 <version>1.0.4-SNAPSHOT</version>
                 <extensions>true</extensions>
                 <configuration>
+                    <fixtureNameTemplate>Convenant Type System</fixtureNameTemplate>
+                    <fixtureDescriptionTemplate>Test Fixtures for the Covenent Type System</fixtureDescriptionTemplate>
                     <fixtureDependencies>
                     </fixtureDependencies>
                 </configuration>
@@ -93,7 +95,6 @@
                                     <goal>compile-fixtures</goal>
                                     <goal>package-fixtures</goal>
                                     <goal>install-fixtures</goal>
-                                    <goal>central-bundle-fixtures</goal>
                                 </goals>
                             </execution>
                         </executions>

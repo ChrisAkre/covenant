@@ -2,15 +2,14 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <parent>
-        <groupId>dev.akre</groupId>
+        <groupId>dev.akre.covenant</groupId>
         <artifactId>covenant-parent</artifactId>
-        <version>0.1.14</version>
+        <version>0.1.15-SNAPSHOT</version>
     </parent>
 
-    <artifactId>covenant-api</artifactId>
+    <artifactId>typesystem-api</artifactId>
     <name>Convenant Type System API</name>
     <description>A Pure, Stateless Type Engine for Expression-Oriented Languages</description>
-
 
     <dependencies>
         <dependency>
