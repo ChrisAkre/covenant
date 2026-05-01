@@ -93,6 +93,7 @@
                                     <goal>compile-fixtures</goal>
                                     <goal>package-fixtures</goal>
                                     <goal>install-fixtures</goal>
+                                    <goal>central-bundle-fixtures</goal>
                                 </goals>
                             </execution>
                         </executions>
