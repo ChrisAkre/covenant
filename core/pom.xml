@@ -2,19 +2,19 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <parent>
-        <groupId>dev.akre</groupId>
+        <groupId>dev.akre.covenant</groupId>
         <artifactId>covenant-parent</artifactId>
-        <version>0.1.14</version>
+        <version>0.1.15</version>
     </parent>
 
-    <artifactId>covenant-core</artifactId>
+    <artifactId>typesystem-core</artifactId>
     <name>Convenant Type System</name>
     <description>A Pure, Stateless Type Engine for Expression-Oriented Languages</description>
 
     <dependencies>
         <dependency>
-            <groupId>dev.akre</groupId>
-            <artifactId>covenant-api</artifactId>
+            <groupId>dev.akre.covenant</groupId>
+            <artifactId>typesystem-api</artifactId>
         </dependency>
         <dependency>
             <groupId>org.junit.jupiter</groupId>
@@ -59,14 +59,19 @@
             <plugin>
                 <groupId>dev.akre</groupId>
                 <artifactId>test-fixtures-maven-plugin</artifactId>
-                <version>1.0.4-SNAPSHOT</version>
+                <version>1.0.5</version>
                 <extensions>true</extensions>
                 <configuration>
+                    <fixtureNameTemplate>Convenant Type System</fixtureNameTemplate>
+                    <fixtureDescriptionTemplate>Test Fixtures for the Covenent Type System</fixtureDescriptionTemplate>
+                    <fixturesArtifactId>typesystem-test-fixtures</fixturesArtifactId>
+                    <copyTarget>${project.basedir}/tmp-test-fixtures-deploy/pom.xml</copyTarget>
                     <fixtureDependencies>
                     </fixtureDependencies>
                 </configuration>
                 <executions>
                     <execution>
+                        <id>standard-fixtures</id>
                         <goals>
                             <goal>compile-fixtures</goal>
                             <goal>package-fixtures</goal>
@@ -81,7 +86,7 @@
 
     <profiles>
         <profile>
-            <id>release</id>
+            <id>publish-central</id>
             <build>
                 <plugins>
                     <plugin>
@@ -89,11 +94,22 @@
                         <artifactId>test-fixtures-maven-plugin</artifactId>
                         <executions>
                             <execution>
+                                <id>standard-fixtures</id>
+                                <phase>none</phase>
+                            </execution>
+                            <execution>
+                                <id>release-fixtures</id>
                                 <goals>
                                     <goal>compile-fixtures</goal>
                                     <goal>package-fixtures</goal>
                                     <goal>install-fixtures</goal>
-                                    <goal>central-bundle-fixtures</goal>
+                                </goals>
+                            </execution>
+                            <execution>
+                                <id>copy-release-pom</id>
+                                <phase>package</phase>
+                                <goals>
+                                    <goal>copy-pom</goal>
                                 </goals>
                             </execution>
                         </executions>

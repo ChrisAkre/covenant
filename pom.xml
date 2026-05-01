@@ -1,10 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
-
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
-    <groupId>dev.akre</groupId>
+    <groupId>dev.akre.covenant</groupId>
     <artifactId>covenant-parent</artifactId>
-    <version>0.1.14</version>
+    <version>0.1.15</version>
     <modules>
         <module>api</module>
         <module>core</module>
@@ -42,8 +41,8 @@
     <dependencyManagement>
         <dependencies>
             <dependency>
-                <groupId>dev.akre</groupId>
-                <artifactId>covenant-api</artifactId>
+                <groupId>dev.akre.covenant</groupId>
+                <artifactId>typesystem-api</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
@@ -126,6 +125,66 @@
                     </java>
                 </configuration>
             </plugin>
+            <plugin>
+                <groupId>com.google.code.maven-replacer-plugin</groupId>
+                <artifactId>replacer</artifactId>
+                <version>1.5.3</version>
+                <inherited>false</inherited>
+                <executions>
+                    <execution>
+                        <id>update-readme-version</id>
+                        <goals>
+                            <goal>replace</goal>
+                        </goals>
+                    </execution>
+                </executions>
+                <configuration>
+                    <skip>${parent.tasks.skip}</skip>
+                    <file>${project.basedir}/example/pom.xml</file>
+                    <replacements>
+                        <replacement>
+                            <token><![CDATA[(<artifactId>typesystem-core</artifactId>\s*<version>).*?(</version>)]]></token>
+                            <value><![CDATA[$1${project.version}$2]]></value>
+                        </replacement>
+                    </replacements>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+                <version>3.5.0</version>
+                <inherited>false</inherited>
+                <executions>
+                    <execution>
+                        <id>commit-changes</id>
+                        <goals>
+                            <goal>exec</goal>
+                        </goals>
+                        <configuration>
+                            <skip>${parent.tasks.skip}</skip>
+                            <executable>sh</executable>
+                            <inheritIo>true</inheritIo>
+                            <arguments>
+                                <argument>-c</argument>
+                                <argument><![CDATA[git add example/ *.md && git commit -m "[maven-release-plugin] update documentation and examples" example/ *.md || true]]></argument>
+                            </arguments>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-release-plugin</artifactId>
+                <version>3.3.1</version>
+                <inherited>false</inherited>
+                <configuration>
+                    <skip>${parent.tasks.skip}</skip>
+                    <tagNameFormat>@{project.version}</tagNameFormat>
+                    <preparationGoals>clean replacer:replace exec:exec@commit-changes verify</preparationGoals>
+                    <arguments>-Dparent.tasks.skip=true -DskipTests -Dprotoc.skip=true -Dgpg.loopback=true -Dgpg.passphrase=${GPG_PASSPHRASE}</arguments>
+                    <releaseProfiles>publish-central</releaseProfiles>
+                </configuration>
+            </plugin>
         </plugins>
     </build>
     <pluginRepositories>
@@ -143,34 +202,32 @@
     </pluginRepositories>
     <profiles>
         <profile>
-            <id>release</id>
+            <id>is-root-project</id>
+            <activation>
+                <file>
+                    <exists>${basedir}/.git</exists>
+                </file>
+            </activation>
+            <properties>
+                <parent.tasks.skip>false</parent.tasks.skip>
+            </properties>
+        </profile>
+
+        <profile>
+            <id>is-submodule</id>
+            <activation>
+                <file>
+                    <missing>${basedir}/.git</missing>
+                </file>
+            </activation>
+            <properties>
+                <parent.tasks.skip>true</parent.tasks.skip>
+            </properties>
+        </profile>
+        <profile>
+            <id>publish-central</id>
             <build>
                 <plugins>
-                    <plugin>
-                        <groupId>com.google.code.maven-replacer-plugin</groupId>
-                        <artifactId>replacer</artifactId>
-                        <version>1.5.3</version>
-                        <executions>
-                            <execution>
-                                <id>update-readme-version</id>
-                                <phase>process-resources</phase>
-                                <goals>
-                                    <goal>replace</goal>
-                                </goals>
-                            </execution>
-                        </executions>
-                        <inherited>false</inherited>
-                        <configuration>
-                            <file>${project.basedir}/example/pom.xml</file>
-                            <replacements>
-                                <replacement>
-                                    <token><![CDATA[(<artifactId>covenant-core</artifactId>\s*<version>).*?(</version>)]]></token>
-                                    <value><![CDATA[$1${project.version}$2]]></value>
-                                </replacement>
-                            </replacements>
-                        </configuration>
-                    </plugin>
-
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-source-plugin</artifactId>
@@ -237,13 +294,13 @@
         <connection>scm:git:https://github.com/ChrisAkre/covenant.git</connection>
         <developerConnection>scm:git:https://github.com/ChrisAkre/covenant.git</developerConnection>
         <url>https://github.com/ChrisAkre/covenant</url>
-        <tag>covenant-0.1.1</tag>
+        <tag>0.1.15</tag>
     </scm>
     <distributionManagement>
-<!--        <repository>-->
-<!--            <id>ossrh</id>-->
-<!--            <url>https://central.sonatype.com/service/local/staging/deploy/maven2/</url>-->
-<!--        </repository>-->
+        <repository>
+            <id>ossrh</id>
+            <url>https://central.sonatype.com/service/local/staging/deploy/maven2/</url>
+        </repository>
         <snapshotRepository>
             <id>github-snapshots</id>
             <name>GitHub Packages</name>
