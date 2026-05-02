@@ -63,14 +63,6 @@ public record OwnedTypeDef(AbstractTypeSystem system, TypeDef def)
         return system.isAssignableTo(other, this);
     }
 
-    public OwnedTypeDef intersect(OwnedTypeDef other) {
-        return system.intersect(this, other);
-    }
-
-    public OwnedTypeDef union(OwnedTypeDef other) {
-        return system.union(this, other);
-    }
-
     @Override
     public OwnedTypeDef negate() {
         return system.negate(this);

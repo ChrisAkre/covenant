@@ -197,20 +197,12 @@ public interface AbstractTypeSystem extends TypeSystem {
                 def.parameters().stream().map(this::wrap).map(Type.class::cast).toList());
     }
 
-    default OwnedTypeDef intersect(OwnedTypeDef... types) {
-        TypeDef[] defs = new TypeDef[types.length];
-        for (int i = 0; i < types.length; i++) {
-            defs[i] = unwrap(types[i]);
-        }
-        return wrap(intersectDef(defs));
+    default Type intersect(Type... types) {
+        return wrap(intersectDef(Arrays.stream(types).map(this::unwrap).toArray(TypeDef[]::new)));
     }
 
-    default OwnedTypeDef union(OwnedTypeDef... types) {
-        TypeDef[] defs = new TypeDef[types.length];
-        for (int i = 0; i < types.length; i++) {
-            defs[i] = unwrap(types[i]);
-        }
-        return wrap(unionDef(defs));
+    default Type union(Type... types) {
+        return wrap(unionDef(Arrays.stream(types).map(this::unwrap).toArray(TypeDef[]::new)));
     }
 
     default OwnedTypeDef negate(OwnedTypeDef type) {
