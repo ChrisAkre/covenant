@@ -4,7 +4,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>com.example</groupId>
     <artifactId>javascript-validator</artifactId>
-    <version>0.1.1-SNAPSHOT</version>
+    <version>1.0.0</version>
 
     <properties>
         <maven.compiler.release>21</maven.compiler.release>
@@ -12,14 +12,9 @@
 
     <dependencies>
         <dependency>
-            <groupId>dev.akre</groupId>
-            <artifactId>covenant-api</artifactId>
-            <version>0.1.1-SNAPSHOT</version>
-        </dependency>
-        <dependency>
-            <groupId>dev.akre</groupId>
-            <artifactId>covenant-core</artifactId>
-            <version>0.1.1-SNAPSHOT</version>
+            <groupId>dev.akre.covenant</groupId>
+            <artifactId>typesystem-core</artifactId>
+            <version>0.1.1</version>
         </dependency>
         <dependency>
             <groupId>org.antlr</groupId>
