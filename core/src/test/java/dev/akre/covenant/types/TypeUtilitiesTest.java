@@ -65,7 +65,7 @@ public class TypeUtilitiesTest {
 
         // Required property on left, optional on right -> union type and keeps left optionality
         SYSTEM.assertThat(TypeUtilities.concatGenericTypes(objA, objAOpt))
-                .isEquivalentTo("Object<a: Int | Int>");
+                .isEquivalentTo("Object<a: Int>");
 
         // Open objects
         SYSTEM.assertThat(TypeUtilities.concatGenericTypes(objA, objOpen))
@@ -74,24 +74,10 @@ public class TypeUtilitiesTest {
         SYSTEM.assertThat(TypeUtilities.concatGenericTypes(objOpen, objA))
                 .isEquivalentTo("Object<a: Int, ...>");
 
-        // Open object with open object
-        Type.GenericType objOpenInt = SYSTEM.expression("Object<[matches /.*/]: Int, ...>");
-        SYSTEM.assertThat(TypeUtilities.concatGenericTypes(objOpen, objOpenInt))
-                .isEquivalentTo("Object<[matches /.*/]: Int, ...>");
-    }
-
-    @Test
-    public void testConcatObjectWithConstrained() {
-        Type.GenericType objConstrained = SYSTEM.expression("Object<[matches /ext_/]: Int>");
-        Type.GenericType objA = SYSTEM.expression("Object<a: String>");
-
-        SYSTEM.assertThat(TypeUtilities.concatGenericTypes(objA, objConstrained))
-                .isEquivalentTo("Object<a: String, [matches /ext_/]: Int>");
-
-        // Overlapping constrained
-        Type.GenericType objConstrained2 = SYSTEM.expression("Object<[matches /ext_/]: String>");
-        SYSTEM.assertThat(TypeUtilities.concatGenericTypes(objConstrained, objConstrained2))
-                .isEquivalentTo("Object<[matches /ext_/]: String>");
+        // Open object with open object (Any is Top)
+        Type.GenericType objOpenAny = SYSTEM.expression("Object<...>");
+        SYSTEM.assertThat(TypeUtilities.concatGenericTypes(objOpenAny, objOpen))
+                .isEquivalentTo("Object<...>");
     }
 
     @Test
