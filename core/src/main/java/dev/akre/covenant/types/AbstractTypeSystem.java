@@ -24,8 +24,9 @@ public interface AbstractTypeSystem extends TypeSystem {
         return Optional.ofNullable(typesDef().get(name)).map(this::wrap);
     }
 
-    default Type expression(String expression) {
-        return typeExpression(expression);
+    @SuppressWarnings("unchecked")
+    default <T extends Type> T expression(String expression) {
+        return (T) typeExpression(expression);
     }
 
     default Type.TypeFunction typeFunction(String name) throws java.util.NoSuchElementException {

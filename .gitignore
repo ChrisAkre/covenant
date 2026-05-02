@@ -2,7 +2,6 @@
 *.cfg
 *.iml
 target/
-tmp-test-fixtures-deploy/
 graalvm/
 .settings/
 ./.project
@@ -21,6 +20,6 @@ native/slnative
 gha-creds-*.json
 /.cache/
 /.m2/
+target/
 node_modules/
 __pycache__/
-

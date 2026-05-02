@@ -4,7 +4,7 @@
     <parent>
         <groupId>dev.akre.covenant</groupId>
         <artifactId>covenant-parent</artifactId>
-        <version>0.1.15</version>
+        <version>0.1.16-SNAPSHOT</version>
     </parent>
 
     <artifactId>typesystem-core</artifactId>
@@ -59,12 +59,13 @@
             <plugin>
                 <groupId>dev.akre</groupId>
                 <artifactId>test-fixtures-maven-plugin</artifactId>
-                <version>1.0.5</version>
+                <version>1.0.6</version>
                 <extensions>true</extensions>
                 <configuration>
                     <fixtureNameTemplate>Convenant Type System</fixtureNameTemplate>
                     <fixtureDescriptionTemplate>Test Fixtures for the Covenent Type System</fixtureDescriptionTemplate>
                     <fixturesArtifactId>typesystem-test-fixtures</fixturesArtifactId>
+                    <fixturesSourceDirectory>${project.basedir}/src/testFixtures/java</fixturesSourceDirectory>
                     <copyTarget>${project.basedir}/tmp-test-fixtures-deploy/pom.xml</copyTarget>
                     <fixtureDependencies>
                     </fixtureDependencies>
@@ -98,11 +99,9 @@
                                 <phase>none</phase>
                             </execution>
                             <execution>
-                                <id>release-fixtures</id>
+                                <id>central-bundle</id>
                                 <goals>
-                                    <goal>compile-fixtures</goal>
-                                    <goal>package-fixtures</goal>
-                                    <goal>install-fixtures</goal>
+                                    <goal>central-bundle-fixtures</goal>
                                 </goals>
                             </execution>
                             <execution>
