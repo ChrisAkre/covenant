@@ -4,7 +4,7 @@
     <parent>
         <groupId>dev.akre.covenant</groupId>
         <artifactId>covenant-parent</artifactId>
-        <version>0.1.15-SNAPSHOT</version>
+        <version>0.1.16-SNAPSHOT</version>
     </parent>
 
     <artifactId>typesystem-core</artifactId>
@@ -13,8 +13,8 @@
 
     <dependencies>
         <dependency>
-            <groupId>dev.akre</groupId>
-            <artifactId>covenant-api</artifactId>
+            <groupId>dev.akre.covenant</groupId>
+            <artifactId>typesystem-api</artifactId>
         </dependency>
         <dependency>
             <groupId>org.junit.jupiter</groupId>
@@ -59,16 +59,20 @@
             <plugin>
                 <groupId>dev.akre</groupId>
                 <artifactId>test-fixtures-maven-plugin</artifactId>
-                <version>1.0.4-SNAPSHOT</version>
+                <version>1.0.6</version>
                 <extensions>true</extensions>
                 <configuration>
                     <fixtureNameTemplate>Convenant Type System</fixtureNameTemplate>
                     <fixtureDescriptionTemplate>Test Fixtures for the Covenent Type System</fixtureDescriptionTemplate>
+                    <fixturesArtifactId>typesystem-test-fixtures</fixturesArtifactId>
+                    <fixturesSourceDirectory>${project.basedir}/src/testFixtures/java</fixturesSourceDirectory>
+                    <copyTarget>${project.basedir}/tmp-test-fixtures-deploy/pom.xml</copyTarget>
                     <fixtureDependencies>
                     </fixtureDependencies>
                 </configuration>
                 <executions>
                     <execution>
+                        <id>standard-fixtures</id>
                         <goals>
                             <goal>compile-fixtures</goal>
                             <goal>package-fixtures</goal>
@@ -83,7 +87,7 @@
 
     <profiles>
         <profile>
-            <id>release</id>
+            <id>publish-central</id>
             <build>
                 <plugins>
                     <plugin>
@@ -91,10 +95,22 @@
                         <artifactId>test-fixtures-maven-plugin</artifactId>
                         <executions>
                             <execution>
+                                <id>standard-fixtures</id>
+                                <phase>none</phase>
+                            </execution>
+                            <execution>
+                                <id>central-bundle</id>
                                 <goals>
                                     <goal>compile-fixtures</goal>
                                     <goal>package-fixtures</goal>
                                     <goal>install-fixtures</goal>
+                                </goals>
+                            </execution>
+                            <execution>
+                                <id>copy-release-pom</id>
+                                <phase>package</phase>
+                                <goals>
+                                    <goal>copy-pom</goal>
                                 </goals>
                             </execution>
                         </executions>

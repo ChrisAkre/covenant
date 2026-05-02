@@ -24,8 +24,9 @@ public interface AbstractTypeSystem extends TypeSystem {
         return Optional.ofNullable(typesDef().get(name)).map(this::wrap);
     }
 
-    default Type expression(String expression) {
-        return typeExpression(expression);
+    @SuppressWarnings("unchecked")
+    default <T extends Type> T expression(String expression) {
+        return (T) typeExpression(expression);
     }
 
     default Type.TypeFunction typeFunction(String name) throws java.util.NoSuchElementException {
@@ -285,9 +286,6 @@ public interface AbstractTypeSystem extends TypeSystem {
             return bottomDef();
         } else if (Arrays.stream(types).allMatch(ApplicableDef.class::isInstance)) {
             return intersectFunctions(types);
-            //        } else if (Arrays.stream(types).anyMatch(ApplicableDef.class::isInstance)) {
-            //            throw new IllegalArgumentException("cannot intersect type and functions: " +
-            // Arrays.toString(types));
         } else {
             return intersectTypes(types);
         }

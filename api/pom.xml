@@ -4,7 +4,7 @@
     <parent>
         <groupId>dev.akre.covenant</groupId>
         <artifactId>covenant-parent</artifactId>
-        <version>0.1.15-SNAPSHOT</version>
+        <version>0.1.16-SNAPSHOT</version>
     </parent>
 
     <artifactId>typesystem-api</artifactId>

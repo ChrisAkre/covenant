@@ -1,11 +1,10 @@
 name: Publish Release to Maven Central
 
 on:
-  workflow_dispatch:
-
-#  push:
-#    branches:
-#      - main
+  workflow_dispatch: {}
+  push:
+    branches:
+      - main
 
 jobs:
   release:
@@ -62,13 +61,19 @@ jobs:
 
       - name: Execute Release
         run: |
-          mvn --batch-mode release:prepare replacer:replace release:perform \
-            -Prelease \
+          mvn --batch-mode release:prepare release:perform \
             -Dusername=ignored \
             -Dpassword=${{ secrets.RELEASE_TOKEN }} \
             -DscmCommentPrefix="[skip ci] [maven-release-plugin] " \
+            -Dgpg.passphrase="${GPG_PASSPHRASE}" || true
+          
+          cd core/tmp-test-fixtures-deploy
+          mvn --batch-mode clean deploy \
+            -DskipTests \
+            -Dmaven.deploy.skip=true \
             -Dgpg.passphrase="${GPG_PASSPHRASE}" \
-            -Darguments="-DskipTests -Dprotoc.skip=true -Dgpg.loopback=true -Dgpg.passphrase=${GPG_PASSPHRASE} -Prelease"
+            -Dgpg.loopback=true
+
         env:
           GPG_PASSPHRASE: ${{ secrets.GPG_SIGNING_KEY_PASSPHRASE }}
           MAVEN_USERNAME: ${{ secrets.OSSRH_USERNAME }}
@@ -77,8 +82,9 @@ jobs:
 
       - name: Sync main back to develop
         run: |
+          git fetch origin main:main develop:develop
           git checkout develop
-          git merge -X theirs origin/main --no-ff -m "chore: sync develop with main"
+          git merge origin/main --ff-only
           git push origin develop
         env:
           GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
