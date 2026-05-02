@@ -286,9 +286,6 @@ public interface AbstractTypeSystem extends TypeSystem {
             return bottomDef();
         } else if (Arrays.stream(types).allMatch(ApplicableDef.class::isInstance)) {
             return intersectFunctions(types);
-            //        } else if (Arrays.stream(types).anyMatch(ApplicableDef.class::isInstance)) {
-            //            throw new IllegalArgumentException("cannot intersect type and functions: " +
-            // Arrays.toString(types));
         } else {
             return intersectTypes(types);
         }
