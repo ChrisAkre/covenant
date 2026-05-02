@@ -4,7 +4,7 @@
     <parent>
         <groupId>dev.akre.covenant</groupId>
         <artifactId>covenant-parent</artifactId>
-        <version>0.1.16-SNAPSHOT</version>
+        <version>0.1.16</version>
     </parent>
 
     <artifactId>typesystem-core</artifactId>
@@ -101,7 +101,9 @@
                             <execution>
                                 <id>central-bundle</id>
                                 <goals>
-                                    <goal>central-bundle-fixtures</goal>
+                                    <goal>compile-fixtures</goal>
+                                    <goal>package-fixtures</goal>
+                                    <goal>install-fixtures</goal>
                                 </goals>
                             </execution>
                             <execution>
