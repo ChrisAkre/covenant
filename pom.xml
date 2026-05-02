@@ -4,7 +4,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>dev.akre.covenant</groupId>
     <artifactId>covenant-parent</artifactId>
-    <version>0.1.16-SNAPSHOT</version>
+    <version>0.1.16</version>
     <modules>
         <module>api</module>
         <module>core</module>
