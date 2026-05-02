@@ -109,6 +109,53 @@
                     <artifactId>maven-surefire-plugin</artifactId>
                     <version>3.2.5</version>
                 </plugin>
+                <plugin>
+                    <groupId>com.google.code.maven-replacer-plugin</groupId>
+                    <artifactId>replacer</artifactId>
+                    <version>1.5.3</version>
+                    <configuration>
+                        <skip>${parent.tasks.skip}</skip>
+                        <file>${project.basedir}/example/pom.xml</file>
+                        <replacements>
+                            <replacement>
+                                <token><![CDATA[(<artifactId>typesystem-core</artifactId>\s*<version>).*?(</version>)]]></token>
+                                <value><![CDATA[$1${project.version}$2]]></value>
+                            </replacement>
+                        </replacements>
+                    </configuration>
+                    <executions>
+                        <execution>
+                            <id>update-docs</id>
+                            <goals>
+                                <goal>replace</goal>
+                            </goals>
+                        </execution>
+                    </executions>
+                </plugin>
+                <plugin>
+                    <groupId>org.codehaus.mojo</groupId>
+                    <artifactId>exec-maven-plugin</artifactId>
+                    <version>3.5.0</version>
+                    <configuration>
+                        <skip>${parent.tasks.skip}</skip>
+                        <executable>sh</executable>
+                        <inheritIo>true</inheritIo>
+                    </configuration>
+                    <executions>
+                        <execution>
+                            <id>commit-changes</id>
+                            <goals>
+                                <goal>exec</goal>
+                            </goals>
+                            <configuration>
+                                <arguments>
+                                    <argument>-c</argument>
+                                    <argument><![CDATA[git add example/ *.md && git commit -m "[skip ci] update documentation and examples" example/ *.md || true]]></argument>
+                                </arguments>
+                            </configuration>
+                        </execution>
+                    </executions>
+                </plugin>
             </plugins>
         </pluginManagement>
         <plugins>
@@ -129,63 +176,23 @@
             <plugin>
                 <groupId>com.google.code.maven-replacer-plugin</groupId>
                 <artifactId>replacer</artifactId>
-                <version>1.5.3</version>
-                <inherited>false</inherited>
-                <executions>
-                    <execution>
-                        <id>update-readme-version</id>
-                        <goals>
-                            <goal>replace</goal>
-                        </goals>
-                    </execution>
-                </executions>
-                <configuration>
-                    <skip>${parent.tasks.skip}</skip>
-                    <file>${project.basedir}/example/pom.xml</file>
-                    <replacements>
-                        <replacement>
-                            <token><![CDATA[(<artifactId>typesystem-core</artifactId>\s*<version>).*?(</version>)]]></token>
-                            <value><![CDATA[$1${project.version}$2]]></value>
-                        </replacement>
-                    </replacements>
-                </configuration>
             </plugin>
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>
                 <artifactId>exec-maven-plugin</artifactId>
-                <version>3.5.0</version>
-                <inherited>false</inherited>
-                <executions>
-                    <execution>
-                        <id>commit-changes</id>
-                        <goals>
-                            <goal>exec</goal>
-                        </goals>
-                        <configuration>
-                            <skip>${parent.tasks.skip}</skip>
-                            <executable>sh</executable>
-                            <inheritIo>true</inheritIo>
-                            <arguments>
-                                <argument>-c</argument>
-                                <argument><![CDATA[git add example/ *.md && git commit -m "[maven-release-plugin] update documentation and examples" example/ *.md || true]]></argument>
-                            </arguments>
-                        </configuration>
-                    </execution>
-                </executions>
             </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-release-plugin</artifactId>
-                <version>3.3.1</version>
-                <inherited>false</inherited>
-                <configuration>
-                    <skip>${parent.tasks.skip}</skip>
-                    <tagNameFormat>@{project.version}</tagNameFormat>
-                    <preparationGoals>clean replacer:replace exec:exec@commit-changes verify</preparationGoals>
-                    <arguments>-Dparent.tasks.skip=true -DskipTests -Dprotoc.skip=true -Dgpg.loopback=true -Dgpg.passphrase=${GPG_PASSPHRASE}</arguments>
-                    <releaseProfiles>publish-central</releaseProfiles>
-                </configuration>
-            </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-release-plugin</artifactId>
+                    <version>3.3.1</version>
+                    <configuration>
+                        <skip>${parent.tasks.skip}</skip>
+                        <tagNameFormat>@{project.version}</tagNameFormat>
+                        <preparationGoals>clean replacer:replace@update-docs exec:exec@commit-changes verify</preparationGoals>
+                        <arguments>-DskipTests -Dprotoc.skip=true -Dgpg.loopback=true -Dgpg.passphrase=${GPG_PASSPHRASE}</arguments>
+                        <releaseProfiles>publish-central</releaseProfiles>
+                    </configuration>
+                </plugin>
         </plugins>
     </build>
     <pluginRepositories>
