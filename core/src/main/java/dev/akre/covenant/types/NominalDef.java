@@ -48,7 +48,16 @@ public sealed interface NominalDef extends TypeDef permits AtomType, TopType, Bo
 
     @Override
     default Set<TypeDef> invert(AbstractTypeSystem system) {
-        // TODO if is abstract, return set of negated children.
+        if (attributes().contains(dev.akre.covenant.api.TypeAttribute.ABSTRACT)) {
+            TypeDef[] negatedChildren = system.typesDef().values().stream()
+                    .filter(t -> t instanceof NominalDef n && n.parentNames().contains(name()))
+                    .map(system::negateDef)
+                    .toArray(TypeDef[]::new);
+
+            if (negatedChildren.length > 0) {
+                return Set.of(system.intersectDef(negatedChildren));
+            }
+        }
         return null;
     }
 
