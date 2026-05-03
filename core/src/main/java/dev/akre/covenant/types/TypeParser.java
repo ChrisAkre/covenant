@@ -163,7 +163,7 @@ public final class TypeParser {
         Parser.Token token = state.head();
         switch (token.type()) {
             case PIPE: {
-                Parser.Result<TypeExpr> right = expression(10).parse(state.tail());
+                Parser.Result<TypeExpr> right = expression(bp).parse(state.tail());
                 if (right.matched()) {
                     List<TypeExpr> members = new ArrayList<>();
                     if (left instanceof TypeExpr.UnionExpr(List<TypeExpr> leftMembers)) {
@@ -181,7 +181,7 @@ public final class TypeParser {
                 return right;
             }
             case AMPERSAND: {
-                Parser.Result<TypeExpr> right = expression(20).parse(state.tail());
+                Parser.Result<TypeExpr> right = expression(bp).parse(state.tail());
                 if (right.matched()) {
                     List<TypeExpr> members = new ArrayList<>();
                     if (left instanceof TypeExpr.IntersectionExpr(List<TypeExpr> leftMembers)) {
@@ -199,7 +199,7 @@ public final class TypeParser {
                 return right;
             }
             case ARROW: {
-                Parser.Result<TypeExpr> ret = expression(30).parse(state.tail());
+                Parser.Result<TypeExpr> ret = expression(bp).parse(state.tail());
                 if (ret.matched()) {
                     List<TypeExpr> params = new ArrayList<>();
                     if (left instanceof TypeExpr.TupleExpr(List<TypeExpr> members)) {
@@ -238,18 +238,58 @@ public final class TypeParser {
         }
     }
 
+    private boolean isFunctionSignature(Parser.InputState state) {
+        if (state.isEndOfInput()) return false;
+
+        Parser.InputState current = state;
+
+        // Skip optional generic params
+        if (current.head().type() == Parser.TokenType.L_ANGLE) {
+            current = skipBalanced(current, Parser.TokenType.L_ANGLE, Parser.TokenType.R_ANGLE);
+            if (current == null || current.isEndOfInput()) return false;
+        }
+
+        // Must have parameters in parens
+        if (current.head().type() != Parser.TokenType.L_PAREN) {
+            return false;
+        }
+        current = skipBalanced(current, Parser.TokenType.L_PAREN, Parser.TokenType.R_PAREN);
+        if (current == null || current.isEndOfInput()) return false;
+
+        // Must be followed by arrow
+        return current.head().type() == Parser.TokenType.ARROW;
+    }
+
+    private Parser.InputState skipBalanced(Parser.InputState state, Parser.TokenType open, Parser.TokenType close) {
+        if (state.isEndOfInput() || state.head().type() != open) return null;
+        int depth = 0;
+        while (!state.isEndOfInput()) {
+            Parser.TokenType type = state.head().type();
+            if (type == open) {
+                depth++;
+            } else if (type == close) {
+                depth--;
+                if (depth == 0) {
+                    return state.tail();
+                }
+            }
+            state = state.tail();
+        }
+        return null;
+    }
+
     private int peekBindingPower(Parser.InputState state) {
         if (state.isEndOfInput()) {
             return -1;
         }
         Parser.Token token = state.head();
         return switch (token.type()) {
-            case PIPE -> 10;
-            case AMPERSAND -> 20;
-            case ARROW -> 30; // Tight!
+            case ARROW -> 5;
+            case PIPE -> isFunctionSignature(state.tail()) ? 4 : 10;
+            case AMPERSAND -> isFunctionSignature(state.tail()) ? 4 : 20;
+            case QUESTION -> 50;
             case L_PAREN -> 60;
             case COLON -> 65;
-            case QUESTION -> 50;
             default -> -1;
         };
     }
