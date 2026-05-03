@@ -8,6 +8,9 @@ import java.util.List;
  */
 @SuppressWarnings("unused")
 public interface Type {
+
+    TypeSystem system();
+
     /**
      * @return a text representation of this type.
      */
