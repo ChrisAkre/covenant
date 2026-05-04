@@ -69,11 +69,8 @@ public class TypeSystemUtils {
                     }
                     // Check if open
                     for (TypeDefParam tp : g.parameters()) {
-                        if (tp.parameter() instanceof Parameter.Spread(Integer index)) {
-                            if (index != null) {
-                                yield tp.type();
-                            }
-                            yield system.topDef(); // Any
+                        if (tp.parameter() instanceof Parameter.Spread()) {
+                            yield tp.type();
                         }
                     }
                     yield system.bottomDef();

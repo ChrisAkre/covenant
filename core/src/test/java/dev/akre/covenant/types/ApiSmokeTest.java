@@ -45,8 +45,8 @@ public class ApiSmokeTest {
         Type intType = ts.type("Int");
 
         Type.GenericType personType = objectTemplate.construct(List.of(
-                new TypeParameter(stringType, new Parameter.Named("name", 0, false)),
-                new TypeParameter(intType, new Parameter.Named("age", 0, false))));
+                new TypeParameter(stringType, new Parameter.Named("name", false)),
+                new TypeParameter(intType, new Parameter.Named("age", false))));
 
         assertNotNull(personType);
         assertTrue(personType.isObject());

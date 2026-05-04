@@ -163,10 +163,9 @@ public class JsEvaluatorVisitor extends JSBaseVisitor<Type> {
             // Wrap the constraint in a new Object bound: Object<propName: constraint, ...Spread>
             Type parentConstraint = system.wrap(
                     system.constructDef("Object",
-                            List.of(system.unwrap(constraint)),
                             List.of(
-                                    new Parameter.Named(propName, 0, false),
-                                    new Parameter.Spread()
+                                    new TypeDefParam(system.unwrap(constraint), new Parameter.Named(propName, false)),
+                                    new TypeDefParam(system.topDef(), new Parameter.Spread())
                             )
                     )
             );
