@@ -11,13 +11,13 @@ public class TypeUtilities {
         } else if (self.isObject() && other.isObject()) {
             return concatObjectTypes(self, other);
         } else {
-            return self.intersect(self.negate());
+            return self.system.bottom();
         }
     }
 
     public static Type concatArrayTypes(Type.GenericType self, Type.GenericType other) {
         if (!self.isArray() || !other.isArray()) {
-            return self.intersect(self.negate());
+            return self.system.bottom();
         }
 
         List<TypeParameter> mergedParams = new ArrayList<>();
@@ -78,7 +78,7 @@ public class TypeUtilities {
 
     public static Type concatObjectTypes(Type.GenericType self, Type.GenericType other) {
         if (!self.isObject() || !other.isObject()) {
-            return self.intersect(self.negate());
+            return self.system.bottom();
         }
 
         List<TypeParameter> selfParams = self.genericParameters();
