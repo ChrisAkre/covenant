@@ -28,7 +28,7 @@ public class JsonPathCovenantChecker {
         // Wrapping rules for Nodelists based on definite/indefinite paths
         if (isIndefinitePath(tree) || wrapDefinitePathsInNodelist) {
              // Just wrap in a Nodelist. Even if it's already an array, Nodelist is distinct.
-             if (!inferredType.isAssignableFrom(typeSystem.expression("Nodelist"))) {
+             if (!typeSystem.expression("Nodelist").isAssignableFrom(inferredType)) {
                  inferredType = typeSystem.expression("Nodelist<" + inferredType.repr() + ">");
              }
         }

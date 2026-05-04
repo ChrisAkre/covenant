@@ -7,7 +7,7 @@ import dev.akre.covenant.types.JsonTypeSystem;
 public class JsonPathTypeSystem {
     public static final AbstractTypeSystem INSTANCE = new TypeSystemBuilderImpl(JsonTypeSystem.INSTANCE)
             // Nodelist generic wrapper
-            .atom("Nodelist")
+            .atom("Nodelist") // Need to ensure it can be generic
             .arrayPattern()
 
             // Relational and equality operators (mapping directly from RFC 9535 filters)

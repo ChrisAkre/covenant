@@ -59,7 +59,10 @@ public class JsonPathEvaluatorVisitor extends JsonPathBaseVisitor<Type> {
     public Type visitBracket_specifier(JsonPathParser.Bracket_specifierContext ctx) {
         List<Type> memberTypes = new ArrayList<>();
         for (JsonPathParser.SelectorContext selector : ctx.selector()) {
-            memberTypes.add(visit(selector));
+            Type res = visit(selector);
+            if (res != null) {
+                memberTypes.add(res);
+            }
         }
         if (memberTypes.isEmpty()) return typeSystem.bottom();
         Type unionType = memberTypes.get(0);
@@ -78,6 +81,16 @@ public class JsonPathEvaluatorVisitor extends JsonPathBaseVisitor<Type> {
     @Override
     public Type visitWildcard_selector(JsonPathParser.Wildcard_selectorContext ctx) {
         return extractAllProperties(currentContext);
+    }
+
+    @Override
+    public Type visitIndex_selector(JsonPathParser.Index_selectorContext ctx) {
+        return extractArrayMemberType(currentContext);
+    }
+
+    @Override
+    public Type visitSlice_selector(JsonPathParser.Slice_selectorContext ctx) {
+        return extractArrayMemberType(currentContext);
     }
 
     @Override
@@ -129,27 +142,46 @@ public class JsonPathEvaluatorVisitor extends JsonPathBaseVisitor<Type> {
     private Type evaluateComparableToConstraint(JsonPathParser.ComparableContext self, JsonPathParser.ComparableContext other, String op) {
         if (self.singular_query() != null) {
             List<String> pathSegments = extractSingularQueryPathSegments(self.singular_query());
-            Type otherType = evaluateComparableToType(other);
 
             // Build nested Object constraints if the path has multiple segments
             // e.g. @.address.zipcode -> Object<address: Object<zipcode: Number, ...>, ...>
-            Type constraint = buildNestedConstraint(pathSegments, otherType, op);
+            Type constraint = buildNestedConstraint(pathSegments, other, op);
             return constraint;
         }
         return typeSystem.top();
     }
 
-    private Type buildNestedConstraint(List<String> pathSegments, Type leafType, String op) {
+    private Type buildNestedConstraint(List<String> pathSegments, JsonPathParser.ComparableContext other, String op) {
         if (pathSegments.isEmpty()) return typeSystem.top();
 
-        // Build from the inside out
-        String currentLevelStr = "";
+        Type otherType = evaluateComparableToType(other);
+
+        String propName = pathSegments.get(pathSegments.size() - 1);
+        Type currentConstraint;
+
         if (op.equals("==")) {
-             currentLevelStr = "Object<" + pathSegments.get(pathSegments.size() - 1) + ": " + leafType.repr() + ", ...>";
+             currentConstraint = typeSystem.expression("Object<" + propName + ": " + otherType.repr() + ", ...>");
+        } else if (op.equals("!=")) {
+             // For != we use intersection with negated bounds.
+             currentConstraint = typeSystem.expression("Object<" + propName + ": ~" + otherType.repr() + ", ...>");
         } else {
-             currentLevelStr = "Object<" + pathSegments.get(pathSegments.size() - 1) + ": Number, ...>";
+             // Extract mathematical operation constraint. `lt 10`, etc.
+             String mappedOp = switch(op) {
+                 case "<" -> "lt";
+                 case "<=" -> "lte";
+                 case ">" -> "gt";
+                 case ">=" -> "gte";
+                 default -> throw new IllegalStateException();
+             };
+
+             // If we are comparing against a specific numeric value, inline it into the bound constraint
+             if (other.literal() != null && other.literal().NUMBER() != null) {
+                 String val = other.literal().NUMBER().getText();
+                 currentConstraint = typeSystem.expression("Object<" + propName + ": Number & " + mappedOp + " " + val + ", ...>");
+             } else {
+                 currentConstraint = typeSystem.expression("Object<" + propName + ": Number, ...>");
+             }
         }
-        Type currentConstraint = typeSystem.expression(currentLevelStr);
 
         for (int i = pathSegments.size() - 2; i >= 0; i--) {
             currentConstraint = typeSystem.expression("Object<" + pathSegments.get(i) + ": " + currentConstraint.repr() + ", ...>");
@@ -232,7 +264,7 @@ public class JsonPathEvaluatorVisitor extends JsonPathBaseVisitor<Type> {
     }
 
     private Type extractArrayMemberType(Type arrayType) {
-        if (arrayType.isAssignableFrom(typeSystem.expression("Array"))) {
+        if (typeSystem.expression("Array").isAssignableFrom(arrayType)) {
             TypeDef rawArray = ((OwnedTypeDef) arrayType).def();
             if (rawArray instanceof GenericTypeDef gen) {
                 for (TypeDefParam param : gen.parameters()) {
