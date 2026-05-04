@@ -90,22 +90,17 @@ public interface AbstractTypeSystem extends TypeSystem {
         return wrap(nilDef());
     }
 
-    /**
-     * Unwraps an OwnedTypeDef to its underlying TypeDef, ensuring it belongs to this system.
-     */
-    default TypeDef unwrap(OwnedTypeDef owned) {
-        if (owned == null) return null;
-        if (owned.system() != this) {
-            throw new IllegalArgumentException("OwnedTypeDef does not belong to this TypeSystem");
+    default TypeDef unwrap(Type type) {
+        if (type == null) {
+            return null;
+        } else if (type instanceof OwnedTypeDef(AbstractTypeSystem system, TypeDef def) && system == this) {
+            return def;
         }
-        return owned.def();
+        throw new IllegalArgumentException("Type does not belong to this TypeSystem");
     }
 
-    default TypeDef unwrap(Type type) {
-        if (type == null) return null;
-        if (type instanceof OwnedTypeDef o) return unwrap(o);
-        throw new IllegalArgumentException(
-                "Not an OwnedTypeDef: " + type.getClass().getName());
+    default List<TypeDef> unwrap(List<Type> types) {
+        return types == null ? null : types.stream().map(this::unwrap).toList();
     }
 
     /**
@@ -119,8 +114,8 @@ public interface AbstractTypeSystem extends TypeSystem {
         return template.constructor().construct(this, template, members, parameters);
     }
 
-    default OwnedTypeDef construct(String name, List<TypeDef> members, List<Parameter> parameters) {
-        return wrap(constructDef(name, members, parameters));
+    default OwnedTypeDef construct(String name, List<Type> members, List<Parameter> parameters) {
+        return wrap(constructDef(name, unwrap(members), parameters));
     }
 
 

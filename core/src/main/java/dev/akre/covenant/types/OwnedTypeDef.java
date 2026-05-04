@@ -141,13 +141,13 @@ public record OwnedTypeDef(AbstractTypeSystem system, TypeDef def)
     @Override
     public Type.GenericType construct(List<TypeParameter> genericParameters) {
         if (def instanceof dev.akre.covenant.types.TemplateType template) {
-            List<TypeDef> members = new ArrayList<>();
+            List<Type> members = new ArrayList<>();
             List<Parameter> parameters = new ArrayList<>();
             for (TypeParameter tp : genericParameters) {
                 Parameter p = tp.parameter();
                 if (tp.type() != null) {
                     int newIndex = members.size();
-                    members.add(system.unwrap(tp.type()));
+                    members.add(tp.type());
                     p = switch (p) {
                         case Parameter.Positional pos -> new Parameter.Positional(newIndex, pos.variadic());
                         case Parameter.Named n -> new Parameter.Named(n.name(), newIndex, n.optional());

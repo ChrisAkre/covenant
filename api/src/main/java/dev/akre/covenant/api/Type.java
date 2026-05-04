@@ -1,5 +1,6 @@
 package dev.akre.covenant.api;
 
+import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.List;
 
@@ -77,5 +78,9 @@ public interface Type {
 
     interface TemplateType extends Type {
         GenericType construct(List<TypeParameter> genericParameters);
+
+        default GenericType construct(TypeParameter... genericParameters) {
+            return construct(Arrays.asList(genericParameters));
+        }
     }
 }

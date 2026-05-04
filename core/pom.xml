@@ -33,6 +33,14 @@
             <groupId>tools.jackson.core</groupId>
             <artifactId>jackson-databind</artifactId>
         </dependency>
+
+        <dependency>
+            <groupId>dev.akre.test</groupId>
+            <artifactId>lexical-assert</artifactId>
+            <version>0.1.1</version>
+            <scope>test</scope>
+        </dependency>
+
     </dependencies>
 
     <build>
@@ -68,6 +76,11 @@
                     <fixturesSourceDirectory>${project.basedir}/src/testFixtures/java</fixturesSourceDirectory>
                     <copyTarget>${project.basedir}/tmp-test-fixtures-deploy/pom.xml</copyTarget>
                     <fixtureDependencies>
+                        <dependency>
+                            <groupId>dev.akre.test</groupId>
+                            <artifactId>lexical-assert</artifactId>
+                            <version>0.1.1</version>
+                        </dependency>
                     </fixtureDependencies>
                 </configuration>
                 <executions>
