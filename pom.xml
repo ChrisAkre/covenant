@@ -115,7 +115,7 @@
                     <version>1.5.3</version>
                     <configuration>
                         <skip>${parent.tasks.skip}</skip>
-                        <file>${project.basedir}/example/pom.xml</file>
+                        <file>${project.basedir}/javascript-example/pom.xml</file>
                         <replacements>
                             <replacement>
                                 <token><![CDATA[(<artifactId>typesystem-core</artifactId>\s*<version>).*?(</version>)]]></token>
@@ -150,7 +150,7 @@
                             <configuration>
                                 <arguments>
                                     <argument>-c</argument>
-                                    <argument><![CDATA[git add example/ *.md && git commit -m "[skip ci] update documentation and examples" example/ *.md || true]]></argument>
+                                    <argument><![CDATA[git add javascript-example/ *.md && git commit -m "[skip ci] update documentation and examples" javascript-example/ *.md || true]]></argument>
                                 </arguments>
                             </configuration>
                         </execution>
