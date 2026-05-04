@@ -114,4 +114,20 @@ public class TypeSystemSmokeTest {
 
         system.assertThat("QuotedAlias").isAssignableTo("'SomeQuotedName'");
     }
+
+    @Test
+    public void testFunctions() {
+        TestTypeSystem system = TestTypeSystem.of(JsonTypeSystem.INSTANCE);
+
+        system.assertThat("(Null, T2) -> T2 & <T1: ~Null>(T1, Any) -> T1")
+                .printsLike("(<T2>(Null, T2) -> T2) & (<T1: ~Null>(T1, Any) -> T1)")
+                .withArgs("Null", "Int").evaluatesTo("Int");
+
+        system.assertThat("(T1, T2) -> T1 & ~Null | T2")
+                .printsLike("<T1, T2>(T1, T2) -> T1 & ~Null | T2")
+                .withArgs("Null", "Int").evaluatesTo("Int");
+
+        system.assertThat("(String) -> ((Int) -> Int & (Null) -> Null)")
+                .printsLike("(String) -> (Int) -> Int & (Null) -> Null");
+    }
 }
