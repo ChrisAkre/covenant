@@ -38,7 +38,7 @@ public final class JsonTypeSystem {
      * Parses a Jackson 3 JsonNode schema into a TypeDef using the default JsonTypeSystem.
      */
     public static Type fromSchema(tools.jackson.databind.JsonNode schema) {
-        return new JsonSchemaParser(INSTANCE).parse(schema);
+        return INSTANCE.wrap(new JsonSchemaParser(INSTANCE).parse(schema));
     }
 
     /**

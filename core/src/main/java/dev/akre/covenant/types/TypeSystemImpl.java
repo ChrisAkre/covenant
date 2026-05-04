@@ -1,18 +1,8 @@
 package dev.akre.covenant.types;
 
-import org.jspecify.annotations.NonNull;
+import java.util.*;
 
-import java.util.Collections;
-import java.util.LinkedHashMap;
-import java.util.Map;
-import java.util.Objects;
-
-public record TypeSystemImpl(
-        Map<String, TypeDef> typesDef,
-        TypeParser parser,
-        TypeDef topDef,
-        TypeDef bottomDef,
-        TypeDef nilDef)
+public record TypeSystemImpl(Map<String, TypeDef> typesDef, TypeDef topDef, TypeDef bottomDef, TypeDef nilDef)
         implements AbstractTypeSystem {
 
     public TypeSystemImpl {
@@ -37,8 +27,8 @@ public record TypeSystemImpl(
         }
     }
 
-    public TypeSystemImpl(Map<String, TypeDef> types, TypeParser parser) {
-        this(types, parser, null, null, null);
+    public TypeSystemImpl(Map<String, TypeDef> types) {
+        this(types, null, null, null);
     }
 
     @Override
@@ -54,7 +44,7 @@ public record TypeSystemImpl(
     }
 
     @Override
-    public @NonNull String toString() {
+    public String toString() {
         return "TypeSystemImpl[types=" + typesDef.keySet() + "]";
     }
 }

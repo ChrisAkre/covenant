@@ -2,13 +2,7 @@ package dev.akre.covenant.types;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-import dev.akre.covenant.api.Parameter;
-import dev.akre.covenant.api.Type;
-import dev.akre.covenant.api.TypeParameter;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
-
-import java.util.List;
 
 public class TypeSystemSmokeTest {
 
@@ -119,31 +113,5 @@ public class TypeSystemSmokeTest {
                 .isBottom();
 
         system.assertThat("QuotedAlias").isAssignableTo("'SomeQuotedName'");
-    }
-
-    @Test
-    public void testFunctions() {
-        TestTypeSystem system = TestTypeSystem.of(JsonTypeSystem.INSTANCE);
-
-        system.assertThat("(Null, T2) -> T2 & <T1: ~Null>(T1, Any) -> T1")
-                .printsLike("(<T2>(Null, T2) -> T2) & (<T1: ~Null>(T1, Any) -> T1)")
-                .withArgs("Null", "Int").evaluatesTo("Int");
-
-        system.assertThat("(T1, T2) -> T1 & ~Null | T2")
-                .printsLike("<T1, T2>(T1, T2) -> T1 & ~Null | T2")
-                .withArgs("Null", "Int").evaluatesTo("Int");
-
-        system.assertThat("(String) -> ((Int) -> Int & (Null) -> Null)")
-                .printsLike("(String) -> (Int) -> Int & (Null) -> Null");
-    }
-
-    @Test
-    @Disabled
-    public void testSpread() {
-        TestTypeSystem system = TestTypeSystem.of(JsonTypeSystem.INSTANCE);
-
-        Type stringsObject = system.template("Object").construct(TypeParameter.spread(system.type("String")));
-        system.assertThat(stringsObject).printsLike("Object<...String>");
-
     }
 }

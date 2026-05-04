@@ -2,7 +2,6 @@ package dev.akre.covenant.types;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-import dev.akre.covenant.api.Type;
 import org.junit.jupiter.api.Test;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
@@ -15,11 +14,11 @@ public class JsonSchemaParsingTest {
     @Test
     public void testBasicPrimitives() throws Exception {
         JsonNode stringSchema = mapper.readTree("{\"type\": \"string\"}");
-        Type stringDef = parser.parse(stringSchema);
+        OwnedTypeDef stringDef = system.wrap(parser.parse(stringSchema));
         assertEquals(system.find("String").orElseThrow(), stringDef);
 
         JsonNode intSchema = mapper.readTree("{\"type\": \"integer\"}");
-        Type intDef = parser.parse(intSchema);
+        OwnedTypeDef intDef = system.wrap(parser.parse(intSchema));
         assertEquals(system.find("Int").orElseThrow(), intDef);
     }
 
@@ -36,7 +35,7 @@ public class JsonSchemaParsingTest {
             }
             """;
         JsonNode schema = mapper.readTree(json);
-        Type type = parser.parse(schema);
+        OwnedTypeDef type = system.wrap(parser.parse(schema));
 
         system.assertThat(type).satisfies("Object<id: String, age: Int?, ...>");
         system.assertThat("Object<id: String, age: Int>").satisfies(type.repr());
@@ -46,7 +45,7 @@ public class JsonSchemaParsingTest {
     @Test
     public void testArrayParsing() throws Exception {
         JsonNode schema = mapper.readTree("{\"type\": \"array\", \"items\": {\"type\": \"integer\"}}");
-        Type type = parser.parse(schema);
+        OwnedTypeDef type = system.wrap(parser.parse(schema));
 
         system.assertThat(type).satisfies("Array<Int...>");
         system.assertThat("Array<Int, Int>").satisfies(type.repr());
@@ -61,7 +60,7 @@ public class JsonSchemaParsingTest {
             }
             """;
         JsonNode schema = mapper.readTree(json);
-        Type type = parser.parse(schema);
+        OwnedTypeDef type = system.wrap(parser.parse(schema));
 
         // It should satisfy an object with any int property, but not string
         system.assertThat(type).satisfiedBy("Object<foo: Int>");
@@ -71,7 +70,7 @@ public class JsonSchemaParsingTest {
     @Test
     public void testAlgebraicParsing() throws Exception {
         JsonNode schema = mapper.readTree("{\"anyOf\": [{\"type\": \"string\"}, {\"type\": \"integer\"}]}");
-        Type type = parser.parse(schema);
+        OwnedTypeDef type = system.wrap(parser.parse(schema));
 
         system.assertThat(type).isEquivalentTo("String | Int");
     }
@@ -100,7 +99,7 @@ public class JsonSchemaParsingTest {
               "additionalProperties": { "type": "integer" }
             }
             """;
-        Type type = parser.parse(mapper.readTree(json));
+        OwnedTypeDef type = system.wrap(parser.parse(mapper.readTree(json)));
 
         system.assertThat(type).term("id").satisfies("String");
         system.assertThat(type).term("unknown").satisfies("Int");

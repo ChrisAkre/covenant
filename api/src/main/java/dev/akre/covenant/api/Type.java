@@ -1,6 +1,5 @@
 package dev.akre.covenant.api;
 
-import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.List;
 
@@ -9,7 +8,9 @@ import java.util.List;
  */
 @SuppressWarnings("unused")
 public interface Type {
-
+    /**
+     * @return the TypeSystem that owns this type.
+     */
     TypeSystem system();
 
     /**
@@ -78,9 +79,5 @@ public interface Type {
 
     interface TemplateType extends Type {
         GenericType construct(List<TypeParameter> genericParameters);
-
-        default GenericType construct(TypeParameter... genericParameters) {
-            return construct(Arrays.asList(genericParameters));
-        }
     }
 }

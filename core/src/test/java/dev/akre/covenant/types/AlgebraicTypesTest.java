@@ -1,6 +1,5 @@
 package dev.akre.covenant.types;
 
-import dev.akre.covenant.api.Type;
 import org.junit.jupiter.api.Test;
 
 public class AlgebraicTypesTest {
@@ -48,7 +47,7 @@ public class AlgebraicTypesTest {
         OwnedTypeDef nullType = (OwnedTypeDef) system.find("Null").orElseThrow();
 
         // (T1 & ~Null) | T2
-        Type result = t1.intersect(nullType.negate()).union(t2);
+        OwnedTypeDef result = t1.intersect(nullType.negate()).union(t2);
 
         system.assertThat(result).satisfies("String");
         system.assertThat("String").satisfies(result.repr());

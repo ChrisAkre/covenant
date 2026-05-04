@@ -3,11 +3,8 @@ package dev.akre.covenant.types;
 import dev.akre.covenant.api.Type;
 import dev.akre.covenant.api.TypeSystem;
 import dev.akre.covenant.api.TypeUtilities;
-import dev.akre.test.LexicalAssert;
-import dev.akre.test.Tokenizer;
 
 import java.util.*;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 
@@ -15,16 +12,6 @@ import java.util.stream.Collectors;
  * A implementation of AbstractTypeSystem designed for testing, providing fluent AssertJ-style assertions.
  */
 public class TestTypeSystem implements AbstractTypeSystem {
-    public static final Tokenizer COVENANT_TOKENIZER = Tokenizer.ofRegex(
-            Pattern.compile("""
-                    (?x)
-                    "(?:\\\\\\\\\"|[^"])*"     # 1. Strings
-                    |                     # OR
-                    [a-zA-Z0-9_]+         # 2. Words (Integers, true, false, null)
-                    |                     # OR
-                    [^a-zA-Z0-9_\\s]       # 3. Symbols ({}, [], :, ,, ., -)""")
-    );
-
 
     public static TestTypeSystem of(TypeSystem other) {
         if (other instanceof AbstractTypeSystem a) {
@@ -35,21 +22,19 @@ public class TestTypeSystem implements AbstractTypeSystem {
     }
 
     private final Map<String, TypeDef> types;
-    private final TypeParser parser;
     private final TypeDef top;
     private final TypeDef bottom;
     private final TypeDef nil;
 
     protected TestTypeSystem(AbstractTypeSystem other) {
-        this(other.typesDef(), other.parser());
+        this(other.typesDef());
     }
 
-    TestTypeSystem(Map<String, TypeDef> foreignTypes, TypeParser parser) {
-        this.types = new HashMap<>(foreignTypes);
-        this.parser = parser;
-        this.top = types.values().stream().filter(TopType.class::isInstance).findFirst().orElseThrow();
-        this.bottom = types.values().stream().filter(BottomType.class::isInstance).findFirst().orElseThrow();
-        this.nil = types.values().stream().filter(t -> t.attributes().contains(dev.akre.covenant.api.TypeAttribute.NULL_SEMANTICS)).findFirst().orElse(null);
+    TestTypeSystem(Map<String, TypeDef> foreignTypes) {
+        types = new HashMap<>(foreignTypes);
+        top = types.values().stream().filter(TopType.class::isInstance).findFirst().orElseThrow();
+        bottom = types.values().stream().filter(BottomType.class::isInstance).findFirst().orElseThrow();
+        nil = types.values().stream().filter(t -> t.attributes().contains(dev.akre.covenant.api.TypeAttribute.NULL_SEMANTICS)).findFirst().orElse(null);
     }
 
     @Override
@@ -70,11 +55,6 @@ public class TestTypeSystem implements AbstractTypeSystem {
     @Override
     public TypeDef nilDef() {
         return nil;
-    }
-
-    @Override
-    public TypeParser parser() {
-        return parser;
     }
 
     public TypeAssertion assertThat(String expression) {
@@ -210,7 +190,7 @@ public class TestTypeSystem implements AbstractTypeSystem {
         }
 
         public TypeAssertion printsLike(String expected) {
-            LexicalAssert.assertStructuralEquals(COVENANT_TOKENIZER, expected, subject.repr());
+            compareIgnoringWhitespace(expected, subject.repr());
             return this;
         }
 
@@ -252,24 +232,24 @@ public class TestTypeSystem implements AbstractTypeSystem {
             }
 
             for (int i = 0; i < expectedList.size(); i++) {
-                LexicalAssert.assertStructuralEquals(COVENANT_TOKENIZER, expectedList.get(i), actualSignatures.get(i));
+                compareIgnoringWhitespace("Overload " + i, expectedList.get(i), actualSignatures.get(i));
             }
 
             return this;
         }
     }
 
-//    private static void compareIgnoringWhitespace(String expected, String actual) {
-//        compareIgnoringWhitespace(null, expected, actual);
-//    }
-//
-//    private static void compareIgnoringWhitespace(String message, String expected, String actual) {
-//        String expectedClean = expected.strip().replaceAll("\\s+", " ");
-//        String actualClean = actual.strip().replaceAll("\\s+", " ");
-//        if (!expectedClean.equals(actualClean)) {
-//            String prefix = message == null ? "" : message + ": ";
-//            throw new AssertionError(prefix + String.format("Expected [%s] to match [%s] (ignoring whitespace), but it did not.\nExpected (normalized): [%s]\nActual (normalized): [%s]",
-//                    expected, actual, expectedClean, actualClean));
-//        }
-//    }
+    private static void compareIgnoringWhitespace(String expected, String actual) {
+        compareIgnoringWhitespace(null, expected, actual);
+    }
+
+    private static void compareIgnoringWhitespace(String message, String expected, String actual) {
+        String expectedClean = expected.strip().replaceAll("\\s+", " ");
+        String actualClean = actual.strip().replaceAll("\\s+", " ");
+        if (!expectedClean.equals(actualClean)) {
+            String prefix = message == null ? "" : message + ": ";
+            throw new AssertionError(prefix + String.format("Expected [%s] to match [%s] (ignoring whitespace), but it did not.\nExpected (normalized): [%s]\nActual (normalized): [%s]",
+                    expected, actual, expectedClean, actualClean));
+        }
+    }
 }

@@ -11,7 +11,7 @@ public interface TypeSystem {
 
     java.util.Optional<Type> find(String name);
 
-    <T extends Type> T expression(String expression);
+    Type expression(String expression);
 
     Type.TypeFunction typeFunction(String name) throws java.util.NoSuchElementException;
 

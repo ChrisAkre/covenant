@@ -4,6 +4,7 @@ import dev.akre.covenant.api.Parameter;
 import dev.akre.covenant.api.Type;
 import dev.akre.covenant.api.TypeAttribute;
 import dev.akre.covenant.api.TypeParameter;
+import dev.akre.covenant.api.TypeSystem;
 import org.jspecify.annotations.NonNull;
 
 import java.util.ArrayList;
@@ -18,6 +19,11 @@ import java.util.stream.Collectors;
 @SuppressWarnings("unused")
 public record OwnedTypeDef(AbstractTypeSystem system, TypeDef def)
         implements Type, Type.TypeFunction, Type.GenericType, Type.TemplateType {
+
+    @Override
+    public TypeSystem system() {
+        return system;
+    }
 
     @Override
     public boolean isNumeric() {
@@ -61,6 +67,14 @@ public record OwnedTypeDef(AbstractTypeSystem system, TypeDef def)
 
     public boolean isAssignableFrom(OwnedTypeDef other) {
         return system.isAssignableTo(other, this);
+    }
+
+    public OwnedTypeDef intersect(OwnedTypeDef other) {
+        return system.intersect(this, other);
+    }
+
+    public OwnedTypeDef union(OwnedTypeDef other) {
+        return system.union(this, other);
     }
 
     @Override
@@ -141,13 +155,13 @@ public record OwnedTypeDef(AbstractTypeSystem system, TypeDef def)
     @Override
     public Type.GenericType construct(List<TypeParameter> genericParameters) {
         if (def instanceof dev.akre.covenant.types.TemplateType template) {
-            List<Type> members = new ArrayList<>();
+            List<TypeDef> members = new ArrayList<>();
             List<Parameter> parameters = new ArrayList<>();
             for (TypeParameter tp : genericParameters) {
                 Parameter p = tp.parameter();
                 if (tp.type() != null) {
                     int newIndex = members.size();
-                    members.add(tp.type());
+                    members.add(system.unwrap(tp.type()));
                     p = switch (p) {
                         case Parameter.Positional pos -> new Parameter.Positional(newIndex, pos.variadic());
                         case Parameter.Named n -> new Parameter.Named(n.name(), newIndex, n.optional());

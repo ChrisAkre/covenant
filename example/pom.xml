@@ -3,8 +3,8 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <groupId>com.example</groupId>
-    <artifactId>jsonpath-validator</artifactId>
-    <version>1.0.0</version>
+    <artifactId>javascript-validator</artifactId>
+    <version>0.1.1-SNAPSHOT</version>
 
     <properties>
         <maven.compiler.release>21</maven.compiler.release>
@@ -12,9 +12,14 @@
 
     <dependencies>
         <dependency>
-            <groupId>dev.akre.covenant</groupId>
-            <artifactId>typesystem-core</artifactId>
-            <version>0.1.17-SNAPSHOT</version>
+            <groupId>dev.akre</groupId>
+            <artifactId>covenant-api</artifactId>
+            <version>0.1.1-SNAPSHOT</version>
+        </dependency>
+        <dependency>
+            <groupId>dev.akre</groupId>
+            <artifactId>covenant-core</artifactId>
+            <version>0.1.1-SNAPSHOT</version>
         </dependency>
         <dependency>
             <groupId>org.antlr</groupId>
@@ -29,7 +34,7 @@
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter</artifactId>
-            <version>5.10.1</version>
+            <version>6.0.3</version>
             <scope>test</scope>
         </dependency>
     </dependencies>
@@ -61,17 +66,4 @@
             </plugin>
         </plugins>
     </build>
-    <pluginRepositories>
-        <pluginRepository>
-            <id>test-fixtures-maven-plugin</id>
-            <url>https://maven.pkg.github.com/ChrisAkre/test-fixtures-maven-plugin/</url>
-            <releases>
-                <enabled>false</enabled>
-            </releases>
-            <snapshots>
-                <enabled>true</enabled>
-                <updatePolicy>always</updatePolicy>
-            </snapshots>
-        </pluginRepository>
-    </pluginRepositories>
 </project>
