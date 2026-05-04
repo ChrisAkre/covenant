@@ -5,19 +5,19 @@ import java.util.List;
 
 public class TypeUtilities {
 
-    public static Type.GenericType concatGenericTypes(Type.GenericType self, Type.GenericType other) {
-        if (self.isArray() || other.isArray()) {
+    public static Type concatGenericTypes(Type.GenericType self, Type.GenericType other) {
+        if (self.isArray() && other.isArray()) {
             return concatArrayTypes(self, other);
-        } else if (self.isObject() || other.isObject()) {
+        } else if (self.isObject() && other.isObject()) {
             return concatObjectTypes(self, other);
         } else {
-            throw new IllegalArgumentException("Both types must be compatible to concatenate them.");
+            return self.intersect(self.negate());
         }
     }
 
-    public static Type.GenericType concatArrayTypes(Type.GenericType self, Type.GenericType other) {
+    public static Type concatArrayTypes(Type.GenericType self, Type.GenericType other) {
         if (!self.isArray() || !other.isArray()) {
-            throw new IllegalArgumentException("Both types must be arrays to concatenate them.");
+            return self.intersect(self.negate());
         }
 
         List<TypeParameter> mergedParams = new ArrayList<>();
@@ -76,9 +76,9 @@ public class TypeUtilities {
         return self.template().construct(mergedParams);
     }
 
-    public static Type.GenericType concatObjectTypes(Type.GenericType self, Type.GenericType other) {
+    public static Type concatObjectTypes(Type.GenericType self, Type.GenericType other) {
         if (!self.isObject() || !other.isObject()) {
-            throw new IllegalArgumentException("Both types must be objects to concatenate them.");
+            return self.intersect(self.negate());
         }
 
         List<TypeParameter> selfParams = self.genericParameters();
