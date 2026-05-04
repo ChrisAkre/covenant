@@ -27,6 +27,7 @@ public class TypeUtilitiesTest {
 
         // Int + Int -> bottom
         SYSTEM.assertThat(intType).concat(intType).isBottom();
+    }
 
     @Test
     public void testConcatArrayTypes() {
