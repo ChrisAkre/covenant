@@ -29,16 +29,28 @@ public class JoltCovenantCheckerTest {
     }
 
     @Test
-    public void testBasicShift() throws Exception {
+    public void testInception() throws Exception {
         String inputSchemaJson = """
         {
           "type": "object",
           "properties": {
-            "Rating": { "type": "number" },
-            "SecondaryRatings": {
+            "rating": {
               "type": "object",
               "properties": {
-                "design": { "type": "number" }
+                "primary": {
+                  "type": "object",
+                  "properties": {
+                    "value": { "type": "number" },
+                    "max": { "type": "number" }
+                  }
+                }
+              },
+              "additionalProperties": {
+                "type": "object",
+                "properties": {
+                  "value": { "type": "number" },
+                  "max": { "type": "number" }
+                }
               }
             }
           }
@@ -47,20 +59,44 @@ public class JoltCovenantCheckerTest {
         Type inputSchema = parseSchema(inputSchemaJson);
 
         String joltSpec = """
-        {
-          "Rating": "rating",
-          "SecondaryRatings": {
-            "design": "SecondaryRatings.design"
+        [
+          {
+            "operation": "shift",
+            "spec": {
+              "rating": {
+                "primary": {
+                  "value": "Rating",
+                  "max": "RatingRange"
+                },
+                "*": {
+                  "max":   "SecondaryRatings.&1.Range",
+                  "value": "SecondaryRatings.&1.Value",
+                  "$": "SecondaryRatings.&1.Id"
+                }
+              }
+            }
+          },
+          {
+            "operation": "default",
+            "spec": {
+              "Range": 5,
+              "SecondaryRatings": {
+                "*": {
+                  "Range": 5
+                }
+              }
+            }
           }
-        }
+        ]
         """;
 
         Type inferred = checker.infer(inputSchema, joltSpec);
 
-        Type expectedRating = system.expression("Object<rating: Number, ...>");
-        Type expectedDesign = system.expression("Object<SecondaryRatings: Object<design: Number, ...>, ...>");
-        Type expected = expectedRating.intersect(expectedDesign);
+        Type expectedRating = system.expression("Object<Rating: Number, RatingRange: ?Number, ...>");
+        Type expectedSecondary = system.expression("Object<SecondaryRatings: Object<matches \"^.*$\": Object<Range: Number, Value: ?Number, Id: String, ...>, ...>, ...>");
+        Type expectedDefaultRange = system.expression("Object<Range: Number, ...>");
+        Type expected = expectedRating.intersect(expectedSecondary).intersect(expectedDefaultRange);
 
-        assertTrue(expected.isAssignableFrom(inferred), "Inferred type should contain mapped properties");
+        assertTrue(expected.isAssignableFrom(inferred), "Inferred type should match inception output");
     }
 }
