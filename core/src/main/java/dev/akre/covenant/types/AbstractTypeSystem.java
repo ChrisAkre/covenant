@@ -7,6 +7,7 @@ import static java.util.Optional.*;
 import dev.akre.covenant.api.Parameter;
 import dev.akre.covenant.api.Type;
 import dev.akre.covenant.api.TypeSystem;
+import dev.akre.covenant.types.parser.Parser;
 import java.util.*;
 import java.util.function.BinaryOperator;
 import java.util.stream.Collectors;
@@ -23,8 +24,9 @@ public interface AbstractTypeSystem extends TypeSystem {
         return Optional.ofNullable(typesDef().get(name)).map(this::wrap);
     }
 
-    default Type expression(String expression) {
-        return typeExpression(expression);
+    @SuppressWarnings("unchecked")
+    default <T extends Type> T expression(String expression) {
+        return (T) typeExpression(expression);
     }
 
     default Type.TypeFunction typeFunction(String name) throws java.util.NoSuchElementException {
@@ -51,6 +53,10 @@ public interface AbstractTypeSystem extends TypeSystem {
      * Returns the complete map of types in this system.
      */
     Map<String, TypeDef> typesDef();
+
+    default List<Parser<TypeExpr>> customConstraints() {
+        return List.of();
+    }
 
     default Map<String, Type> types() {
         return Collections.unmodifiableMap(
@@ -84,22 +90,17 @@ public interface AbstractTypeSystem extends TypeSystem {
         return wrap(nilDef());
     }
 
-    /**
-     * Unwraps an OwnedTypeDef to its underlying TypeDef, ensuring it belongs to this system.
-     */
-    default TypeDef unwrap(OwnedTypeDef owned) {
-        if (owned == null) return null;
-        if (owned.system() != this) {
-            throw new IllegalArgumentException("OwnedTypeDef does not belong to this TypeSystem");
+    default TypeDef unwrap(Type type) {
+        if (type == null) {
+            return null;
+        } else if (type instanceof OwnedTypeDef(AbstractTypeSystem system, TypeDef def) && system == this) {
+            return def;
         }
-        return owned.def();
+        throw new IllegalArgumentException("Type does not belong to this TypeSystem");
     }
 
-    default TypeDef unwrap(Type type) {
-        if (type == null) return null;
-        if (type instanceof OwnedTypeDef o) return unwrap(o);
-        throw new IllegalArgumentException(
-                "Not an OwnedTypeDef: " + type.getClass().getName());
+    default List<TypeDef> unwrap(List<Type> types) {
+        return types == null ? null : types.stream().map(this::unwrap).toList();
     }
 
     /**
@@ -113,16 +114,21 @@ public interface AbstractTypeSystem extends TypeSystem {
         return template.constructor().construct(this, template, members, parameters);
     }
 
-    default OwnedTypeDef construct(String name, List<TypeDef> members, List<Parameter> parameters) {
-        return wrap(constructDef(name, members, parameters));
+    default OwnedTypeDef construct(String name, List<Type> members, List<Parameter> parameters) {
+        return wrap(constructDef(name, unwrap(members), parameters));
     }
 
+
+    TypeParser parser();
+
     /**
-     * Parses a type expression string (e.g., "String & ~Null") into a TypeDef.
+     * Parses a type expression string (e.g., {@code "String & ~Null"}) into a TypeDef.
      */
     default TypeDef typeExpressionDef(String expression) {
-        return new TypeExprVisitor().parseDef(this, expression);
+        return parser().parseDef(this, expression);
     }
+
+
 
     default OwnedTypeDef typeExpression(String expression) {
         return wrap(typeExpressionDef(expression));
@@ -186,20 +192,12 @@ public interface AbstractTypeSystem extends TypeSystem {
                 def.parameters().stream().map(this::wrap).map(Type.class::cast).toList());
     }
 
-    default OwnedTypeDef intersect(OwnedTypeDef... types) {
-        TypeDef[] defs = new TypeDef[types.length];
-        for (int i = 0; i < types.length; i++) {
-            defs[i] = unwrap(types[i]);
-        }
-        return wrap(intersectDef(defs));
+    default Type intersect(Type... types) {
+        return wrap(intersectDef(Arrays.stream(types).map(this::unwrap).toArray(TypeDef[]::new)));
     }
 
-    default OwnedTypeDef union(OwnedTypeDef... types) {
-        TypeDef[] defs = new TypeDef[types.length];
-        for (int i = 0; i < types.length; i++) {
-            defs[i] = unwrap(types[i]);
-        }
-        return wrap(unionDef(defs));
+    default Type union(Type... types) {
+        return wrap(unionDef(Arrays.stream(types).map(this::unwrap).toArray(TypeDef[]::new)));
     }
 
     default OwnedTypeDef negate(OwnedTypeDef type) {
@@ -275,9 +273,6 @@ public interface AbstractTypeSystem extends TypeSystem {
             return bottomDef();
         } else if (Arrays.stream(types).allMatch(ApplicableDef.class::isInstance)) {
             return intersectFunctions(types);
-            //        } else if (Arrays.stream(types).anyMatch(ApplicableDef.class::isInstance)) {
-            //            throw new IllegalArgumentException("cannot intersect type and functions: " +
-            // Arrays.toString(types));
         } else {
             return intersectTypes(types);
         }

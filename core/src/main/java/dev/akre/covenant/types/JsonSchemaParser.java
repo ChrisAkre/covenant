@@ -6,6 +6,9 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+
+import dev.akre.covenant.api.Type;
+import dev.akre.covenant.api.TypeParameter;
 import tools.jackson.databind.JsonNode;
 
 /**
@@ -19,9 +22,9 @@ public class JsonSchemaParser {
         this.system = system;
     }
 
-    public TypeDef parse(JsonNode schema) {
+    public Type parse(JsonNode schema) {
         if (schema.isString()) {
-            return system.typeExpressionDef(schema.asString());
+            return system.typeExpression(schema.asString());
         }
 
         if (schema.has("type")) {
@@ -30,101 +33,70 @@ public class JsonSchemaParser {
                 String typeName = typeNode.asString();
                 return switch (typeName) {
                     case "string" ->
-                        system.find("String").map(t -> ((OwnedTypeDef) t).def()).orElseThrow();
+                        system.type("String");
                     case "number" ->
-                        system.find("Number").map(t -> ((OwnedTypeDef) t).def()).orElseThrow();
+                        system.type("Number");
                     case "integer" ->
-                        system.find("Int").map(t -> ((OwnedTypeDef) t).def()).orElseThrow();
+                        system.type("Int");
                     case "boolean" ->
-                        system.find("Bool").map(t -> ((OwnedTypeDef) t).def()).orElseThrow();
+                        system.type("Bool");
                     case "null" ->
-                        system.find("Null").map(t -> ((OwnedTypeDef) t).def()).orElseThrow();
+                        system.type("Null");
                     case "array" -> parseArray(schema);
                     case "object" -> parseObject(schema);
                     default ->
-                        system.find(typeName).map(t -> ((OwnedTypeDef) t).def()).orElseThrow();
+                        system.find(typeName).orElseThrow();
                 };
             }
         }
 
         if (schema.has("enum")) {
-            List<TypeDef> members = new ArrayList<>();
+            List<Type> members = new ArrayList<>();
             for (JsonNode member : schema.get("enum")) {
-                if (member.isTextual()) {
-                    members.add(system.intersectDef(
-                            system.find("String")
-                                    .map(t -> ((OwnedTypeDef) t).def())
-                                    .orElseThrow(),
-                            new StringConstraint(ValueConstraint.Operator.EQ, member.asText())));
+                if (member.isString()) {
+                    members.add(system.intersect(
+                            system.type("String"),
+                            system.expression("eq " + member.asString())));
                 } else if (member.isNumber()) {
-                    members.add(system.intersectDef(
-                            system.find("Number")
-                                    .map(t -> ((OwnedTypeDef) t).def())
-                                    .orElseThrow(),
-                            new NumberConstraint(
-                                    ValueConstraint.Operator.EQ, new java.math.BigDecimal(member.asText()))));
+                    members.add(system.intersect(
+                            system.type("Number"),
+                            system.expression("eq " + member.asString())));
                 } else if (member.isBoolean()) {
-                    members.add(system.intersectDef(
-                            system.find("Bool")
-                                    .map(t -> ((OwnedTypeDef) t).def())
-                                    .orElseThrow(),
-                            new BooleanConstraint(ValueConstraint.Operator.EQ, member.asBoolean())));
+                    members.add(system.intersect(
+                            system.type("Bool"),
+                            system.expression("eq " + member.asString())));
                 }
             }
-            return system.unionDef(members.toArray(TypeDef[]::new));
+            return system.union(members.toArray(Type[]::new));
         }
 
         if (schema.has("anyOf")) {
-            List<TypeDef> members = new ArrayList<>();
-            for (JsonNode member : schema.get("anyOf")) {
-                members.add(parse(member));
-            }
-            return system.unionDef(members.toArray(TypeDef[]::new));
+            return system.union(schema.get("anyOf").valueStream().map(this::parse).toArray(Type[]::new));
         }
 
         if (schema.has("allOf")) {
-            List<TypeDef> members = new ArrayList<>();
-            for (JsonNode member : schema.get("allOf")) {
-                members.add(parse(member));
-            }
-            return system.intersectDef(members.toArray(TypeDef[]::new));
+            return system.intersect(schema.get("allOf").valueStream().map(this::parse).toArray(Type[]::new));
         }
 
         if (schema.has("oneOf")) {
-            // approximation: oneOf is treated as a union here
-            List<TypeDef> members = new ArrayList<>();
-            for (JsonNode member : schema.get("oneOf")) {
-                members.add(parse(member));
-            }
-            return system.unionDef(members.toArray(TypeDef[]::new));
+            return system.union(schema.get("anyOf").valueStream().map(this::parse).toArray(Type[]::new));
         }
 
         if (schema.has("not")) {
-            return system.negateDef(parse(schema.get("not")));
+            return parse(schema.get("not")).negate();
         }
 
-        return system.topDef();
+        return system.top();
     }
 
-    private TypeDef parseArray(JsonNode schema) {
-        List<TypeDef> members = new ArrayList<>();
-        List<Parameter> params = new ArrayList<>();
-        if (schema.has("items")) {
-            TypeDef itemsType = parse(schema.get("items"));
-            int index = members.size();
-            members.add(itemsType);
-            params.add(new Parameter.Positional(index, true));
-        } else {
-            int index = members.size();
-            members.add(system.topDef());
-            params.add(new Parameter.Positional(index, true));
-        }
-        return system.constructDef("Array", members, params);
+    private Type parseArray(JsonNode schema) {
+        Type itemsType = schema.has("items") ? parse(schema.get("items")) : system.top();
+        Parameter.Positional parameter = new Parameter.Positional(0, true);
+        return system.template("Array").construct(List.of(new TypeParameter(itemsType, parameter)));
     }
 
-    private TypeDef parseObject(JsonNode schema) {
-        List<TypeDef> members = new ArrayList<>();
-        List<Parameter> params = new ArrayList<>();
+    private Type parseObject(JsonNode schema) {
+        List<TypeParameter> params = new ArrayList<>();
         Set<String> required = new HashSet<>();
         if (schema.has("required")) {
             for (JsonNode req : schema.get("required")) {
@@ -136,10 +108,8 @@ public class JsonSchemaParser {
             JsonNode props = schema.get("properties");
             for (Map.Entry<String, JsonNode> entry : props.properties()) {
                 String name = entry.getKey();
-                TypeDef propType = parse(entry.getValue());
-                int index = members.size();
-                members.add(propType);
-                params.add(new Parameter.Named(name, index, !required.contains(name)));
+                Parameter.Named parameter = new Parameter.Named(name, params.size(), !required.contains(name));
+                params.add(new TypeParameter(parse(entry.getValue()), parameter));
             }
         }
 
@@ -147,17 +117,15 @@ public class JsonSchemaParser {
             JsonNode addProps = schema.get("additionalProperties");
             if (addProps.isBoolean()) {
                 if (addProps.asBoolean()) {
-                    params.add(new Parameter.Spread());
+                    params.add(new TypeParameter(system.top(), new Parameter.Spread()));;
                 }
             } else {
-                int addIndex = members.size();
-                members.add(parse(addProps));
-                params.add(new Parameter.Spread(addIndex));
+                params.add(new TypeParameter(parse(addProps), new Parameter.Spread()));;
             }
         } else {
-            params.add(new Parameter.Spread());
+            params.add(new TypeParameter(system.top(), new Parameter.Spread()));;
         }
 
-        return system.constructDef("Object", members, params);
+        return system.template("Object").construct(params);
     }
 }

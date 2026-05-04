@@ -135,6 +135,8 @@ public record Bindings(AbstractTypeSystem system, Map<String, TypeDef> values) {
             }
             case TypeExpr.NullExpr __ -> system.nilDef();
             case TypeExpr.SpreadExpr __ -> new SymbolType("...");
+            case TypeExpr.TupleExpr t ->
+                system.intersectDef(t.members().stream().map(this::resolve).toArray(TypeDef[]::new));
         };
     }
 

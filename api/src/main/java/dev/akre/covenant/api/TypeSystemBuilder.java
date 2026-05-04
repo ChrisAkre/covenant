@@ -76,6 +76,13 @@ public interface TypeSystemBuilder {
     TypeSystemBuilder typeAlias(String name, String expression);
 
     /**
+     * Registers a custom constraint parser.
+     */
+    default TypeSystemBuilder registerConstraint(Object parser) {
+        return this;
+    }
+
+    /**
      * Registers an overloaded function alias with one or more signatures.
      */
     TypeSystemBuilder functionAlias(String name, String... signatures);

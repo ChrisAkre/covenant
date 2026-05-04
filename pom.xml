@@ -1,18 +1,38 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
-    <groupId>dev.akre</groupId>
+    <groupId>dev.akre.covenant</groupId>
     <artifactId>covenant-parent</artifactId>
-    <version>0.1.1-SNAPSHOT</version>
+    <version>0.1.17-SNAPSHOT</version>
     <modules>
         <module>api</module>
         <module>core</module>
     </modules>
     <packaging>pom</packaging>
 
+    <name>Convenant Type System parent pom</name>
+    <description>A Customizable Type Engine for Expression-Oriented Languages</description>
+    <url>https://github.com/ChrisAkre/covenant</url>
+
+    <licenses>
+        <license>
+            <name>The Apache License, Version 2.0</name>
+            <url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
+        </license>
+    </licenses>
+
+    <developers>
+        <developer>
+            <id>ChrisAkre</id>
+            <name>Chris Akre</name>
+            <email>your-email@example.com</email>
+        </developer>
+    </developers>
+
     <properties>
+        <maven.compiler.source>21</maven.compiler.source>
+        <maven.compiler.target>21</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <m2e.apt.activation>jdt_apt</m2e.apt.activation>
         <maven.compiler.release>21</maven.compiler.release>
@@ -22,8 +42,8 @@
     <dependencyManagement>
         <dependencies>
             <dependency>
-                <groupId>dev.akre</groupId>
-                <artifactId>covenant-api</artifactId>
+                <groupId>dev.akre.covenant</groupId>
+                <artifactId>typesystem-api</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
@@ -36,6 +56,11 @@
                 <groupId>org.antlr</groupId>
                 <artifactId>antlr4-runtime</artifactId>
                 <version>4.13.2</version>
+            </dependency>
+            <dependency>
+                <groupId>com.google.re2j</groupId>
+                <artifactId>re2j</artifactId>
+                <version>1.8</version>
             </dependency>
             <dependency>
                 <groupId>tools.jackson.core</groupId>
@@ -84,6 +109,53 @@
                     <artifactId>maven-surefire-plugin</artifactId>
                     <version>3.2.5</version>
                 </plugin>
+                <plugin>
+                    <groupId>com.google.code.maven-replacer-plugin</groupId>
+                    <artifactId>replacer</artifactId>
+                    <version>1.5.3</version>
+                    <configuration>
+                        <skip>${parent.tasks.skip}</skip>
+                        <file>${project.basedir}/javascript-example/pom.xml</file>
+                        <replacements>
+                            <replacement>
+                                <token><![CDATA[(<artifactId>typesystem-core</artifactId>\s*<version>).*?(</version>)]]></token>
+                                <value><![CDATA[$1${project.version}$2]]></value>
+                            </replacement>
+                        </replacements>
+                    </configuration>
+                    <executions>
+                        <execution>
+                            <id>update-docs</id>
+                            <goals>
+                                <goal>replace</goal>
+                            </goals>
+                        </execution>
+                    </executions>
+                </plugin>
+                <plugin>
+                    <groupId>org.codehaus.mojo</groupId>
+                    <artifactId>exec-maven-plugin</artifactId>
+                    <version>3.5.0</version>
+                    <configuration>
+                        <skip>${parent.tasks.skip}</skip>
+                        <executable>sh</executable>
+                        <inheritIo>true</inheritIo>
+                    </configuration>
+                    <executions>
+                        <execution>
+                            <id>commit-changes</id>
+                            <goals>
+                                <goal>exec</goal>
+                            </goals>
+                            <configuration>
+                                <arguments>
+                                    <argument>-c</argument>
+                                    <argument><![CDATA[git add javascript-example/ *.md && git commit -m "[skip ci] update documentation and examples" javascript-example/ *.md || true]]></argument>
+                                </arguments>
+                            </configuration>
+                        </execution>
+                    </executions>
+                </plugin>
             </plugins>
         </pluginManagement>
         <plugins>
@@ -101,12 +173,32 @@
                     </java>
                 </configuration>
             </plugin>
+            <plugin>
+                <groupId>com.google.code.maven-replacer-plugin</groupId>
+                <artifactId>replacer</artifactId>
+            </plugin>
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+            </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-release-plugin</artifactId>
+                    <version>3.3.1</version>
+                    <configuration>
+                        <skip>${parent.tasks.skip}</skip>
+                        <tagNameFormat>@{project.version}</tagNameFormat>
+                        <preparationGoals>clean replacer:replace@update-docs exec:exec@commit-changes verify</preparationGoals>
+                        <arguments>-DskipTests -Dprotoc.skip=true -Dgpg.loopback=true -Dgpg.passphrase=${GPG_PASSPHRASE}</arguments>
+                        <releaseProfiles>publish-central</releaseProfiles>
+                    </configuration>
+                </plugin>
         </plugins>
     </build>
-    <repositories>
-        <repository>
-            <id>github-snapshots</id>
-            <url>https://maven.pkg.github.com/ChrisAkre/covenant</url>
+    <pluginRepositories>
+        <pluginRepository>
+            <id>test-fixtures-maven-plugin</id>
+            <url>https://maven.pkg.github.com/ChrisAkre/test-fixtures-maven-plugin/</url>
             <releases>
                 <enabled>false</enabled>
             </releases>
@@ -114,21 +206,104 @@
                 <enabled>true</enabled>
                 <updatePolicy>always</updatePolicy>
             </snapshots>
-        </repository>
-    </repositories>
-<!--    <pluginRepositories>-->
-<!--        <pluginRepository>-->
-<!--            <id>github-snapshots</id>-->
-<!--            <url>https://maven.pkg.github.com/ChrisAkre/test-fixtures-maven-plugin/</url>-->
-<!--            <releases>-->
-<!--                <enabled>false</enabled>-->
-<!--            </releases>-->
-<!--            <snapshots>-->
-<!--                <enabled>true</enabled>-->
-<!--                <updatePolicy>always</updatePolicy>-->
-<!--            </snapshots>-->
-<!--        </pluginRepository>-->
-<!--    </pluginRepositories>-->
+        </pluginRepository>
+    </pluginRepositories>
+    <profiles>
+        <profile>
+            <id>is-root-project</id>
+            <activation>
+                <file>
+                    <exists>${basedir}/.git</exists>
+                </file>
+            </activation>
+            <properties>
+                <parent.tasks.skip>false</parent.tasks.skip>
+            </properties>
+        </profile>
+
+        <profile>
+            <id>is-submodule</id>
+            <activation>
+                <file>
+                    <missing>${basedir}/.git</missing>
+                </file>
+            </activation>
+            <properties>
+                <parent.tasks.skip>true</parent.tasks.skip>
+            </properties>
+        </profile>
+        <profile>
+            <id>publish-central</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-source-plugin</artifactId>
+                        <version>3.3.1</version>
+                        <executions>
+                            <execution>
+                                <id>attach-sources</id>
+                                <goals>
+                                    <goal>jar-no-fork</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-javadoc-plugin</artifactId>
+                        <version>3.11.2</version>
+                        <executions>
+                            <execution>
+                                <id>attach-javadocs</id>
+                                <goals>
+                                    <goal>jar</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.sonatype.central</groupId>
+                        <artifactId>central-publishing-maven-plugin</artifactId>
+                        <version>0.7.0</version>
+                        <extensions>true</extensions>
+                        <configuration>
+                            <publishingServerId>ossrh</publishingServerId>
+                            <autoPublish>true</autoPublish>
+                            <waitUntil>published</waitUntil>
+                        </configuration>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-gpg-plugin</artifactId>
+                        <version>3.2.4</version>
+                        <executions>
+                            <execution>
+                                <id>sign-artifacts</id>
+                                <phase>verify</phase>
+                                <goals>
+                                    <goal>sign</goal>
+                                </goals>
+                                <configuration>
+                                    <gpgArguments>
+                                        <arg>--pinentry-mode</arg>
+                                        <arg>loopback</arg>
+                                    </gpgArguments>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
+
+    <scm>
+        <connection>scm:git:https://github.com/ChrisAkre/covenant.git</connection>
+        <developerConnection>scm:git:https://github.com/ChrisAkre/covenant.git</developerConnection>
+        <url>https://github.com/ChrisAkre/covenant</url>
+        <tag>0.1.15</tag>
+    </scm>
     <distributionManagement>
         <repository>
             <id>ossrh</id>

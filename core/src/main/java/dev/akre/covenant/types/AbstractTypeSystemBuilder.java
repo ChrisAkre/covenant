@@ -1,42 +1,54 @@
 package dev.akre.covenant.types;
 
-import static dev.akre.covenant.types.TypeSystemUtils.updateNominalDef;
-
 import dev.akre.covenant.api.Parameter;
+import dev.akre.covenant.api.TypeSystemBuilder;
 import dev.akre.covenant.types.AbstractTypeSystemBuilder.PatternConstructor.Pattern;
+import dev.akre.covenant.types.parser.Parser;
+
 import java.util.*;
-import java.util.function.Function;
+import java.util.function.BiFunction;
+
+import static dev.akre.covenant.types.TypeSystemUtils.updateNominalDef;
 
 /**
  * Base class for AbstractTypeSystem builders, supporting a flat, fluent DSL.
  * @param <B> The type of the builder subclass.
  * @param <S> The type of the AbstractTypeSystem being built.
  */
+@SuppressWarnings("unused")
 public abstract class AbstractTypeSystemBuilder<B extends AbstractTypeSystemBuilder<B, S>, S extends AbstractTypeSystem>
-        implements AbstractTypeSystem {
+        implements AbstractTypeSystem, TypeSystemBuilder {
 
     protected TypeDef lastType;
-    protected final Function<Map<String, TypeDef>, S> builder;
+    protected final BiFunction<Map<String, TypeDef>, TypeParser, S> builder;
     protected final Map<String, TypeDef> types;
+    protected final List<Parser<TypeExpr>> customConstraints;
 
-    protected AbstractTypeSystemBuilder(Map<String, TypeDef> types, Function<Map<String, TypeDef>, S> builder) {
+    protected AbstractTypeSystemBuilder(Map<String, TypeDef> types, SequencedCollection<Parser<TypeExpr>> parsers, BiFunction<Map<String, TypeDef>, TypeParser, S> builder) {
         this.types = new LinkedHashMap<>(types);
+        this.customConstraints = new ArrayList<>(parsers);
         this.builder = builder;
     }
 
-    protected AbstractTypeSystemBuilder(Function<Map<String, TypeDef>, S> builder) {
-        this(Map.of(), builder);
-    }
 
-    protected AbstractTypeSystemBuilder(AbstractTypeSystem base, Function<Map<String, TypeDef>, S> builder) {
-        this(base.typesDef(), builder);
-    }
+//    protected AbstractTypeSystemBuilder(Function<Map<String, TypeDef>, S> builder) {
+//        this(Map.of(), builder);
+//    }
+//
+//    protected AbstractTypeSystemBuilder(AbstractTypeSystem base, Function<Map<String, TypeDef>, S> builder) {
+//        this(base.typesDef(), builder);
+//    }
 
     protected abstract B self();
 
     @Override
     public Map<String, TypeDef> typesDef() {
         return types;
+    }
+
+    @Override
+    public List<Parser<TypeExpr>> customConstraints() {
+        return Collections.unmodifiableList(customConstraints);
     }
 
     @Override
@@ -65,6 +77,7 @@ public abstract class AbstractTypeSystemBuilder<B extends AbstractTypeSystemBuil
 
     // --- CORE ATOM DEFINITION ---
 
+    @Override
     public B atom(String name) {
         validateName(name);
         // Defaulting to empty attributes for opt-in modifiers.
@@ -81,6 +94,7 @@ public abstract class AbstractTypeSystemBuilder<B extends AbstractTypeSystemBuil
 
     // --- SYSTEM ABSOLUTES & FLAGS ---
 
+    @Override
     public B asTop() {
         if (this.types.values().stream().anyMatch(TopType.class::isInstance)) {
             throw new IllegalStateException("Top type already defined in this system.");
@@ -91,6 +105,7 @@ public abstract class AbstractTypeSystemBuilder<B extends AbstractTypeSystemBuil
         return self();
     }
 
+    @Override
     public B asBottom() {
         if (types.values().stream().anyMatch(BottomType.class::isInstance)) {
             throw new IllegalStateException("Bottom type already defined in this system.");
@@ -101,6 +116,7 @@ public abstract class AbstractTypeSystemBuilder<B extends AbstractTypeSystemBuil
         return self();
     }
 
+    @Override
     public B asNull() {
         NominalDef updated = updateNominalDef(
                 this,
@@ -114,6 +130,7 @@ public abstract class AbstractTypeSystemBuilder<B extends AbstractTypeSystemBuil
 
     // --- CONSTRAINT CAPABILITIES ---
 
+    @Override
     public B supportsNumericBounds() {
         NominalDef updated = updateNominalDef(
                 this,
@@ -125,6 +142,7 @@ public abstract class AbstractTypeSystemBuilder<B extends AbstractTypeSystemBuil
         return self();
     }
 
+    @Override
     public B supportsTextualBounds() {
         NominalDef updated = updateNominalDef(
                 this,
@@ -168,12 +186,32 @@ public abstract class AbstractTypeSystemBuilder<B extends AbstractTypeSystemBuil
 
     // --- HIERARCHY ---
 
+    @Override
+    public B satisfies(String parent) {
+        requireLastType("satisfies()", NominalDef.class);
+        lastType = updateNominalDef(this, (NominalDef) lastType, Set.of(parent), null);
+        types.put(((NominalDef) lastType).name(), lastType);
+        return self();
+    }
+
     public B satisfies(String... parent) {
         requireLastType("satisfies()", NominalDef.class);
         for (String p : parent) {
             lastType = updateNominalDef(this, (NominalDef) lastType, Set.of(p), null);
         }
         types.put(((NominalDef) lastType).name(), lastType);
+        return self();
+    }
+
+    @Override
+    public B satisfiedBy(String childName) {
+        NominalDef last = requireLastType("satisfies()", NominalDef.class);
+        TypeDef childDef = types.get(childName);
+        if (childDef instanceof NominalDef child) {
+            types.put(childName, updateNominalDef(this, child, Set.of(last.name()), null));
+        } else {
+            throw new IllegalStateException("Type " + childName + " not defined or is not a valid Atom or Template");
+        }
         return self();
     }
 
@@ -192,6 +230,7 @@ public abstract class AbstractTypeSystemBuilder<B extends AbstractTypeSystemBuil
 
     // --- FLAT CONSTRUCTOR GRAMMAR ---
 
+    @Override
     public B positionalPattern() {
         AtomType last = requireLastType("positionalPattern()", AtomType.class);
         lastType = TypeSystemUtils.updateTemplate(this, last, Pattern.POSITIONAL, null, null);
@@ -199,6 +238,7 @@ public abstract class AbstractTypeSystemBuilder<B extends AbstractTypeSystemBuil
         return self();
     }
 
+    @Override
     public B arrayPattern() {
         AtomType last = requireLastType("arrayPattern()", AtomType.class);
         lastType = TypeSystemUtils.updateTemplate(this, last, Pattern.ARRAY, null, null)
@@ -207,6 +247,7 @@ public abstract class AbstractTypeSystemBuilder<B extends AbstractTypeSystemBuil
         return self();
     }
 
+    @Override
     public B objectPattern() {
         AtomType last = requireLastType("objectPattern()", AtomType.class);
         lastType = TypeSystemUtils.updateTemplate(this, last, Pattern.OBJECT, null, null)
@@ -215,6 +256,7 @@ public abstract class AbstractTypeSystemBuilder<B extends AbstractTypeSystemBuil
         return self();
     }
 
+    @Override
     public B minParams(int min) {
         TemplateType last = requireLastType("minParams()", TemplateType.class);
         lastType = TypeSystemUtils.updateTemplate(this, last, null, min, null);
@@ -222,6 +264,7 @@ public abstract class AbstractTypeSystemBuilder<B extends AbstractTypeSystemBuil
         return self();
     }
 
+    @Override
     public B maxParams(int max) {
         TemplateType last = requireLastType("maxParams()", TemplateType.class);
         lastType = TypeSystemUtils.updateTemplate(this, last, null, null, max);
@@ -231,8 +274,16 @@ public abstract class AbstractTypeSystemBuilder<B extends AbstractTypeSystemBuil
 
     // --- ALIASES & FUNCTIONS ---
 
+    @SuppressWarnings("unchecked")
+    public B registerConstraint(Object parser) {
+        if (parser instanceof @SuppressWarnings("rawtypes")Parser p) {
+            customConstraints.add((Parser<TypeExpr>) p);
+        }
+        return self();
+    }
+
     public B typeAlias(String name, String expression) {
-        TypeDef type = new TypeExprVisitor().parseDef(this, expression);
+        TypeDef type = parser().parseDef(this, expression);
         if (type == null) {
             throw new IllegalArgumentException(
                     "Failed to parse type expression for alias '" + name + "': " + expression);
@@ -249,7 +300,7 @@ public abstract class AbstractTypeSystemBuilder<B extends AbstractTypeSystemBuil
 
         TypeDef overloadIntersection = Arrays.stream(signatures)
                 .map(sig -> {
-                    TypeDef type = new TypeExprVisitor().parseDef(this, sig);
+                    TypeDef type = parser().parseDef(this, sig);
                     if (type == null) {
                         throw new IllegalArgumentException(
                                 "Failed to parse function signature for '" + name + "': " + sig);
@@ -267,6 +318,7 @@ public abstract class AbstractTypeSystemBuilder<B extends AbstractTypeSystemBuil
 
     // --- TERMINATION ---
 
+    @Override
     public S build() {
         // add an unnamed top and bottom if not present
         if (this.types.values().stream().noneMatch(TopType.class::isInstance)) {
@@ -275,7 +327,7 @@ public abstract class AbstractTypeSystemBuilder<B extends AbstractTypeSystemBuil
         if (this.types.values().stream().noneMatch(BottomType.class::isInstance)) {
             types.put("__unnamed_bottom__", new BottomType("__unnamed_bottom__"));
         }
-        return builder.apply(types);
+        return builder.apply(types, new TypeParser(customConstraints));
     }
 
     private <T extends TypeDef> T requireLastType(String operation, Class<T> cls) {
@@ -310,10 +362,7 @@ public abstract class AbstractTypeSystemBuilder<B extends AbstractTypeSystemBuil
                         "Invalid number of parameters for %s. Expected [%d, %d], found %d",
                         origin.name(), min, max, parameters.size()));
             }
-            if (!(origin instanceof TemplateType template)) {
-                throw new IllegalArgumentException(
-                        "Origin must be a TemplateType: " + origin.getClass().getName());
-            }
+            TemplateType template = Objects.requireNonNull(origin);
 
             List<TypeDefParam> params = new java.util.ArrayList<>();
             for (dev.akre.covenant.api.Parameter p : parameters) {
@@ -322,6 +371,11 @@ public abstract class AbstractTypeSystemBuilder<B extends AbstractTypeSystemBuil
 
             return new GenericTypeDef(template, pattern, params);
         }
+    }
+
+    @Override
+    public TypeParser parser() {
+        return new TypeParser(customConstraints);
     }
 
     @Override
