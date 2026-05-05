@@ -1,6 +1,5 @@
 package dev.akre.covenant.types;
 
-import dev.akre.covenant.api.Parameter;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -91,8 +90,7 @@ public class JsonSchemaParser {
 
     private Type parseArray(JsonNode schema) {
         Type itemsType = schema.has("items") ? parse(schema.get("items")) : system.top();
-        Parameter.Positional parameter = new Parameter.Positional(0, true);
-        return system.template("Array").construct(List.of(new TypeParameter(itemsType, parameter)));
+        return system.template("Array").construct(List.of(new TypeParameter.Positional(itemsType, 0, true)));
     }
 
     private Type parseObject(JsonNode schema) {
@@ -108,8 +106,15 @@ public class JsonSchemaParser {
             JsonNode props = schema.get("properties");
             for (Map.Entry<String, JsonNode> entry : props.properties()) {
                 String name = entry.getKey();
-                Parameter.Named parameter = new Parameter.Named(name, params.size(), !required.contains(name));
-                params.add(new TypeParameter(parse(entry.getValue()), parameter));
+                params.add(new TypeParameter.Named(parse(entry.getValue()), name, !required.contains(name)));
+            }
+        }
+
+        if (schema.has("patternProperties")) {
+            JsonNode patternProps = schema.get("patternProperties");
+            for (Map.Entry<String, JsonNode> entry : patternProps.properties()) {
+                String pattern = entry.getKey();
+                params.add(new TypeParameter.Constrained(parse(entry.getValue()), "matches", "\"" + pattern + "\"", true));
             }
         }
 
@@ -117,13 +122,13 @@ public class JsonSchemaParser {
             JsonNode addProps = schema.get("additionalProperties");
             if (addProps.isBoolean()) {
                 if (addProps.asBoolean()) {
-                    params.add(new TypeParameter(system.top(), new Parameter.Spread()));;
+                    params.add(new TypeParameter.Spread(system.top()));
                 }
             } else {
-                params.add(new TypeParameter(parse(addProps), new Parameter.Spread()));;
+                params.add(new TypeParameter.Spread(parse(addProps)));
             }
         } else {
-            params.add(new TypeParameter(system.top(), new Parameter.Spread()));;
+            params.add(new TypeParameter.Spread(system.top()));
         }
 
         return system.template("Object").construct(params);

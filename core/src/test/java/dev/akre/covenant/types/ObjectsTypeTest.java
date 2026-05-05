@@ -52,7 +52,8 @@ public class ObjectsTypeTest {
                 .intersect("Object<foo: String>")
                 .isEquivalentTo("Object<foo: String>");
 
-        SYSTEM.assertThat("Object<a: Int> & Object<b: String, ...>").isEquivalentTo("Object<a: Int>");
+        // Closed & Open Intersection: Result is bottom because 'b' is missing in the closed object
+        SYSTEM.assertThat("Object<a: Int> & Object<b: String, ...>").isBottom();
     }
 
     @Test
@@ -83,7 +84,56 @@ public class ObjectsTypeTest {
 
         // Algebraic
         SYSTEM.assertThat("Object<a: Int> | Object<a: String>").term("a").isEquivalentTo("Int | String");
-        SYSTEM.assertThat("Object<a: Int> & Object<b: String, ...>").term("a").isEquivalentTo("Int");
+        SYSTEM.assertThat("Object<a: Int> & Object<b: String, ...>").term("a").isBottom();
+    }
+
+    @Test
+    public void testConstrainedParameters() {
+        // structural equivalence
+        SYSTEM.assertThat("Object<[matches \"^ext_\"]: Int>")
+                .satisfies("Object<[matches \"^ext_\"]: Int>");
+
+        // subtyping (depth subtyping)
+        SYSTEM.assertThat("Object<[matches \"^ext_\"]: Int>")
+                .satisfies("Object<[matches \"^ext_\"]: Number>");
+        SYSTEM.assertThat("Object<[matches \"^ext_\"]: Number>")
+                .notSatisfies("Object<[matches \"^ext_\"]: Int>");
+
+        // basic algebra (exact constraint matches)
+        SYSTEM.assertThat("Object<[matches \"^ext_\"]: Int> | Object<[matches \"^ext_\"]: String>")
+                .isEquivalentTo("Object<[matches \"^ext_\"]: Int | String>");
+
+        SYSTEM.assertThat("Object<[matches \"^ext_\"]: Int> & Object<[matches \"^ext_\"]: String>")
+                .isBottom();
+
+        // Note on regex algebra:
+        // A full implementation of prune/graft for constrained parameters would involve complex regex algebra
+        // (e.g., calculating the intersection of [matches "^a_"] and [matches ".*_b$"]).
+        // This is currently outside the scope of the core type system.
+        // If a regex library supporting intersection/subsumption were used, we would be able to do
+        // more advanced canonicalization and algebraic simplification.
+    }
+
+    @Test
+    public void testMultipleConstrainedParameters() {
+        // Intersection of multiple constraints (exact matches)
+        SYSTEM.assertThat("Object<[matches \"^a_\"]: Int, [matches \"^b_\"]: Int>")
+                .intersect("Object<[matches \"^a_\"]: Number, [matches \"^b_\"]: Number>")
+                .isEquivalentTo("Object<[matches \"^a_\"]: Int, [matches \"^b_\"]: Int>");
+
+        // Intersection of multiple constraints (different patterns)
+        // Note: Without regex algebra, they are treated as separate property requirements.
+        // Object<[matches "^a_"]: Int, [matches "^b_"]: String, ...>
+        SYSTEM.assertThat("Object<[matches \"^a_\"]: Int, ...> & Object<[matches \"^b_\"]: String, ...>")
+                .isEquivalentTo("Object<[matches \"^a_\"]: Int, [matches \"^b_\"]: String, ...>");
+
+        // Union of multiple constraints (exact matches)
+        SYSTEM.assertThat("Object<[matches \"^a_\"]: Int, [matches \"^b_\"]: Int> | Object<[matches \"^a_\"]: String, [matches \"^b_\"]: String>")
+                .isEquivalentTo("Object<[matches \"^a_\"]: Int | String, [matches \"^b_\"]: Int | String>");
+
+        // Union of multiple constraints (different patterns - should NOT merge)
+        SYSTEM.assertThat("Object<[matches \"^a_\"]: Int> | Object<[matches \"^b_\"]: Int>")
+                .isEquivalentTo("Object<[matches \"^a_\"]: Int> | Object<[matches \"^b_\"]: Int>");
     }
 
     @Test

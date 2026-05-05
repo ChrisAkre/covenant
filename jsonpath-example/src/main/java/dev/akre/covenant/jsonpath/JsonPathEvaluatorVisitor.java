@@ -1,6 +1,5 @@
 package dev.akre.covenant.jsonpath;
 
-import dev.akre.covenant.api.Parameter;
 import dev.akre.covenant.api.Type;
 import dev.akre.covenant.types.AbstractTypeSystem;
 import dev.akre.covenant.types.GenericTypeDef;
@@ -237,7 +236,7 @@ public class JsonPathEvaluatorVisitor extends JsonPathBaseVisitor<Type> {
 
         if (rawObj instanceof GenericTypeDef gen) {
             for (TypeDefParam param : gen.parameters()) {
-                if (param.parameter() instanceof Parameter.Named named && named.name().equals(propertyName)) {
+                if (param instanceof TypeDefParam.Named named && named.name().equals(propertyName)) {
                     return typeSystem.wrap(param.type());
                 }
             }
@@ -268,7 +267,7 @@ public class JsonPathEvaluatorVisitor extends JsonPathBaseVisitor<Type> {
             TypeDef rawArray = ((OwnedTypeDef) arrayType).def();
             if (rawArray instanceof GenericTypeDef gen) {
                 for (TypeDefParam param : gen.parameters()) {
-                    if (param.parameter() instanceof Parameter.Positional pos && pos.index() == 0) {
+                    if (param instanceof TypeDefParam.Positional pos && pos.index() == 0) {
                         return typeSystem.wrap(param.type());
                     }
                 }

@@ -1,6 +1,5 @@
 package dev.akre.covenant.types;
 
-import dev.akre.covenant.api.Parameter;
 import dev.akre.covenant.types.parser.*;
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -322,7 +321,30 @@ public final class TypeParser {
     private Parser<TypeExpr.ParamExpr> parameter() {
         return input -> {
             if (input.head().type() == Parser.TokenType.ELLIPSIS) {
-                return new Parser.Success<>(new TypeExpr.ParamExpr(new TypeExpr.SpreadExpr(), new Parameter.Spread()), input.tail());
+                return new Parser.Success<>(new TypeExpr.ParamExpr.Spread(new TypeExpr.SpreadExpr()), input.tail());
+            }
+
+            if (input.head().type() == Parser.TokenType.L_BRACKET) {
+                Parser.Result<TypeExpr> constraintRes = keywordConstraint().parse(input.tail());
+                if (constraintRes.matched() && constraintRes.value() instanceof TypeExpr.ConstraintExpr c) {
+                    Parser.InputState afterBracket = constraintRes.remaining();
+                    if (afterBracket.head().type() == Parser.TokenType.R_BRACKET) {
+                        Parser.InputState temp = afterBracket.tail();
+                        boolean optional = false;
+                        if (temp.head().type() == Parser.TokenType.QUESTION) {
+                            optional = true;
+                            temp = temp.tail();
+                        }
+                        if (temp.head().type() == Parser.TokenType.COLON) {
+                            Parser.Result<TypeExpr> type = expression(0).parse(temp.tail());
+                            if (type.matched()) {
+                                return new Parser.Success<>(
+                                        new TypeExpr.ParamExpr.Constrained(type.value(), c.keyword(), c.value(), optional),
+                                        type.remaining());
+                            }
+                        }
+                    }
+                }
             }
 
             Parser.Token t = input.head();
@@ -337,7 +359,7 @@ public final class TypeParser {
                     Parser.Result<TypeExpr> type = expression(0).parse(temp.tail());
                     if (type.matched()) {
                         String name = stripQuotes(stripQuotes(t.value(), "'"), "\"");
-                        return new Parser.Success<>(new TypeExpr.ParamExpr(type.value(), new Parameter.Named(name, 0, optional)), type.remaining());
+                        return new Parser.Success<>(new TypeExpr.ParamExpr.Named(type.value(), name, optional), type.remaining());
                     }
                 }
             }
@@ -350,7 +372,7 @@ public final class TypeParser {
                     variadic = true;
                     after = after.tail();
                 }
-                return new Parser.Success<>(new TypeExpr.ParamExpr(type.value(), new Parameter.Positional(0, variadic)), after);
+                return new Parser.Success<>(new TypeExpr.ParamExpr.Positional(type.value(), 0, variadic), after);
             }
             return new Parser.Failure<>("Failed to parse parameter");
         };
@@ -394,12 +416,10 @@ public final class TypeParser {
 
     private List<TypeExpr.ParamExpr> fixIndices(List<TypeExpr.ParamExpr> params) {
         List<TypeExpr.ParamExpr> fixed = new ArrayList<>();
-        for (int i = 0; i < params.size(); i++) {
-            TypeExpr.ParamExpr p = params.get(i);
-            if (p.parameter() instanceof Parameter.Positional pos) {
-                fixed.add(new TypeExpr.ParamExpr(p.type(), new Parameter.Positional(i, pos.variadic())));
-            } else if (p.parameter() instanceof Parameter.Named n) {
-                fixed.add(new TypeExpr.ParamExpr(p.type(), new Parameter.Named(n.name(), i, n.optional())));
+        int positionalIndex = 0;
+        for (TypeExpr.ParamExpr p : params) {
+            if (p instanceof TypeExpr.ParamExpr.Positional pos) {
+                fixed.add(new TypeExpr.ParamExpr.Positional(pos.type(), positionalIndex++, pos.variadic()));
             } else {
                 fixed.add(p);
             }

@@ -117,6 +117,8 @@ public interface Parser<T> {
         R_PAREN,    // )
         L_ANGLE,    // <
         R_ANGLE,    // >
+        L_BRACKET,  // [
+        R_BRACKET,  // ]
         COMMA,      // ,
         ARROW,      // ->
         ELLIPSIS,   // ...

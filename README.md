@@ -16,7 +16,7 @@ unification engine from scratch. Or maybe you are embedding an existing scriptin
 you want to mathematically verify user-provided expressions before they ever hit the runtime.
 
 Q. How would I do that?  
-A. Glad you asked. Take a look at the [JavaScript Typechecker Example](example/README.md).
+A. Glad you asked. Take a look at the [JavaScript Typechecker Example](javascript-example/README.md).
 
 If you need a practical type validation system to embed in your application, or if you're just really into type algebra,
 continue reading.

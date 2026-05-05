@@ -1,6 +1,5 @@
 package dev.akre.covenant.types;
 
-import dev.akre.covenant.api.Parameter;
 import dev.akre.covenant.types.AbstractTypeSystemBuilder.PatternConstructor.Pattern;
 import java.util.Collection;
 import java.util.List;
@@ -25,7 +24,7 @@ public record GenericTypeDef(TemplateType template, Pattern pattern, List<TypeDe
 
     private TypeDefParam findNamed(String name) {
         for (TypeDefParam tp : parameters) {
-            if (tp.parameter() instanceof Parameter.Named n && n.name().equals(name)) {
+            if (tp instanceof TypeDefParam.Named n && n.name().equals(name)) {
                 return tp;
             }
         }
@@ -34,7 +33,7 @@ public record GenericTypeDef(TemplateType template, Pattern pattern, List<TypeDe
 
     private TypeDefParam findConstrained(String k, String v) {
         for (TypeDefParam tp : parameters) {
-            if (tp.parameter() instanceof Parameter.Constrained c
+            if (tp instanceof TypeDefParam.Constrained c
                     && c.keyword().equals(k)
                     && c.value().equals(v)) {
                 return tp;
@@ -45,7 +44,7 @@ public record GenericTypeDef(TemplateType template, Pattern pattern, List<TypeDe
 
     private TypeDefParam findPositional(int index) {
         for (TypeDefParam tp : parameters) {
-            if (tp.parameter() instanceof Parameter.Positional pos && pos.index() == index) {
+            if (tp instanceof TypeDefParam.Positional pos && pos.index() == index) {
                 return tp;
             }
         }
@@ -54,10 +53,23 @@ public record GenericTypeDef(TemplateType template, Pattern pattern, List<TypeDe
 
     public TypeDef spreadParam() {
         return this.parameters.stream()
-                .filter(tp -> tp.parameter() instanceof Parameter.Spread)
+                .filter(tp -> tp instanceof TypeDefParam.Spread)
                 .findFirst()
                 .map(TypeDefParam::type)
                 .orElse(BottomType.INSTANCE);
+    }
+
+    private boolean matches(TypeDefParam.Constrained c, String name) {
+        if (!c.keyword().equals("matches")) return false;
+        String regex = c.value();
+        if (regex.startsWith("\"") && regex.endsWith("\"")) {
+            regex = regex.substring(1, regex.length() - 1);
+        }
+        try {
+            return java.util.regex.Pattern.compile(regex).matcher(name).find();
+        } catch (Exception e) {
+            return false;
+        }
     }
 
     @Override
@@ -89,8 +101,8 @@ public record GenericTypeDef(TemplateType template, Pattern pattern, List<TypeDe
             TypeDefParam tp1 = this.parameters.get(i);
             TypeDefParam tp2 = other.parameters.get(j);
 
-            if (tp1.parameter() instanceof Parameter.Positional pos1
-                    && tp2.parameter() instanceof Parameter.Positional pos2) {
+            if (tp1 instanceof TypeDefParam.Positional pos1
+                    && tp2 instanceof TypeDefParam.Positional pos2) {
 
                 TypeDef type1 = tp1.type();
                 TypeDef type2 = tp2.type();
@@ -112,7 +124,7 @@ public record GenericTypeDef(TemplateType template, Pattern pattern, List<TypeDe
                     // Match ALL remaining source fixed elements to this target variadic
                     while (i < this.parameters.size()) {
                         TypeDefParam rem = this.parameters.get(i);
-                        if (rem.parameter() instanceof Parameter.Positional remPos) {
+                        if (rem instanceof TypeDefParam.Positional remPos) {
                             TypeDef t = rem.type();
                             TypeDef sourceType = remPos.variadic() ? system.unionDef(t, nullType) : t;
                             if (!system.satisfies(sourceType, system.unionDef(type2, nullType))) return false;
@@ -136,7 +148,7 @@ public record GenericTypeDef(TemplateType template, Pattern pattern, List<TypeDe
 
         // If source ran out, target remaining must be variadic (which are inherently optional)
         while (j < other.parameters.size()
-                && other.parameters.get(j).parameter() instanceof Parameter.Positional p
+                && other.parameters.get(j) instanceof TypeDefParam.Positional p
                 && p.variadic()) {
             j++;
         }
@@ -151,72 +163,73 @@ public record GenericTypeDef(TemplateType template, Pattern pattern, List<TypeDe
         boolean thisOpen = !(thisSpreadType instanceof BottomType);
         boolean otherIsOpen = !(otherSpreadType instanceof BottomType);
 
-        for (TypeDefParam tp2 : other.parameters) {
-            Parameter p2 = tp2.parameter();
-            if (p2 instanceof Parameter.Named n2) {
-                TypeDef type = tp2.type();
-                TypeDefParam tp1 = findNamed(n2.name());
-                if (tp1 == null) {
-                    if (thisOpen) {
-                        if (!system.satisfies(thisSpreadType, type)) return false;
-                    } else if (!otherIsOpen) {
-                        // Field missing in source. Allowed if target is optional OR accepts Null.
-                        TypeDef nullType = system.nilDef();
-                        boolean acceptsNull = nullType != null && system.satisfies(nullType, type);
-                        if (!n2.optional() && !acceptsNull) {
-                            return false;
-                        }
-                    }
-                } else {
-                    if (!system.satisfies(tp1.type(), type)) {
-                        return false;
+        // 1. Every property allowed by 'this' must be allowed by 'other'
+        // Check explicitly defined properties in 'this'
+        for (TypeDefParam tp1 : this.parameters) {
+            if (tp1 instanceof TypeDefParam.Named n1) {
+                TypeDef requiredType = null;
+                for (TypeDefParam tp2 : other.parameters) {
+                    if (tp2 instanceof TypeDefParam.Named n2 && n1.name().equals(n2.name())) {
+                        requiredType = (requiredType == null) ? n2.type() : system.intersectDef(requiredType, n2.type());
+                    } else if (tp2 instanceof TypeDefParam.Constrained c2 && matches(c2, n1.name())) {
+                        requiredType = (requiredType == null) ? c2.type() : system.intersectDef(requiredType, c2.type());
                     }
                 }
-            } else if (p2 instanceof Parameter.Constrained c2) {
-                TypeDefParam tp1 = findConstrained(c2.keyword(), c2.value());
-                if (tp1 == null) {
-                    if (thisOpen) {
-                        if (!system.satisfies(thisSpreadType, tp2.type())) return false;
-                    } else if (!otherIsOpen) {
-                        return false;
-                    }
+                if (requiredType == null) {
+                    if (!otherIsOpen || !system.satisfies(n1.type(), otherSpreadType)) return false;
                 } else {
-                    if (!system.satisfies(tp1.type(), tp2.type())) {
-                        return false;
+                    if (!system.satisfies(n1.type(), requiredType)) return false;
+                }
+            } else if (tp1 instanceof TypeDefParam.Constrained c1) {
+                // Source dynamic properties must be allowed by target
+                TypeDefParam tp2 = other.findConstrained(c1.keyword(), c1.value());
+                if (tp2 != null) {
+                    if (!system.satisfies(c1.type(), tp2.type())) return false;
+                } else {
+                    if (!otherIsOpen || !system.satisfies(c1.type(), otherSpreadType)) return false;
+                }
+            } else if (tp1 instanceof TypeDefParam.Spread s1) {
+                // Source spread: properties not explicitly defined in 'this' but allowed by spread
+                // must be allowed by 'other'
+                if (!otherIsOpen || !system.satisfies(s1.type(), otherSpreadType)) return false;
+                
+                // ALSO, any property in 'other' NOT explicitly in 'this' must be satisfied by this spread
+                for (TypeDefParam tp2 : other.parameters) {
+                    if (tp2 instanceof TypeDefParam.Named n2) {
+                        if (findNamed(n2.name()) == null) {
+                            if (!system.satisfies(s1.type(), n2.type())) return false;
+                        }
+                    } else if (tp2 instanceof TypeDefParam.Constrained c2) {
+                        if (findConstrained(c2.keyword(), c2.value()) == null) {
+                            if (!system.satisfies(s1.type(), c2.type())) return false;
+                        }
                     }
                 }
             }
         }
 
-        for (TypeDefParam tp1 : this.parameters) {
-            Parameter p1 = tp1.parameter();
-            if (p1 instanceof Parameter.Named n1) {
-                if (other.findNamed(n1.name()) == null) {
-                    if (!otherIsOpen) {
-                        return false;
-                    } else if (otherSpreadType != null) {
-                        if (!system.satisfies(tp1.type(), otherSpreadType)) {
-                            return false;
+        // 2. Every REQUIRED property that 'other' MUST have must be present in 'this'
+        for (TypeDefParam tp2 : other.parameters) {
+            if (tp2 instanceof TypeDefParam.Named n2 && !n2.optional()) {
+                if (findNamed(n2.name()) == null) {
+                    boolean matchedByDynamic = false;
+                    for (TypeDefParam thisTp : this.parameters) {
+                        if (thisTp instanceof TypeDefParam.Constrained c1 && matches(c1, n2.name())) {
+                            if (system.satisfies(c1.type(), n2.type())) {
+                                matchedByDynamic = true;
+                                break;
+                            }
                         }
                     }
-                }
-            } else if (p1 instanceof Parameter.Constrained c1) {
-                if (other.findConstrained(c1.keyword(), c1.value()) == null) {
-                    if (!otherIsOpen) {
-                        return false;
-                    } else if (otherSpreadType != null) {
-                        if (!system.satisfies(tp1.type(), otherSpreadType)) {
-                            return false;
+
+                    if (!matchedByDynamic) {
+                        if (!thisOpen || !system.satisfies(thisSpreadType, n2.type())) {
+                            TypeDef nullType = system.nilDef();
+                            if (nullType == null || !system.satisfies(nullType, n2.type())) {
+                                return false;
+                            }
                         }
                     }
-                }
-            } else if (p1 instanceof Parameter.Spread(Integer index)) {
-                if (!otherIsOpen) {
-                    return false;
-                }
-                TypeDef t1 = index != null ? tp1.type() : system.topDef();
-                if (otherSpreadType != null && !system.satisfies(t1, otherSpreadType)) {
-                    return false;
                 }
             }
         }
@@ -228,11 +241,10 @@ public record GenericTypeDef(TemplateType template, Pattern pattern, List<TypeDe
     public String repr() {
         String inner = parameters.stream()
                 .map(tp -> {
-                    Parameter p = tp.parameter();
-                    if (p instanceof Parameter.Positional pos) {
+                    if (tp instanceof TypeDefParam.Positional pos) {
                         return tp.type().repr() + (pos.variadic() ? "..." : "");
                     }
-                    if (p instanceof Parameter.Named named) {
+                    if (tp instanceof TypeDefParam.Named named) {
                         String name = named.name();
                         // Quote if contains spaces or is a number
                         if (name.contains(" ") || name.matches("\\d+")) {
@@ -242,7 +254,7 @@ public record GenericTypeDef(TemplateType template, Pattern pattern, List<TypeDe
                                 + (named.optional() ? "?: " : ": ")
                                 + tp.type().repr();
                     }
-                    if (p instanceof Parameter.Constrained constrained) {
+                    if (tp instanceof TypeDefParam.Constrained constrained) {
                         String name = constrained.value();
                         if (name.contains(" ") || name.matches("\\d+")) {
                             name = "'" + name.replace("'", "''") + "'";
@@ -274,85 +286,67 @@ public record GenericTypeDef(TemplateType template, Pattern pattern, List<TypeDe
             if (pattern == Pattern.POSITIONAL && otherGeneric.pattern == Pattern.POSITIONAL) {
                 if (!this.satisfiesOther(system, otherGeneric) && !otherGeneric.satisfiesOther(system, this)) {
                     // Positional types are generally disjoint if they don't satisfy each other
-                    // (this is a simplification for Array/Tuple behavior)
                     return Set.of();
                 }
             } else if (pattern == Pattern.OBJECT && otherGeneric.pattern == Pattern.OBJECT) {
                 List<TypeDefParam> mergedParams = new java.util.ArrayList<>();
 
                 TypeDefParam s1 = this.parameters.stream()
-                        .filter(tp -> tp.parameter() instanceof Parameter.Spread)
+                        .filter(tp -> tp instanceof TypeDefParam.Spread)
                         .findFirst()
                         .orElse(null);
                 TypeDefParam s2 = otherGeneric.parameters.stream()
-                        .filter(tp -> tp.parameter() instanceof Parameter.Spread)
+                        .filter(tp -> tp instanceof TypeDefParam.Spread)
                         .findFirst()
                         .orElse(null);
 
                 boolean thisOpen = s1 != null;
                 boolean otherOpen = s2 != null;
-                TypeDef t1Spread = (s1 != null && ((Parameter.Spread) s1.parameter()).index() != null)
-                        ? s1.type()
-                        : (thisOpen ? system.topDef() : system.bottomDef());
-                TypeDef t2Spread = (s2 != null && ((Parameter.Spread) s2.parameter()).index() != null)
-                        ? s2.type()
-                        : (otherOpen ? system.topDef() : system.bottomDef());
+                TypeDef t1Spread = thisOpen ? s1.type() : system.bottomDef();
+                TypeDef t2Spread = otherOpen ? s2.type() : system.bottomDef();
 
                 java.util.Set<String> processedNamed = new java.util.HashSet<>();
                 java.util.Set<String> processedConstrained = new java.util.HashSet<>();
 
                 for (TypeDefParam tp1 : this.parameters) {
-                    Parameter p1 = tp1.parameter();
-                    if (p1 instanceof Parameter.Named n1) {
+                    if (tp1 instanceof TypeDefParam.Named n1) {
                         TypeDefParam tp2 = otherGeneric.findNamed(n1.name());
-                        TypeDef t1 = tp1.type();
-                        if (tp2 != null) {
-                            TypeDef t2 = tp2.type();
+                        TypeDef t1 = n1.type();
+                        if (tp2 instanceof TypeDefParam.Named n2) {
+                            TypeDef t2 = n2.type();
                             TypeDef intersected = system.intersectDef(t1, t2);
                             if (intersected instanceof BottomType) return Set.of();
-                            int newIdx = mergedParams.size();
-                            mergedParams.add(new TypeDefParam(
+                            mergedParams.add(new TypeDefParam.Named(
                                     intersected,
-                                    new Parameter.Named(
-                                            n1.name(),
-                                            newIdx,
-                                            n1.optional() && ((Parameter.Named) tp2.parameter()).optional())));
+                                    n1.name(),
+                                    n1.optional() && n2.optional()));
                         } else {
-                            // Property in this, not in other.
-                            // Intersect with other's spread (which is bottom if closed).
                             TypeDef intersected = system.intersectDef(t1, t2Spread);
                             if (intersected instanceof BottomType && !n1.optional()) return Set.of();
                             if (!(intersected instanceof BottomType)) {
-                                int newIdx = mergedParams.size();
-                                mergedParams.add(new TypeDefParam(
-                                        intersected, new Parameter.Named(n1.name(), newIdx, n1.optional())));
+                                mergedParams.add(new TypeDefParam.Named(intersected, n1.name(), n1.optional()));
                             }
                         }
                         processedNamed.add(n1.name());
-                    } else if (p1 instanceof Parameter.Constrained c1) {
+                    } else if (tp1 instanceof TypeDefParam.Constrained c1) {
                         TypeDefParam tp2 = otherGeneric.findConstrained(c1.keyword(), c1.value());
-                        TypeDef t1 = tp1.type();
+                        TypeDef t1 = c1.type();
                         String key = c1.keyword() + ":" + c1.value();
-                        if (tp2 != null) {
-                            TypeDef t2 = tp2.type();
+                        if (tp2 instanceof TypeDefParam.Constrained c2) {
+                            TypeDef t2 = c2.type();
                             TypeDef intersected = system.intersectDef(t1, t2);
                             if (intersected instanceof BottomType) return Set.of();
-                            int newIdx = mergedParams.size();
-                            mergedParams.add(new TypeDefParam(
+                            mergedParams.add(new TypeDefParam.Constrained(
                                     intersected,
-                                    new Parameter.Constrained(
-                                            c1.keyword(),
-                                            c1.value(),
-                                            newIdx,
-                                            c1.optional() && ((Parameter.Constrained) tp2.parameter()).optional())));
+                                    c1.keyword(),
+                                    c1.value(),
+                                    c1.optional() && c2.optional()));
                         } else {
                             TypeDef intersected = system.intersectDef(t1, t2Spread);
                             if (intersected instanceof BottomType && !c1.optional()) return Set.of();
                             if (!(intersected instanceof BottomType)) {
-                                int newIdx = mergedParams.size();
-                                mergedParams.add(new TypeDefParam(
-                                        intersected,
-                                        new Parameter.Constrained(c1.keyword(), c1.value(), newIdx, c1.optional())));
+                                mergedParams.add(new TypeDefParam.Constrained(
+                                        intersected, c1.keyword(), c1.value(), c1.optional()));
                             }
                         }
                         processedConstrained.add(key);
@@ -360,28 +354,23 @@ public record GenericTypeDef(TemplateType template, Pattern pattern, List<TypeDe
                 }
 
                 for (TypeDefParam tp2 : otherGeneric.parameters) {
-                    Parameter p2 = tp2.parameter();
-                    if (p2 instanceof Parameter.Named n2) {
+                    if (tp2 instanceof TypeDefParam.Named n2) {
                         if (processedNamed.contains(n2.name())) continue;
-                        TypeDef t2 = tp2.type();
+                        TypeDef t2 = n2.type();
                         TypeDef intersected = system.intersectDef(t2, t1Spread);
                         if (intersected instanceof BottomType && !n2.optional()) return Set.of();
                         if (!(intersected instanceof BottomType)) {
-                            int newIdx = mergedParams.size();
-                            mergedParams.add(new TypeDefParam(
-                                    intersected, new Parameter.Named(n2.name(), newIdx, n2.optional())));
+                            mergedParams.add(new TypeDefParam.Named(intersected, n2.name(), n2.optional()));
                         }
-                    } else if (p2 instanceof Parameter.Constrained c2) {
+                    } else if (tp2 instanceof TypeDefParam.Constrained c2) {
                         String key = c2.keyword() + ":" + c2.value();
                         if (processedConstrained.contains(key)) continue;
-                        TypeDef t2 = tp2.type();
+                        TypeDef t2 = c2.type();
                         TypeDef intersected = system.intersectDef(t2, t1Spread);
                         if (intersected instanceof BottomType && !c2.optional()) return Set.of();
                         if (!(intersected instanceof BottomType)) {
-                            int newIdx = mergedParams.size();
-                            mergedParams.add(new TypeDefParam(
-                                    intersected,
-                                    new Parameter.Constrained(c2.keyword(), c2.value(), newIdx, c2.optional())));
+                            mergedParams.add(new TypeDefParam.Constrained(
+                                    intersected, c2.keyword(), c2.value(), c2.optional()));
                         }
                     }
                 }
@@ -389,8 +378,7 @@ public record GenericTypeDef(TemplateType template, Pattern pattern, List<TypeDe
                 if (thisOpen && otherOpen) {
                     TypeDef intersected = system.intersectDef(t1Spread, t2Spread);
                     if (!(intersected instanceof BottomType)) {
-                        int newIdx = mergedParams.size();
-                        mergedParams.add(new TypeDefParam(intersected, new Parameter.Spread(newIdx)));
+                        mergedParams.add(new TypeDefParam.Spread(intersected));
                     }
                 }
 
@@ -421,28 +409,27 @@ public record GenericTypeDef(TemplateType template, Pattern pattern, List<TypeDe
             if (thisOpen == otherOpen) {
                 boolean canMerge = true;
                 long thisCount = this.parameters.stream()
-                        .filter(tp -> tp.parameter() instanceof Parameter.Named
-                                || tp.parameter() instanceof Parameter.Constrained)
+                        .filter(tp -> tp instanceof TypeDefParam.Named
+                                || tp instanceof TypeDefParam.Constrained)
                         .count();
                 long otherCount = otherGeneric.parameters.stream()
-                        .filter(tp -> tp.parameter() instanceof Parameter.Named
-                                || tp.parameter() instanceof Parameter.Constrained)
+                        .filter(tp -> tp instanceof TypeDefParam.Named
+                                || tp instanceof TypeDefParam.Constrained)
                         .count();
 
                 if (thisCount != otherCount) {
                     canMerge = false;
                 } else {
                     for (TypeDefParam tp1 : this.parameters) {
-                        Parameter p1 = tp1.parameter();
-                        if (p1 instanceof Parameter.Named n1) {
+                        if (tp1 instanceof TypeDefParam.Named n1) {
                             TypeDefParam tp2 = otherGeneric.findNamed(n1.name());
-                            if (tp2 == null || n1.optional() != ((Parameter.Named) tp2.parameter()).optional()) {
+                            if (!(tp2 instanceof TypeDefParam.Named n2) || n1.optional() != n2.optional()) {
                                 canMerge = false;
                                 break;
                             }
-                        } else if (p1 instanceof Parameter.Constrained c1) {
+                        } else if (tp1 instanceof TypeDefParam.Constrained c1) {
                             TypeDefParam tp2 = otherGeneric.findConstrained(c1.keyword(), c1.value());
-                            if (tp2 == null || c1.optional() != ((Parameter.Constrained) tp2.parameter()).optional()) {
+                            if (!(tp2 instanceof TypeDefParam.Constrained c2) || c1.optional() != c2.optional()) {
                                 canMerge = false;
                                 break;
                             }
@@ -453,34 +440,23 @@ public record GenericTypeDef(TemplateType template, Pattern pattern, List<TypeDe
                 if (canMerge) {
                     List<TypeDefParam> mergedParams = new java.util.ArrayList<>();
                     for (TypeDefParam tp1 : this.parameters) {
-                        Parameter p1 = tp1.parameter();
-                        if (p1 instanceof Parameter.Named n1) {
-                            TypeDefParam tp2 = otherGeneric.findNamed(n1.name());
-                            int newIdx = mergedParams.size();
-                            mergedParams.add(new TypeDefParam(
-                                    system.unionDef(tp1.type(), tp2.type()),
-                                    new Parameter.Named(n1.name(), newIdx, n1.optional())));
-                        } else if (p1 instanceof Parameter.Constrained c1) {
-                            TypeDefParam tp2 = otherGeneric.findConstrained(c1.keyword(), c1.value());
-                            int newIdx = mergedParams.size();
-                            mergedParams.add(new TypeDefParam(
-                                    system.unionDef(tp1.type(), tp2.type()),
-                                    new Parameter.Constrained(c1.keyword(), c1.value(), newIdx, c1.optional())));
-                        } else if (p1 instanceof Parameter.Spread s1) {
+                        if (tp1 instanceof TypeDefParam.Named n1) {
+                            TypeDefParam.Named n2 = (TypeDefParam.Named) otherGeneric.findNamed(n1.name());
+                            mergedParams.add(new TypeDefParam.Named(
+                                    system.unionDef(n1.type(), n2.type()),
+                                    n1.name(), n1.optional()));
+                        } else if (tp1 instanceof TypeDefParam.Constrained c1) {
+                            TypeDefParam.Constrained c2 = (TypeDefParam.Constrained) otherGeneric.findConstrained(c1.keyword(), c1.value());
+                            mergedParams.add(new TypeDefParam.Constrained(
+                                    system.unionDef(c1.type(), c2.type()),
+                                    c1.keyword(), c1.value(), c1.optional()));
+                        } else if (tp1 instanceof TypeDefParam.Spread s1) {
                             TypeDefParam tp2Spread = otherGeneric.parameters().stream()
-                                    .filter(tp -> tp.parameter() instanceof Parameter.Spread)
+                                    .filter(tp -> tp instanceof TypeDefParam.Spread)
                                     .findFirst()
                                     .get();
-                            Parameter.Spread s2 = (Parameter.Spread) tp2Spread.parameter();
-                            if (s1.index() == null && s2.index() == null) {
-                                mergedParams.add(new TypeDefParam(null, new Parameter.Spread()));
-                            } else {
-                                int newIdx = mergedParams.size();
-                                TypeDef t1 = s1.index() != null ? tp1.type() : system.topDef();
-                                TypeDef t2 = s2.index() != null ? tp2Spread.type() : system.topDef();
-                                mergedParams.add(
-                                        new TypeDefParam(system.unionDef(t1, t2), new Parameter.Spread(newIdx)));
-                            }
+                            mergedParams.add(new TypeDefParam.Spread(
+                                    system.unionDef(s1.type(), tp2Spread.type())));
                         }
                     }
                     return Set.of(new GenericTypeDef(template, pattern, mergedParams));
@@ -499,15 +475,10 @@ public record GenericTypeDef(TemplateType template, Pattern pattern, List<TypeDe
     @Override
     public boolean equals(Object o) {
         return this == o
-                || o
-                                instanceof
-                                GenericTypeDef(
-                                        TemplateType otherTemplate,
-                                        Pattern otherPattern,
-                                        List<TypeDefParam> otherParameters)
-                        && pattern == otherPattern
-                        && Objects.equals(template, otherTemplate)
-                        && Objects.equals(parameters, otherParameters);
+                || o instanceof GenericTypeDef other
+                        && pattern == other.pattern
+                        && Objects.equals(template, other.template)
+                        && Objects.equals(parameters, other.parameters);
     }
 
     @Override

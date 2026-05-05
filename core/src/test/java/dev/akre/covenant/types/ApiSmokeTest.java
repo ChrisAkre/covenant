@@ -2,7 +2,6 @@ package dev.akre.covenant.types;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-import dev.akre.covenant.api.Parameter;
 import dev.akre.covenant.api.Type;
 import dev.akre.covenant.api.TypeParameter;
 import java.util.List;
@@ -22,7 +21,7 @@ public class ApiSmokeTest {
         // Test Construction via API
         Type intType = ts.type("Int");
         Type.GenericType intArray =
-                arrayTemplate.construct(List.of(new TypeParameter(intType, new Parameter.Positional(0, false))));
+                arrayTemplate.construct(List.of(new TypeParameter.Positional(intType, 0, false)));
 
         assertNotNull(intArray);
         assertTrue(intArray.isArray());
@@ -31,8 +30,8 @@ public class ApiSmokeTest {
         // Test Generic Parameters retrieval
         List<TypeParameter> params = intArray.genericParameters();
         assertEquals(1, params.size());
-        assertTrue(params.get(0).parameter() instanceof Parameter.Positional);
-        Parameter.Positional p0 = (Parameter.Positional) params.get(0).parameter();
+        assertTrue(params.get(0) instanceof TypeParameter.Positional);
+        TypeParameter.Positional p0 = (TypeParameter.Positional) params.get(0);
         assertEquals("Int", params.get(0).type().repr());
         assertFalse(p0.variadic());
     }
@@ -45,8 +44,8 @@ public class ApiSmokeTest {
         Type intType = ts.type("Int");
 
         Type.GenericType personType = objectTemplate.construct(List.of(
-                new TypeParameter(stringType, new Parameter.Named("name", 0, false)),
-                new TypeParameter(intType, new Parameter.Named("age", 0, false))));
+                new TypeParameter.Named(stringType, "name", false),
+                new TypeParameter.Named(intType, "age", false)));
 
         assertNotNull(personType);
         assertTrue(personType.isObject());
@@ -60,7 +59,7 @@ public class ApiSmokeTest {
 
         TypeParameter pName = params.stream()
                 .filter(p ->
-                        p.parameter() instanceof Parameter.Named n && n.name().equals("name"))
+                        p instanceof TypeParameter.Named n && n.name().equals("name"))
                 .findFirst()
                 .orElseThrow();
         assertEquals("String", pName.type().repr());

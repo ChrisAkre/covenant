@@ -26,8 +26,8 @@ public class JsCovenantChecker {
         JsonSchemaParser schemaParser = new JsonSchemaParser(JavaSubscriptTypeSystem.INSTANCE);
 
         // 2. Parse Schemas
-        OwnedTypeDef inputType = TYPE_SYSTEM.wrap(schemaParser.parse(inputSchema));
-        OwnedTypeDef expectedOutputType = JavaSubscriptTypeSystem.INSTANCE.wrap(schemaParser.parse(outputSchema));
+        Type inputType = schemaParser.parse(inputSchema);
+        Type expectedOutputType = schemaParser.parse(outputSchema);
 
         return verify(sourceJs, inputType, expectedOutputType);
     }

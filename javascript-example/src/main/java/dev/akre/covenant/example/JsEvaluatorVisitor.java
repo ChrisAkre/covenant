@@ -1,6 +1,5 @@
 package dev.akre.covenant.example;
 
-import dev.akre.covenant.api.Parameter;
 import dev.akre.covenant.api.Type;
 import dev.akre.covenant.types.AbstractTypeSystem;
 import dev.akre.covenant.types.GenericTypeDef;
@@ -163,10 +162,9 @@ public class JsEvaluatorVisitor extends JSBaseVisitor<Type> {
             // Wrap the constraint in a new Object bound: Object<propName: constraint, ...Spread>
             Type parentConstraint = system.wrap(
                     system.constructDef("Object",
-                            List.of(system.unwrap(constraint)),
                             List.of(
-                                    new Parameter.Named(propName, 0, false),
-                                    new Parameter.Spread()
+                                    new TypeDefParam.Named(system.unwrap(constraint), propName, false),
+                                    new TypeDefParam.Spread(system.topDef())
                             )
                     )
             );
@@ -209,7 +207,7 @@ public class JsEvaluatorVisitor extends JSBaseVisitor<Type> {
             TypeDef rawObj = system.unwrap(objType);
             if (rawObj instanceof GenericTypeDef gen) {
                 for (TypeDefParam param : gen.parameters()) {
-                    if (param.parameter() instanceof Parameter.Named named && named.name().equals(propName)) {
+                    if (param instanceof TypeDefParam.Named named && named.name().equals(propName)) {
                         return system.wrap(param.type());
                     }
                 }
@@ -224,7 +222,7 @@ public class JsEvaluatorVisitor extends JSBaseVisitor<Type> {
                 for (TypeDef member : union.members()) {
                     if (member instanceof GenericTypeDef gen) {
                         for (TypeDefParam param : gen.parameters()) {
-                            if (param.parameter() instanceof Parameter.Named named && named.name().equals(propName)) {
+                            if (param instanceof TypeDefParam.Named named && named.name().equals(propName)) {
                                 extracted.add(system.wrap(param.type()));
                             }
                         }
