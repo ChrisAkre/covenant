@@ -8,8 +8,8 @@ import java.util.List;
  */
 public interface TypeConstructor {
     /**
-     * Constructs a new TypeDef from the provided members and parameters.
+     * Constructs a new TypeDef from the provided parameters.
      */
     TypeDef construct(
-            AbstractTypeSystem system, TemplateType origin, List<TypeDef> members, List<Parameter> parameters);
+            AbstractTypeSystem system, TemplateType origin, List<TypeDefParam> parameters);
 }

@@ -6,6 +6,7 @@ import static java.util.Optional.*;
 
 import dev.akre.covenant.api.Parameter;
 import dev.akre.covenant.api.Type;
+import dev.akre.covenant.api.TypeParameter;
 import dev.akre.covenant.api.TypeSystem;
 import dev.akre.covenant.types.parser.Parser;
 import java.util.*;
@@ -106,16 +107,22 @@ public interface AbstractTypeSystem extends TypeSystem {
     /**
      * Constructs a type using the constructor associated with an atom.
      */
-    default TypeDef constructDef(String name, List<TypeDef> members, List<Parameter> parameters) {
+    default TypeDef constructDef(String name, List<TypeDefParam> parameters) {
         TypeDef def = typesDef().get(name);
         if (!(def instanceof TemplateType template) || template.constructor() == null) {
             throw new IllegalArgumentException("Unknown type template or atom: " + name);
         }
-        return template.constructor().construct(this, template, members, parameters);
+        return template.constructor().construct(this, template, parameters);
     }
 
-    default OwnedTypeDef construct(String name, List<Type> members, List<Parameter> parameters) {
-        return wrap(constructDef(name, unwrap(members), parameters));
+    default OwnedTypeDef construct(String name, List<TypeParameter> parameters) {
+        return wrap(constructDef(name, unwrapParams(parameters)));
+    }
+
+    default List<TypeDefParam> unwrapParams(List<TypeParameter> parameters) {
+        return parameters == null ? null : parameters.stream()
+                .map(p -> new TypeDefParam(unwrap(p.type()), p.parameter()))
+                .toList();
     }
 
 

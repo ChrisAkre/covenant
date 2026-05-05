@@ -59,12 +59,11 @@ public record Bindings(AbstractTypeSystem system, Map<String, TypeDef> values) {
                     throw new IllegalStateException(
                             "Expected template type, but was: '" + a.target() + "' (" + target.getClass() + ")");
                 }
-                List<TypeDef> args = a.arguments().stream().map(this::resolve).toList();
-                List<Parameter> params = a.arguments().stream()
-                        .map(TypeExpr.ParamExpr::parameter)
+                List<TypeDefParam> params = a.arguments().stream()
+                        .map(arg -> new TypeDefParam(resolve(arg.type()), arg.parameter()))
                         .toList();
                 // system.apply handles constructing Generics or invoking Constraint Factories
-                yield t.constructor().construct(system, t, args, params);
+                yield t.constructor().construct(system, t, params);
             }
 
             case TypeExpr.PathExpr p -> {
@@ -134,7 +133,7 @@ public record Bindings(AbstractTypeSystem system, Map<String, TypeDef> values) {
                 }
             }
             case TypeExpr.NullExpr __ -> system.nilDef();
-            case TypeExpr.SpreadExpr __ -> new SymbolType("...");
+            case TypeExpr.SpreadExpr __ -> system.topDef();
             case TypeExpr.TupleExpr t ->
                 system.intersectDef(t.members().stream().map(this::resolve).toArray(TypeDef[]::new));
         };

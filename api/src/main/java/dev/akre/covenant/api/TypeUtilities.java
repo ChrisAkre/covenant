@@ -113,7 +113,7 @@ public class TypeUtilities {
                     Parameter.Named n2 = (Parameter.Named) tp2.parameter();
                     if (n2.optional()) {
                         mergedParams.add(new TypeParameter(
-                                tp1.type().union(tp2.type()), new Parameter.Named(n1.name(), 0, n1.optional())));
+                                tp1.type().union(tp2.type()), new Parameter.Named(n1.name(), n1.optional())));
                     } else {
                         mergedParams.add(tp2);
                     }
@@ -135,7 +135,7 @@ public class TypeUtilities {
                     if (c2.optional()) {
                         mergedParams.add(new TypeParameter(
                                 tp1.type().union(tp2.type()),
-                                new Parameter.Constrained(c1.keyword(), c1.value(), 0, c1.optional())));
+                                new Parameter.Constrained(c1.keyword(), c1.value(), c1.optional())));
                     } else {
                         mergedParams.add(tp2);
                     }
@@ -167,7 +167,7 @@ public class TypeUtilities {
         // 3. Process Spread
         if (otherIsOpen) {
             mergedParams.add(
-                    new TypeParameter(otherSpreadType, new Parameter.Spread(otherSpreadType == null ? null : 0)));
+                    new TypeParameter(otherSpreadType, new Parameter.Spread()));
         } else {
             Parameter.Spread selfSpread = (Parameter.Spread) selfParams.stream()
                     .map(TypeParameter::parameter)
@@ -181,7 +181,7 @@ public class TypeUtilities {
                         .map(TypeParameter::type)
                         .orElse(null);
                 mergedParams.add(
-                        new TypeParameter(selfSpreadType, new Parameter.Spread(selfSpreadType == null ? null : 0)));
+                        new TypeParameter(selfSpreadType, new Parameter.Spread()));
             }
         }
 

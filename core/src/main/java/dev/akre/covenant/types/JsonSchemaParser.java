@@ -108,7 +108,7 @@ public class JsonSchemaParser {
             JsonNode props = schema.get("properties");
             for (Map.Entry<String, JsonNode> entry : props.properties()) {
                 String name = entry.getKey();
-                Parameter.Named parameter = new Parameter.Named(name, params.size(), !required.contains(name));
+                Parameter.Named parameter = new Parameter.Named(name, !required.contains(name));
                 params.add(new TypeParameter(parse(entry.getValue()), parameter));
             }
         }
@@ -117,13 +117,13 @@ public class JsonSchemaParser {
             JsonNode addProps = schema.get("additionalProperties");
             if (addProps.isBoolean()) {
                 if (addProps.asBoolean()) {
-                    params.add(new TypeParameter(system.top(), new Parameter.Spread()));;
+                    params.add(new TypeParameter(system.top(), new Parameter.Spread()));
                 }
             } else {
-                params.add(new TypeParameter(parse(addProps), new Parameter.Spread()));;
+                params.add(new TypeParameter(parse(addProps), new Parameter.Spread()));
             }
         } else {
-            params.add(new TypeParameter(system.top(), new Parameter.Spread()));;
+            params.add(new TypeParameter(system.top(), new Parameter.Spread()));
         }
 
         return system.template("Object").construct(params);

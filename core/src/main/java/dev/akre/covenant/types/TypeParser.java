@@ -337,7 +337,7 @@ public final class TypeParser {
                     Parser.Result<TypeExpr> type = expression(0).parse(temp.tail());
                     if (type.matched()) {
                         String name = stripQuotes(stripQuotes(t.value(), "'"), "\"");
-                        return new Parser.Success<>(new TypeExpr.ParamExpr(type.value(), new Parameter.Named(name, 0, optional)), type.remaining());
+                        return new Parser.Success<>(new TypeExpr.ParamExpr(type.value(), new Parameter.Named(name, optional)), type.remaining());
                     }
                 }
             }
@@ -394,12 +394,10 @@ public final class TypeParser {
 
     private List<TypeExpr.ParamExpr> fixIndices(List<TypeExpr.ParamExpr> params) {
         List<TypeExpr.ParamExpr> fixed = new ArrayList<>();
-        for (int i = 0; i < params.size(); i++) {
-            TypeExpr.ParamExpr p = params.get(i);
+        int positionalIndex = 0;
+        for (TypeExpr.ParamExpr p : params) {
             if (p.parameter() instanceof Parameter.Positional pos) {
-                fixed.add(new TypeExpr.ParamExpr(p.type(), new Parameter.Positional(i, pos.variadic())));
-            } else if (p.parameter() instanceof Parameter.Named n) {
-                fixed.add(new TypeExpr.ParamExpr(p.type(), new Parameter.Named(n.name(), i, n.optional())));
+                fixed.add(new TypeExpr.ParamExpr(p.type(), new Parameter.Positional(positionalIndex++, pos.variadic())));
             } else {
                 fixed.add(p);
             }

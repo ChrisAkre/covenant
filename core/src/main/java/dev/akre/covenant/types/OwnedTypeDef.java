@@ -141,24 +141,16 @@ public record OwnedTypeDef(AbstractTypeSystem system, TypeDef def)
     @Override
     public Type.GenericType construct(List<TypeParameter> genericParameters) {
         if (def instanceof dev.akre.covenant.types.TemplateType template) {
-            List<Type> members = new ArrayList<>();
-            List<Parameter> parameters = new ArrayList<>();
+            List<TypeParameter> parameters = new ArrayList<>();
+            int positionalIndex = 0;
             for (TypeParameter tp : genericParameters) {
                 Parameter p = tp.parameter();
-                if (tp.type() != null) {
-                    int newIndex = members.size();
-                    members.add(tp.type());
-                    p = switch (p) {
-                        case Parameter.Positional pos -> new Parameter.Positional(newIndex, pos.variadic());
-                        case Parameter.Named n -> new Parameter.Named(n.name(), newIndex, n.optional());
-                        case Parameter.Constrained c ->
-                            new Parameter.Constrained(c.keyword(), c.value(), newIndex, c.optional());
-                        case Parameter.Spread s -> new Parameter.Spread(newIndex);
-                    };
+                if (p instanceof Parameter.Positional pos) {
+                    p = new Parameter.Positional(positionalIndex++, pos.variadic());
                 }
-                parameters.add(p);
+                parameters.add(new TypeParameter(tp.type(), p));
             }
-            return system.construct(template.name(), members, parameters);
+            return system.construct(template.name(), parameters);
         }
         throw new UnsupportedOperationException(
                 "Not a template type: " + (def == null ? "null" : def.getClass().getName()));
