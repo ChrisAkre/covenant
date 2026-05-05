@@ -2,7 +2,6 @@ package dev.akre.covenant.types;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-import dev.akre.covenant.api.Parameter;
 import dev.akre.covenant.api.Type;
 import dev.akre.covenant.api.TypeParameter;
 import org.junit.jupiter.api.Disabled;
@@ -142,7 +141,7 @@ public class TypeSystemSmokeTest {
     public void testSpread() {
         TestTypeSystem system = TestTypeSystem.of(JsonTypeSystem.INSTANCE);
 
-        Type stringsObject = system.template("Object").construct(TypeParameter.spread(system.type("String")));
+        Type stringsObject = system.template("Object").construct(new TypeParameter.Spread(system.type("String")));
         system.assertThat(stringsObject).printsLike("Object<...String>");
 
     }

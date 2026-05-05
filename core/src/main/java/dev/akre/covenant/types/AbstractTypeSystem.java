@@ -4,7 +4,6 @@ import static dev.akre.covenant.types.NormalizerUtils.cartesianProduct;
 import static dev.akre.covenant.types.NormalizerUtils.unionCollector;
 import static java.util.Optional.*;
 
-import dev.akre.covenant.api.Parameter;
 import dev.akre.covenant.api.Type;
 import dev.akre.covenant.api.TypeParameter;
 import dev.akre.covenant.api.TypeSystem;
@@ -121,7 +120,16 @@ public interface AbstractTypeSystem extends TypeSystem {
 
     default List<TypeDefParam> unwrapParams(List<TypeParameter> parameters) {
         return parameters == null ? null : parameters.stream()
-                .map(p -> new TypeDefParam(unwrap(p.type()), p.parameter()))
+                .map(p -> (TypeDefParam) switch (p) {
+                    case TypeParameter.Positional pos ->
+                            new TypeDefParam.Positional(unwrap(pos.type()), pos.index(), pos.variadic());
+                    case TypeParameter.Named n ->
+                            new TypeDefParam.Named(unwrap(n.type()), n.name(), n.optional());
+                    case TypeParameter.Constrained c ->
+                            new TypeDefParam.Constrained(unwrap(c.type()), c.keyword(), c.value(), c.optional());
+                    case TypeParameter.Spread s ->
+                            new TypeDefParam.Spread(unwrap(s.type()));
+                })
                 .toList();
     }
 

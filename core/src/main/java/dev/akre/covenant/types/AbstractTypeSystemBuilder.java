@@ -1,6 +1,5 @@
 package dev.akre.covenant.types;
 
-import dev.akre.covenant.api.Parameter;
 import dev.akre.covenant.api.TypeSystemBuilder;
 import dev.akre.covenant.types.AbstractTypeSystemBuilder.PatternConstructor.Pattern;
 import dev.akre.covenant.types.parser.Parser;

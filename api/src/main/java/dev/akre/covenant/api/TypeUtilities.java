@@ -25,7 +25,7 @@ public class TypeUtilities {
         List<TypeParameter> selfParams = self.genericParameters();
 
         for (int i = 0; i < selfParams.size(); i++) {
-            if (selfParams.get(i).parameter() instanceof Parameter.Positional pos && pos.variadic()) {
+            if (selfParams.get(i) instanceof TypeParameter.Positional pos && pos.variadic()) {
                 variadicIndex = i;
                 break;
             }
@@ -34,12 +34,12 @@ public class TypeUtilities {
         if (variadicIndex == -1) {
             // Case A: Left Side is Fixed
             for (TypeParameter p1 : selfParams) {
-                if (p1.parameter() instanceof Parameter.Positional) {
+                if (p1 instanceof TypeParameter.Positional) {
                     mergedParams.add(p1);
                 }
             }
             for (TypeParameter p2 : other.genericParameters()) {
-                if (p2.parameter() instanceof Parameter.Positional) {
+                if (p2 instanceof TypeParameter.Positional) {
                     mergedParams.add(p2);
                 }
             }
@@ -47,7 +47,7 @@ public class TypeUtilities {
             // Case B: Left Side is Variadic (Has a Spread)
             for (int i = 0; i < variadicIndex; i++) {
                 TypeParameter p1 = selfParams.get(i);
-                if (p1.parameter() instanceof Parameter.Positional) {
+                if (p1 instanceof TypeParameter.Positional) {
                     mergedParams.add(p1);
                 }
             }
@@ -58,19 +58,19 @@ public class TypeUtilities {
             // Absorb remaining left elements
             for (int i = variadicIndex + 1; i < selfParams.size(); i++) {
                 TypeParameter p1 = selfParams.get(i);
-                if (p1.parameter() instanceof Parameter.Positional) {
+                if (p1 instanceof TypeParameter.Positional) {
                     mergedVariadicType = mergedVariadicType.union(p1.type());
                 }
             }
 
             // Absorb all right elements
             for (TypeParameter p2 : other.genericParameters()) {
-                if (p2.parameter() instanceof Parameter.Positional) {
+                if (p2 instanceof TypeParameter.Positional) {
                     mergedVariadicType = mergedVariadicType.union(p2.type());
                 }
             }
 
-            mergedParams.add(new TypeParameter(mergedVariadicType, new Parameter.Positional(0, true)));
+            mergedParams.add(new TypeParameter.Positional(mergedVariadicType, 0, true));
         }
 
         return self.template().construct(mergedParams);
@@ -84,21 +84,13 @@ public class TypeUtilities {
         List<TypeParameter> selfParams = self.genericParameters();
         List<TypeParameter> otherParams = other.genericParameters();
 
-        Parameter.Spread otherSpread = (Parameter.Spread) otherParams.stream()
-                .map(TypeParameter::parameter)
-                .filter(p -> p instanceof Parameter.Spread)
+        TypeParameter.Spread otherSpread = (TypeParameter.Spread) otherParams.stream()
+                .filter(p -> p instanceof TypeParameter.Spread)
                 .findFirst()
                 .orElse(null);
 
         boolean otherIsOpen = otherSpread != null;
-        Type otherSpreadType = null;
-        if (otherIsOpen) {
-            otherSpreadType = otherParams.stream()
-                    .filter(tp -> tp.parameter() == otherSpread)
-                    .findFirst()
-                    .map(TypeParameter::type)
-                    .orElse(null);
-        }
+        Type otherSpreadType = otherIsOpen ? otherSpread.type() : null;
 
         List<TypeParameter> mergedParams = new ArrayList<>();
         java.util.Set<String> processedRightNamed = new java.util.HashSet<>();
@@ -106,14 +98,12 @@ public class TypeUtilities {
 
         // 1. Process Left Properties (self)
         for (TypeParameter tp1 : selfParams) {
-            Parameter p1 = tp1.parameter();
-            if (p1 instanceof Parameter.Named n1) {
+            if (tp1 instanceof TypeParameter.Named n1) {
                 TypeParameter tp2 = findNamed(otherParams, n1.name());
-                if (tp2 != null) {
-                    Parameter.Named n2 = (Parameter.Named) tp2.parameter();
+                if (tp2 instanceof TypeParameter.Named n2) {
                     if (n2.optional()) {
-                        mergedParams.add(new TypeParameter(
-                                tp1.type().union(tp2.type()), new Parameter.Named(n1.name(), n1.optional())));
+                        mergedParams.add(new TypeParameter.Named(
+                                tp1.type().union(tp2.type()), n1.name(), n1.optional()));
                     } else {
                         mergedParams.add(tp2);
                     }
@@ -122,20 +112,19 @@ public class TypeUtilities {
                     if (otherSpreadType != null
                             && !otherSpreadType.repr().equals("Any")
                             && !otherSpreadType.repr().equals("top")) {
-                        mergedParams.add(new TypeParameter(tp1.type().union(otherSpreadType), p1));
+                        mergedParams.add(new TypeParameter.Named(tp1.type().union(otherSpreadType), n1.name(), n1.optional()));
                     }
                 } else {
                     mergedParams.add(tp1);
                 }
-            } else if (p1 instanceof Parameter.Constrained c1) {
+            } else if (tp1 instanceof TypeParameter.Constrained c1) {
                 String key = c1.keyword() + ":" + c1.value();
                 TypeParameter tp2 = findConstrained(otherParams, c1.keyword(), c1.value());
-                if (tp2 != null) {
-                    Parameter.Constrained c2 = (Parameter.Constrained) tp2.parameter();
+                if (tp2 instanceof TypeParameter.Constrained c2) {
                     if (c2.optional()) {
-                        mergedParams.add(new TypeParameter(
+                        mergedParams.add(new TypeParameter.Constrained(
                                 tp1.type().union(tp2.type()),
-                                new Parameter.Constrained(c1.keyword(), c1.value(), c1.optional())));
+                                c1.keyword(), c1.value(), c1.optional()));
                     } else {
                         mergedParams.add(tp2);
                     }
@@ -144,7 +133,7 @@ public class TypeUtilities {
                     if (otherSpreadType != null
                             && !otherSpreadType.repr().equals("Any")
                             && !otherSpreadType.repr().equals("top")) {
-                        mergedParams.add(new TypeParameter(tp1.type().union(otherSpreadType), p1));
+                        mergedParams.add(new TypeParameter.Constrained(tp1.type().union(otherSpreadType), c1.keyword(), c1.value(), c1.optional()));
                     }
                 } else {
                     mergedParams.add(tp1);
@@ -154,11 +143,10 @@ public class TypeUtilities {
 
         // 2. Append remaining Right Properties
         for (TypeParameter tp2 : otherParams) {
-            Parameter p2 = tp2.parameter();
-            if (p2 instanceof Parameter.Named n2) {
+            if (tp2 instanceof TypeParameter.Named n2) {
                 if (processedRightNamed.contains(n2.name())) continue;
                 mergedParams.add(tp2);
-            } else if (p2 instanceof Parameter.Constrained c2) {
+            } else if (tp2 instanceof TypeParameter.Constrained c2) {
                 if (processedRightConstrained.contains(c2.keyword() + ":" + c2.value())) continue;
                 mergedParams.add(tp2);
             }
@@ -166,22 +154,14 @@ public class TypeUtilities {
 
         // 3. Process Spread
         if (otherIsOpen) {
-            mergedParams.add(
-                    new TypeParameter(otherSpreadType, new Parameter.Spread()));
+            mergedParams.add(new TypeParameter.Spread(otherSpreadType));
         } else {
-            Parameter.Spread selfSpread = (Parameter.Spread) selfParams.stream()
-                    .map(TypeParameter::parameter)
-                    .filter(p -> p instanceof Parameter.Spread)
+            TypeParameter.Spread selfSpread = (TypeParameter.Spread) selfParams.stream()
+                    .filter(p -> p instanceof TypeParameter.Spread)
                     .findFirst()
                     .orElse(null);
             if (selfSpread != null) {
-                Type selfSpreadType = selfParams.stream()
-                        .filter(tp -> tp.parameter() == selfSpread)
-                        .findFirst()
-                        .map(TypeParameter::type)
-                        .orElse(null);
-                mergedParams.add(
-                        new TypeParameter(selfSpreadType, new Parameter.Spread()));
+                mergedParams.add(new TypeParameter.Spread(selfSpread.type()));
             }
         }
 
@@ -190,7 +170,7 @@ public class TypeUtilities {
 
     private static TypeParameter findNamed(List<TypeParameter> params, String name) {
         for (TypeParameter tp : params) {
-            if (tp.parameter() instanceof Parameter.Named n && n.name().equals(name)) {
+            if (tp instanceof TypeParameter.Named n && n.name().equals(name)) {
                 return tp;
             }
         }
@@ -199,7 +179,7 @@ public class TypeUtilities {
 
     private static TypeParameter findConstrained(List<TypeParameter> params, String k, String v) {
         for (TypeParameter tp : params) {
-            if (tp.parameter() instanceof Parameter.Constrained c
+            if (tp instanceof TypeParameter.Constrained c
                     && c.keyword().equals(k)
                     && c.value().equals(v)) {
                 return tp;

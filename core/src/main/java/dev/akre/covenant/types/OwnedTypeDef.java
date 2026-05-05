@@ -1,6 +1,5 @@
 package dev.akre.covenant.types;
 
-import dev.akre.covenant.api.Parameter;
 import dev.akre.covenant.api.Type;
 import dev.akre.covenant.api.TypeAttribute;
 import dev.akre.covenant.api.TypeParameter;
@@ -122,8 +121,17 @@ public record OwnedTypeDef(AbstractTypeSystem system, TypeDef def)
         if (def instanceof GenericTypeDef g) {
             return g.parameters().stream()
                     .map(tp -> {
-                        Type type = tp.type() != null ? system.wrap(tp.type()) : null;
-                        return new TypeParameter(type, tp.parameter());
+                        Type type = system.wrap(tp.type());
+                        return switch (tp) {
+                            case TypeDefParam.Positional pos ->
+                                    new TypeParameter.Positional(type, pos.index(), pos.variadic());
+                            case TypeDefParam.Named n ->
+                                    new TypeParameter.Named(type, n.name(), n.optional());
+                            case TypeDefParam.Constrained c ->
+                                    new TypeParameter.Constrained(type, c.keyword(), c.value(), c.optional());
+                            case TypeDefParam.Spread s ->
+                                    new TypeParameter.Spread(type);
+                        };
                     })
                     .collect(Collectors.toList());
         }
@@ -144,11 +152,17 @@ public record OwnedTypeDef(AbstractTypeSystem system, TypeDef def)
             List<TypeParameter> parameters = new ArrayList<>();
             int positionalIndex = 0;
             for (TypeParameter tp : genericParameters) {
-                Parameter p = tp.parameter();
-                if (p instanceof Parameter.Positional pos) {
-                    p = new Parameter.Positional(positionalIndex++, pos.variadic());
-                }
-                parameters.add(new TypeParameter(tp.type(), p));
+                TypeParameter p = switch (tp) {
+                    case TypeParameter.Positional pos ->
+                            new TypeParameter.Positional(pos.type(), positionalIndex++, pos.variadic());
+                    case TypeParameter.Named n ->
+                            new TypeParameter.Named(n.type(), n.name(), n.optional());
+                    case TypeParameter.Constrained c ->
+                            new TypeParameter.Constrained(c.type(), c.keyword(), c.value(), c.optional());
+                    case TypeParameter.Spread s ->
+                            new TypeParameter.Spread(s.type());
+                };
+                parameters.add(p);
             }
             return system.construct(template.name(), parameters);
         }

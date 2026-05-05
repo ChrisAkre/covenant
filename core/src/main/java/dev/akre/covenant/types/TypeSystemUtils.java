@@ -1,6 +1,6 @@
 package dev.akre.covenant.types;
 
-import dev.akre.covenant.api.Parameter;
+import dev.akre.covenant.api.Type;
 import dev.akre.covenant.api.TypeAttribute;
 import dev.akre.covenant.types.FunctionType.Signature;
 
@@ -55,21 +55,16 @@ public class TypeSystemUtils {
                 if (resolvedSegment == null) yield system.bottomDef();
 
                 if (g.pattern() == AbstractTypeSystemBuilder.PatternConstructor.Pattern.OBJECT) {
-                    Parameter.Named named = findNamed(g, resolvedSegment);
+                    TypeDefParam.Named named = findNamed(g, resolvedSegment);
                     if (named == null && (resolvedSegment.startsWith("'") && resolvedSegment.endsWith("'"))) {
                         named = findNamed(g, resolvedSegment.substring(1, resolvedSegment.length() - 1));
                     }
                     if (named != null) {
-                        Parameter.Named finalNamed = named;
-                        yield g.parameters().stream()
-                                .filter(tp -> tp.parameter().equals(finalNamed))
-                                .findFirst()
-                                .map(TypeDefParam::type)
-                                .orElse(system.bottomDef());
+                        yield named.type();
                     }
                     // Check if open
                     for (TypeDefParam tp : g.parameters()) {
-                        if (tp.parameter() instanceof Parameter.Spread()) {
+                        if (tp instanceof TypeDefParam.Spread s) {
                             yield tp.type();
                         }
                     }
@@ -80,8 +75,7 @@ public class TypeSystemUtils {
                         int index = Integer.parseInt(resolvedSegment);
                         int current = 0;
                         for (TypeDefParam tp : g.parameters()) {
-                            Parameter p = tp.parameter();
-                            if (p instanceof Parameter.Positional pos) {
+                            if (tp instanceof TypeDefParam.Positional pos) {
                                 TypeDef type = tp.type();
                                 if (pos.variadic()) {
                                     if (index >= current) {
@@ -112,9 +106,9 @@ public class TypeSystemUtils {
         };
     }
 
-    private static Parameter.Named findNamed(GenericTypeDef g, String name) {
+    private static TypeDefParam.Named findNamed(GenericTypeDef g, String name) {
         for (TypeDefParam tp : g.parameters()) {
-            if (tp.parameter() instanceof Parameter.Named n && n.name().equals(name)) {
+            if (tp instanceof TypeDefParam.Named n && n.name().equals(name)) {
                 return n;
             }
         }

@@ -1,6 +1,5 @@
 package dev.akre.covenant.types;
 
-import dev.akre.covenant.api.Parameter;
 import dev.akre.covenant.types.parser.*;
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -322,7 +321,7 @@ public final class TypeParser {
     private Parser<TypeExpr.ParamExpr> parameter() {
         return input -> {
             if (input.head().type() == Parser.TokenType.ELLIPSIS) {
-                return new Parser.Success<>(new TypeExpr.ParamExpr(new TypeExpr.SpreadExpr(), new Parameter.Spread()), input.tail());
+                return new Parser.Success<>(new TypeExpr.ParamExpr.Spread(new TypeExpr.SpreadExpr()), input.tail());
             }
 
             Parser.Token t = input.head();
@@ -337,7 +336,7 @@ public final class TypeParser {
                     Parser.Result<TypeExpr> type = expression(0).parse(temp.tail());
                     if (type.matched()) {
                         String name = stripQuotes(stripQuotes(t.value(), "'"), "\"");
-                        return new Parser.Success<>(new TypeExpr.ParamExpr(type.value(), new Parameter.Named(name, optional)), type.remaining());
+                        return new Parser.Success<>(new TypeExpr.ParamExpr.Named(type.value(), name, optional), type.remaining());
                     }
                 }
             }
@@ -350,7 +349,7 @@ public final class TypeParser {
                     variadic = true;
                     after = after.tail();
                 }
-                return new Parser.Success<>(new TypeExpr.ParamExpr(type.value(), new Parameter.Positional(0, variadic)), after);
+                return new Parser.Success<>(new TypeExpr.ParamExpr.Positional(type.value(), 0, variadic), after);
             }
             return new Parser.Failure<>("Failed to parse parameter");
         };
@@ -396,8 +395,8 @@ public final class TypeParser {
         List<TypeExpr.ParamExpr> fixed = new ArrayList<>();
         int positionalIndex = 0;
         for (TypeExpr.ParamExpr p : params) {
-            if (p.parameter() instanceof Parameter.Positional pos) {
-                fixed.add(new TypeExpr.ParamExpr(p.type(), new Parameter.Positional(positionalIndex++, pos.variadic())));
+            if (p instanceof TypeExpr.ParamExpr.Positional pos) {
+                fixed.add(new TypeExpr.ParamExpr.Positional(pos.type(), positionalIndex++, pos.variadic()));
             } else {
                 fixed.add(p);
             }

@@ -1,6 +1,5 @@
 package dev.akre.covenant.types;
 
-import dev.akre.covenant.api.Parameter;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -180,18 +179,16 @@ public class UnificationUtils {
 
                 for (int i = 0; i < expArgs.size(); i++) {
                     TypeExpr.ParamExpr expArg = expArgs.get(i);
-                    boolean expectedIsVariadic = expArg.parameter() instanceof Parameter.Positional ep && ep.variadic();
+                    boolean expectedIsVariadic = expArg instanceof TypeExpr.ParamExpr.Positional ep && ep.variadic();
 
                     TypeDef actualMember;
 
                     if (i < actParams.size()) {
                         TypeDefParam tp = actParams.get(i);
-                        actualMember =
-                                tp.type() != null ? tp.type() : ctx.system().topDef();
-                        Parameter actParam = tp.parameter();
+                        actualMember = tp.type();
 
                         // Variadic Null-Padding: actual spreads, expected is strictly positional.
-                        if (actParam instanceof Parameter.Positional p && p.variadic() && !expectedIsVariadic) {
+                        if (tp instanceof TypeDefParam.Positional p && p.variadic() && !expectedIsVariadic) {
                             TypeDef nullType = ctx.system().nilDef();
                             if (nullType != null) {
                                 actualMember = ctx.system().unionDef(actualMember, nullType);
@@ -200,14 +197,12 @@ public class UnificationUtils {
                     } else {
                         // Actual is out of explicit elements.
                         boolean actualLastIsVariadic = !actParams.isEmpty()
-                                && actParams.getLast().parameter() instanceof Parameter.Positional p
+                                && actParams.getLast() instanceof TypeDefParam.Positional p
                                 && p.variadic();
 
                         if (actualLastIsVariadic) {
                             // The actual array has a spread (e.g. `Bool...`); keep extracting against it.
-                            actualMember = actParams.getLast().type() != null
-                                    ? actParams.getLast().type()
-                                    : ctx.system().topDef();
+                            actualMember = actParams.getLast().type();
 
                             if (!expectedIsVariadic) {
                                 // Apply null-padding if expected is positional.

@@ -3,7 +3,6 @@ package dev.akre.covenant.types;
 import static dev.akre.covenant.types.TypeSystemUtils.concat;
 import static java.util.function.Predicate.not;
 
-import dev.akre.covenant.api.Parameter;
 import java.math.BigDecimal;
 import java.util.*;
 import java.util.function.Function;
@@ -60,7 +59,16 @@ public record Bindings(AbstractTypeSystem system, Map<String, TypeDef> values) {
                             "Expected template type, but was: '" + a.target() + "' (" + target.getClass() + ")");
                 }
                 List<TypeDefParam> params = a.arguments().stream()
-                        .map(arg -> new TypeDefParam(resolve(arg.type()), arg.parameter()))
+                        .map(arg -> (TypeDefParam) switch (arg) {
+                            case TypeExpr.ParamExpr.Positional pos ->
+                                    new TypeDefParam.Positional(resolve(pos.type()), pos.index(), pos.variadic());
+                            case TypeExpr.ParamExpr.Named n ->
+                                    new TypeDefParam.Named(resolve(n.type()), n.name(), n.optional());
+                            case TypeExpr.ParamExpr.Constrained c ->
+                                    new TypeDefParam.Constrained(resolve(c.type()), c.keyword(), c.value(), c.optional());
+                            case TypeExpr.ParamExpr.Spread s ->
+                                    new TypeDefParam.Spread(resolve(s.type()));
+                        })
                         .toList();
                 // system.apply handles constructing Generics or invoking Constraint Factories
                 yield t.constructor().construct(system, t, params);

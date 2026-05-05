@@ -1,6 +1,5 @@
 package dev.akre.covenant.types;
 
-import dev.akre.covenant.api.Parameter;
 import org.jspecify.annotations.NonNull;
 
 import java.math.BigDecimal;
@@ -122,21 +121,39 @@ public sealed interface TypeExpr
         }
     }
 
-    record ParamExpr(TypeExpr type, Parameter parameter) implements TypeExpr {
-        @Override
-        public @NonNull String toString() {
-            return switch (parameter) {
-                case Parameter.Named n ->
-                    (n.name().contains(" ") || n.name().isEmpty()
-                                    ? "'" + n.name().replace("'", "''") + "'"
-                                    : n.name())
-                            + (n.optional() ? "?: " : ": ")
-                            + type;
-                case Parameter.Positional p -> type + (p.variadic() ? "..." : "");
-                case Parameter.Constrained c ->
-                    "[" + c.keyword() + " " + c.value() + "]" + (c.optional() ? "?: " : ": ") + type;
-                case Parameter.Spread ignored -> "...";
-            };
+    sealed interface ParamExpr extends TypeExpr {
+        TypeExpr type();
+
+        record Positional(TypeExpr type, Integer index, boolean variadic) implements ParamExpr {
+            @Override
+            public @NonNull String toString() {
+                return type + (variadic ? "..." : "");
+            }
+        }
+
+        record Named(TypeExpr type, String name, boolean optional) implements ParamExpr {
+            @Override
+            public @NonNull String toString() {
+                return (name.contains(" ") || name.isEmpty()
+                                ? "'" + name.replace("'", "''") + "'"
+                                : name)
+                        + (optional ? "?: " : ": ")
+                        + type;
+            }
+        }
+
+        record Constrained(TypeExpr type, String keyword, String value, boolean optional) implements ParamExpr {
+            @Override
+            public @NonNull String toString() {
+                return "[" + keyword + " " + value + "]" + (optional ? "?: " : ": ") + type;
+            }
+        }
+
+        record Spread(TypeExpr type) implements ParamExpr {
+            @Override
+            public @NonNull String toString() {
+                return "...";
+            }
         }
     }
 
