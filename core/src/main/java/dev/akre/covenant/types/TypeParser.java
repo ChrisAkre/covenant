@@ -324,6 +324,29 @@ public final class TypeParser {
                 return new Parser.Success<>(new TypeExpr.ParamExpr.Spread(new TypeExpr.SpreadExpr()), input.tail());
             }
 
+            if (input.head().type() == Parser.TokenType.L_BRACKET) {
+                Parser.Result<TypeExpr> constraintRes = keywordConstraint().parse(input.tail());
+                if (constraintRes.matched() && constraintRes.value() instanceof TypeExpr.ConstraintExpr c) {
+                    Parser.InputState afterBracket = constraintRes.remaining();
+                    if (afterBracket.head().type() == Parser.TokenType.R_BRACKET) {
+                        Parser.InputState temp = afterBracket.tail();
+                        boolean optional = false;
+                        if (temp.head().type() == Parser.TokenType.QUESTION) {
+                            optional = true;
+                            temp = temp.tail();
+                        }
+                        if (temp.head().type() == Parser.TokenType.COLON) {
+                            Parser.Result<TypeExpr> type = expression(0).parse(temp.tail());
+                            if (type.matched()) {
+                                return new Parser.Success<>(
+                                        new TypeExpr.ParamExpr.Constrained(type.value(), c.keyword(), c.value(), optional),
+                                        type.remaining());
+                            }
+                        }
+                    }
+                }
+            }
+
             Parser.Token t = input.head();
             if (t.type() == Parser.TokenType.IDENTIFIER || t.type() == Parser.TokenType.SYMBOL_LITERAL || t.type() == Parser.TokenType.STRING_LITERAL) {
                 Parser.InputState temp = input.tail();

@@ -27,83 +27,96 @@ public class TypeSystemUtils {
         if (subject == null || segment == null) {
             return null;
         }
-        return switch (subject) {
-            case ContainerDef c ->
-                switch (c) {
-                    case UnionType u ->
-                        system.unionDef(u.members().stream()
-                                .map(m -> termAt(system, m, segment))
-                                .toArray(TypeDef[]::new));
-                    case IntersectionType i ->
-                        system.intersectDef(i.members().stream()
-                                .map(m -> termAt(system, m, segment))
-                                .toArray(TypeDef[]::new));
-                    case NegationType n -> system.negateDef(termAt(system, n.inner(), segment));
-                };
-            case GenericTypeDef g -> {
-                String resolvedSegment = null;
-                switch (segment) {
-                    case SymbolType(String value) -> resolvedSegment = value;
-                    case StringConstraint s when s.operator() == ValueConstraint.Operator.EQ ->
-                            resolvedSegment = s.value();
-                    case NumberConstraint n when n.operator() == ValueConstraint.Operator.EQ ->
-                            resolvedSegment = n.value().toPlainString();
-                    default -> {
+        if (subject instanceof UnionType u) {
+            return system.unionDef(u.members().stream()
+                    .map(m -> termAt(system, m, segment))
+                    .toArray(TypeDef[]::new));
+        }
+        if (subject instanceof IntersectionType i) {
+            return system.intersectDef(i.members().stream()
+                    .map(m -> termAt(system, m, segment))
+                    .toArray(TypeDef[]::new));
+        }
+        if (subject instanceof NegationType n) {
+            return system.negateDef(termAt(system, n.inner(), segment));
+        }
+        if (subject instanceof GenericTypeDef g) {
+            String resolvedSegment = null;
+            if (segment instanceof SymbolType s) {
+                resolvedSegment = s.value();
+            } else if (segment instanceof StringConstraint s && s.operator() == ValueConstraint.Operator.EQ) {
+                resolvedSegment = s.value();
+            } else if (segment instanceof NumberConstraint n && n.operator() == ValueConstraint.Operator.EQ) {
+                resolvedSegment = n.value().toPlainString();
+            }
+
+            if (resolvedSegment == null) return system.bottomDef();
+
+            if (g.pattern() == AbstractTypeSystemBuilder.PatternConstructor.Pattern.OBJECT) {
+                TypeDefParam.Named named = findNamed(g, resolvedSegment);
+                if (named == null && (resolvedSegment.startsWith("'") && resolvedSegment.endsWith("'"))) {
+                    named = findNamed(g, resolvedSegment.substring(1, resolvedSegment.length() - 1));
+                }
+                if (named != null) {
+                    return named.type();
+                }
+                // Check dynamic constraints
+                for (TypeDefParam tp : g.parameters()) {
+                    if (tp instanceof TypeDefParam.Constrained c && matches(c, resolvedSegment)) {
+                        return tp.type(); // Simplification: return first match
                     }
                 }
-
-                if (resolvedSegment == null) yield system.bottomDef();
-
-                if (g.pattern() == AbstractTypeSystemBuilder.PatternConstructor.Pattern.OBJECT) {
-                    TypeDefParam.Named named = findNamed(g, resolvedSegment);
-                    if (named == null && (resolvedSegment.startsWith("'") && resolvedSegment.endsWith("'"))) {
-                        named = findNamed(g, resolvedSegment.substring(1, resolvedSegment.length() - 1));
+                // Check if open
+                for (TypeDefParam tp : g.parameters()) {
+                    if (tp instanceof TypeDefParam.Spread s) {
+                        return tp.type();
                     }
-                    if (named != null) {
-                        yield named.type();
-                    }
-                    // Check if open
+                }
+                return system.bottomDef();
+            } else {
+                // Positional/Array
+                try {
+                    int index = Integer.parseInt(resolvedSegment);
+                    int current = 0;
                     for (TypeDefParam tp : g.parameters()) {
-                        if (tp instanceof TypeDefParam.Spread s) {
-                            yield tp.type();
-                        }
-                    }
-                    yield system.bottomDef();
-                } else {
-                    // Positional/Array
-                    try {
-                        int index = Integer.parseInt(resolvedSegment);
-                        int current = 0;
-                        for (TypeDefParam tp : g.parameters()) {
-                            if (tp instanceof TypeDefParam.Positional pos) {
-                                TypeDef type = tp.type();
-                                if (pos.variadic()) {
-                                    if (index >= current) {
-                                        TypeDef nullType = system.nilDef();
-                                        if (nullType != null) {
-                                            yield system.unionDef(type, nullType);
-                                        }
-                                        yield type; // Fallback if Null not defined
+                        if (tp instanceof TypeDefParam.Positional pos) {
+                            TypeDef type = tp.type();
+                            if (pos.variadic()) {
+                                if (index >= current) {
+                                    TypeDef nullType = system.nilDef();
+                                    if (nullType != null) {
+                                        return system.unionDef(type, nullType);
                                     }
-                                } else {
-                                    if (index == current) {
-                                        yield type;
-                                    }
-                                    current++;
+                                    return type; // Fallback if Null not defined
                                 }
+                            } else {
+                                if (index == current) {
+                                    return type;
+                                }
+                                current++;
                             }
                         }
-                    } catch (NumberFormatException e) {
-                        // Not an index
                     }
-                    yield system.bottomDef();
+                } catch (NumberFormatException e) {
+                    // Not an index
                 }
+                return system.bottomDef();
             }
-            case ApplicableDef ignored -> system.bottomDef();
-            case NominalDef ignored -> system.bottomDef();
-            case ValueConstraint ignored -> system.bottomDef();
-            case SymbolType ignored -> system.bottomDef();
-        };
+        }
+        return system.bottomDef();
+    }
+
+    private static boolean matches(TypeDefParam.Constrained c, String name) {
+        if (!c.keyword().equals("matches")) return false;
+        String regex = c.value();
+        if (regex.startsWith("\"") && regex.endsWith("\"")) {
+            regex = regex.substring(1, regex.length() - 1);
+        }
+        try {
+            return java.util.regex.Pattern.compile(regex).matcher(name).find();
+        } catch (Exception e) {
+            return false;
+        }
     }
 
     private static TypeDefParam.Named findNamed(GenericTypeDef g, String name) {
@@ -116,16 +129,16 @@ public class TypeSystemUtils {
     }
 
     public static Stream<TypeDef> unionStream(TypeDef t) {
-        return t instanceof UnionType(Set<TypeDef> members) ? members.stream() : Stream.of(t);
+        return t instanceof UnionType u ? u.members().stream() : Stream.of(t);
     }
 
     public static Stream<TypeDef> intersectionStream(TypeDef t) {
-        return t instanceof IntersectionType(Set<TypeDef> members) ? members.stream() : Stream.of(t);
+        return t instanceof IntersectionType i ? i.members().stream() : Stream.of(t);
     }
 
     public static Stream<Signature> signatureStream(TypeDef t) {
-        if (t instanceof FunctionType(Set<Signature> signatures)) {
-            return signatures.stream();
+        if (t instanceof FunctionType f) {
+            return f.signatures().stream();
         } else if (t instanceof Signature s) {
             return Stream.of(s);
         } else {
@@ -186,12 +199,11 @@ public class TypeSystemUtils {
             TypeAttribute attribute) {
         EnumSet<TypeAttribute> newAttributes = append(type.attributes(), attribute);
         Set<String> newNames = concat(type.parentNames(), parentNames);
-        return switch (type) {
-            case TopType ignored -> throw new IllegalArgumentException("cannot modify " + type.getClass());
-            case BottomType ignored -> throw new IllegalArgumentException("cannot modify " + type.getClass());
-            case AtomType a -> new AtomType(a.name(), newNames, newAttributes);
-            case TemplateType t -> new TemplateType(t.name(), newNames, t.constructor(), newAttributes);
-        };
+        if (type instanceof TopType) throw new IllegalArgumentException("cannot modify top");
+        if (type instanceof BottomType) throw new IllegalArgumentException("cannot modify bottom");
+        if (type instanceof AtomType a) return new AtomType(a.name(), newNames, newAttributes);
+        if (type instanceof TemplateType t) return new TemplateType(t.name(), newNames, t.constructor(), newAttributes);
+        throw new IllegalArgumentException("unknown nominal def type");
     }
 
     public static TemplateType updateTemplate(

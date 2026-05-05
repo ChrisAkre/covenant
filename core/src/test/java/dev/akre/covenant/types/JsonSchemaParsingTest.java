@@ -107,4 +107,26 @@ public class JsonSchemaParsingTest {
         system.assertThat(type).satisfiedBy("Object<id: String, extra: Int>");
         system.assertThat(type).notSatisfiedBy("Object<id: String, extra: String>");
     }
+
+    @Test
+    public void testPatternPropertiesParsing() throws Exception {
+        String json = """
+            {
+              "type": "object",
+              "patternProperties": {
+                "^ext_": { "type": "integer" }
+              }
+            }
+            """;
+        JsonNode schema = mapper.readTree(json);
+        Type type = parser.parse(schema);
+
+        // Covenant repr for constrained params uses [keyword value]: Type
+        // patternProperties are effectively optional
+        system.assertThat(type).printsLike("Object<[matches \"^ext_\"]?: Int, ...>");
+
+        // Verify subtyping
+        system.assertThat("Object<ext_field: Int>").satisfies(type.repr());
+        system.assertThat("Object<ext_field: String>").notSatisfies(type.repr());
+    }
 }

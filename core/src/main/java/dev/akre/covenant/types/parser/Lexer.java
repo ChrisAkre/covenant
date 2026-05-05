@@ -28,6 +28,8 @@ public final class Lexer {
         PATTERNS.put(Parser.TokenType.R_PAREN, Pattern.compile("^\\)"));
         PATTERNS.put(Parser.TokenType.L_ANGLE, Pattern.compile("^<"));
         PATTERNS.put(Parser.TokenType.R_ANGLE, Pattern.compile("^>"));
+        PATTERNS.put(Parser.TokenType.L_BRACKET, Pattern.compile("^\\["));
+        PATTERNS.put(Parser.TokenType.R_BRACKET, Pattern.compile("^\\]"));
         PATTERNS.put(Parser.TokenType.COMMA, Pattern.compile("^,"));
         PATTERNS.put(Parser.TokenType.UNKNOWN, Pattern.compile("^[^\\s]+"));
     }

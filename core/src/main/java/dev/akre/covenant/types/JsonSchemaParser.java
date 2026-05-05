@@ -110,6 +110,14 @@ public class JsonSchemaParser {
             }
         }
 
+        if (schema.has("patternProperties")) {
+            JsonNode patternProps = schema.get("patternProperties");
+            for (Map.Entry<String, JsonNode> entry : patternProps.properties()) {
+                String pattern = entry.getKey();
+                params.add(new TypeParameter.Constrained(parse(entry.getValue()), "matches", "\"" + pattern + "\"", true));
+            }
+        }
+
         if (schema.has("additionalProperties")) {
             JsonNode addProps = schema.get("additionalProperties");
             if (addProps.isBoolean()) {
