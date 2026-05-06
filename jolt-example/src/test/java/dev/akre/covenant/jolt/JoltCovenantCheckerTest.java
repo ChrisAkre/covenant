@@ -74,6 +74,30 @@ public class JoltCovenantCheckerTest {
     ]
     """;
 
+    private static final String EXPECTED_OUTPUT_SCHEMA = """
+    {
+      "type": "object",
+      "required": ["Range", "SecondaryRatings", "Rating"],
+      "properties": {
+        "Range": {"type": "number"},
+        "SecondaryRatings": {
+          "type": "object",
+          "required": ["String"],
+          "properties": {
+            "String": {
+              "type": "object",
+              "required": ["Range"],
+              "properties": {
+                "Range": {"type": "number"}
+              }
+            }
+          }
+        },
+        "Rating": {"type": "number"}
+      }
+    }
+    """;
+
     @BeforeEach
     public void setup() {
         checker = new JoltCovenantChecker();
@@ -85,13 +109,12 @@ public class JoltCovenantCheckerTest {
     @Test
     public void testInception() throws Exception {
         Type inputType = jsonParser.parse(mapper.readTree(INPUT_SCHEMA));
+        Type expectedOutputType = jsonParser.parse(mapper.readTree(EXPECTED_OUTPUT_SCHEMA));
 
         Type inferredOutput = checker.infer(inputType, JOLT_SPEC);
 
+        System.out.println("Expected Output: " + expectedOutputType.repr());
         System.out.println("Inferred Output: " + inferredOutput.repr());
-
-        // Let's build what we actually expect our naive parser to emit based on the execution trace
-        Type expectedOutputType = system.expression("Object<Range: Number, SecondaryRatings: Object<String: Object<Range: Number, ...>, ...>, Rating: Number, ...>");
 
         // Our parser doesn't perfectly aggregate `Id: String` or `Value: Number` from the wildcard shift because our
         // `walkShiftSpec` pushes "String" to `matchedKeys` but does not fully evaluate all extracted nested properties yet.
