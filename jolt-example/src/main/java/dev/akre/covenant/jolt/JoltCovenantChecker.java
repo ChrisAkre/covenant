@@ -64,7 +64,7 @@ public class JoltCovenantChecker {
 
                 if (key.equals("*")) {
                     Type extracted = extractAllProperties(currentInputContext);
-                    matchedKeys.push("String");
+                    matchedKeys.push("*");
                     currentOutputSchema = currentOutputSchema.union(walkShiftSpec(extracted, value, currentPath, matchedKeys, currentOutputSchema));
                     matchedKeys.pop();
                 } else if (key.equals("$")) {
@@ -108,7 +108,7 @@ public class JoltCovenantChecker {
         Type currentConstraint = leafType;
 
         for (int i = parts.length - 1; i >= 0; i--) {
-            if (parts[i].equals("String")) {
+            if (parts[i].equals("*")) {
                 currentConstraint = typeSystem.expression("Object<..., " + currentConstraint.repr() + ">");
             } else {
                 currentConstraint = typeSystem.expression("Object<" + parts[i] + ": " + currentConstraint.repr() + ", ...>");
@@ -143,8 +143,7 @@ public class JoltCovenantChecker {
                 String key = field.getKey();
                 if (key.equals("*")) {
                     hasSpread = true;
-                    // For the test suite, we can use an additional property binding `..., Type`
-                    // However, we must ensure it isn't `...: Type`
+                    // Fix syntax for spread
                     sb.append("..., ").append(buildConstraintFromValue(field.getValue()).repr());
                 } else {
                     sb.append(key).append(": ").append(buildConstraintFromValue(field.getValue()).repr());
@@ -161,6 +160,7 @@ public class JoltCovenantChecker {
             String expr = sb.toString();
             // clean up just in case
             if (expr.contains(", >")) expr = expr.replace(", >", ">");
+            if (expr.contains("..., ,")) expr = expr.replace("..., ,", "..., ");
 
             return typeSystem.expression(expr);
         } else if (node.isNumber()) {
