@@ -1,0 +1,17 @@
+[
+  {
+    "operation": "shift",
+    "spec": {
+      "rating": {
+
+        "*": {
+
+
+
+
+          "$": "ratingNames[]"
+        }
+      }
+    }
+  }
+]

@@ -1,0 +1,23 @@
+[
+  {
+    "operation": "shift",
+    "spec": {
+      "clientsActive": {
+        "true": {
+          "@(2,clients)": {
+
+            "*": {
+              "clientId": "clientIds[@(1,index)]"
+            }
+          },
+
+          "@(2,pants)": "pants"
+        },
+        "data": {
+
+          "@bookId": "books.@bookName"
+        }
+      }
+    }
+  }
+]

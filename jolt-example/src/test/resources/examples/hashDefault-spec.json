@@ -1,0 +1,22 @@
+[
+  {
+    "operation": "shift",
+    "spec": {
+      "data": {
+        "*": {
+          "hidden": {
+            "true": {
+
+
+
+              "#disabled": "clients.@(3,clientId)"
+            },
+            "false": {
+              "#enabled": "clients.@(3,clientId)"
+            }
+          }
+        }
+      }
+    }
+  }
+]
