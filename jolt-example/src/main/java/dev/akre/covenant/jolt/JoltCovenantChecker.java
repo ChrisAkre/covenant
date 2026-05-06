@@ -38,8 +38,6 @@ public class JoltCovenantChecker {
                     currentSchema = applyDefault(currentSchema, specData);
                 } else if ("remove".equals(operation)) {
                     currentSchema = applyRemove(currentSchema, specData);
-                } else {
-                    // Unsupported operation, or pass-through
                 }
             }
         }
@@ -64,7 +62,6 @@ public class JoltCovenantChecker {
                 String key = field.getKey();
                 JsonNode value = field.getValue();
 
-                // Track matches
                 if (key.equals("*")) {
                     Type extracted = extractAllProperties(currentInputContext);
                     matchedKeys.push("String");
@@ -111,7 +108,11 @@ public class JoltCovenantChecker {
         Type currentConstraint = leafType;
 
         for (int i = parts.length - 1; i >= 0; i--) {
-            currentConstraint = typeSystem.expression("Object<" + parts[i] + ": " + currentConstraint.repr() + ", ...>");
+            if (parts[i].equals("String")) {
+                currentConstraint = typeSystem.expression("Object<..., " + currentConstraint.repr() + ">");
+            } else {
+                currentConstraint = typeSystem.expression("Object<" + parts[i] + ": " + currentConstraint.repr() + ", ...>");
+            }
         }
 
         if (currentSchema.equals(typeSystem.bottom())) {
@@ -134,21 +135,34 @@ public class JoltCovenantChecker {
         if (node.isObject()) {
             StringBuilder sb = new StringBuilder("Object<");
             boolean first = true;
+            boolean hasSpread = false;
             Iterator<Map.Entry<String, JsonNode>> fields = node.properties().iterator();
             while (fields.hasNext()) {
                 Map.Entry<String, JsonNode> field = fields.next();
                 if (!first) sb.append(", ");
                 String key = field.getKey();
                 if (key.equals("*")) {
-                    sb.append("String: ");
+                    hasSpread = true;
+                    // For the test suite, we can use an additional property binding `..., Type`
+                    // However, we must ensure it isn't `...: Type`
+                    sb.append("..., ").append(buildConstraintFromValue(field.getValue()).repr());
                 } else {
-                    sb.append(key).append(": ");
+                    sb.append(key).append(": ").append(buildConstraintFromValue(field.getValue()).repr());
                 }
-                sb.append(buildConstraintFromValue(field.getValue()).repr());
                 first = false;
             }
-            sb.append(", ...>");
-            return typeSystem.expression(sb.toString());
+            if (!hasSpread) {
+                if (!first) sb.append(", ...>");
+                else sb.append("...>");
+            } else {
+                sb.append(">");
+            }
+
+            String expr = sb.toString();
+            // clean up just in case
+            if (expr.contains(", >")) expr = expr.replace(", >", ">");
+
+            return typeSystem.expression(expr);
         } else if (node.isNumber()) {
             return typeSystem.expression("Number");
         } else if (node.isTextual()) {
