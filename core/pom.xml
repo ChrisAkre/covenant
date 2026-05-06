@@ -104,8 +104,9 @@
                 <configuration>
                     <cloneProjectsTo>${project.build.directory}/it</cloneProjectsTo>
                     <pomIncludes>
-                        <pomInclude>**/jsonpath-example/pom.xml</pomInclude>
-                        <pomInclude>**/javascript-example/pom.xml</pomInclude>
+                        <pomInclude>jsonpath-example/pom.xml</pomInclude>
+                        <pomInclude>javascript-example/pom.xml</pomInclude>
+                        <pomInclude>jolt-example/pom.xml</pomInclude>
                     </pomIncludes>
                     <projectsDirectory>${project.basedir}/..</projectsDirectory>
                     <goals>
