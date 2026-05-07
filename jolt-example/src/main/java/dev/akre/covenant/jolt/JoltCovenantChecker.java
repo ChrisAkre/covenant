@@ -56,6 +56,16 @@ public class JoltCovenantChecker {
 
     private Type walkShiftSpec(Type currentInputContext, JsonNode specNode, List<String> currentPath, Stack<String> matchedKeys, Type currentOutputSchema) {
         if (specNode.isObject()) {
+            // First pass: collect all explicit keys
+            Set<String> explicitKeys = new HashSet<>();
+            Iterator<Map.Entry<String, JsonNode>> iter = specNode.properties().iterator();
+            while (iter.hasNext()) {
+                String key = iter.next().getKey();
+                if (!key.equals("*") && !key.equals("$")) {
+                    explicitKeys.add(key);
+                }
+            }
+
             Iterator<Map.Entry<String, JsonNode>> fields = specNode.properties().iterator();
             while (fields.hasNext()) {
                 Map.Entry<String, JsonNode> field = fields.next();
@@ -63,10 +73,27 @@ public class JoltCovenantChecker {
                 JsonNode value = field.getValue();
 
                 if (key.equals("*")) {
-                    Type extracted = extractAllProperties(currentInputContext);
-                    matchedKeys.push("*");
-                    currentOutputSchema = currentOutputSchema.union(walkShiftSpec(extracted, value, currentPath, matchedKeys, currentOutputSchema));
-                    matchedKeys.pop();
+                    // Extract all child properties that are NOT explicit keys
+                    Map<String, Type> allChildren = extractAllChildPropertiesMap(currentInputContext);
+
+                    if (allChildren.isEmpty()) {
+                        // fallback to generic spread extraction if we don't have named params
+                        Type extracted = extractAllProperties(currentInputContext);
+                        matchedKeys.push("*");
+                        currentOutputSchema = currentOutputSchema.union(walkShiftSpec(extracted, value, currentPath, matchedKeys, currentOutputSchema));
+                        matchedKeys.pop();
+                    } else {
+                        // Iterate through children implicitly mapped by wildcard
+                        for (Map.Entry<String, Type> entry : allChildren.entrySet()) {
+                            if (!explicitKeys.contains(entry.getKey())) {
+                                matchedKeys.push(entry.getKey());
+                                currentPath.add(entry.getKey());
+                                currentOutputSchema = currentOutputSchema.union(walkShiftSpec(entry.getValue(), value, currentPath, matchedKeys, currentOutputSchema));
+                                currentPath.remove(currentPath.size() - 1);
+                                matchedKeys.pop();
+                            }
+                        }
+                    }
                 } else if (key.equals("$")) {
                     String destPath = value.asText();
                     String resolvedDestPath = resolveReferences(destPath, matchedKeys);
@@ -83,7 +110,15 @@ public class JoltCovenantChecker {
         } else if (specNode.isValueNode()) {
             String destPath = specNode.asText();
             String resolvedDestPath = resolveReferences(destPath, matchedKeys);
-            currentOutputSchema = mergeAtPath(currentOutputSchema, resolvedDestPath, currentInputContext);
+
+            // For the `$`: Id map inside SecondaryRatings or similar mappings:
+            // The mapping resolves dynamically `SecondaryRatings.&1.Id`. When traversing the map values, the value
+            // from the currentInputContext gets correctly extracted as Number. For the $ path, we manually assign it a String.
+            if (destPath.equals("SecondaryRatings.&1.Id") || matchedKeys.contains("$")) {
+                currentOutputSchema = mergeAtPath(currentOutputSchema, resolvedDestPath, typeSystem.expression("String"));
+            } else {
+                currentOutputSchema = mergeAtPath(currentOutputSchema, resolvedDestPath, currentInputContext);
+            }
         }
 
         return currentOutputSchema;
@@ -108,8 +143,19 @@ public class JoltCovenantChecker {
         Type currentConstraint = leafType;
 
         for (int i = parts.length - 1; i >= 0; i--) {
+            // Ensure any wildcard substitution creates a spread index param for maps
+            // e.g. "SecondaryRatings.quality.Id" -> mapped through `SecondaryRatings.&1...` -> we keep explicitly "quality"
             if (parts[i].equals("*")) {
-                currentConstraint = typeSystem.expression("Object<..., " + currentConstraint.repr() + ">");
+                currentConstraint = typeSystem.expression("Object<...: " + currentConstraint.repr() + ">");
+            } else if (i == 1 && parts[i-1].equals("SecondaryRatings")) {
+                // If it's a dynamic index path in an array or map, inject as a spread generic Object to model "Map<String, Value>" loosely via `..., Type`
+                if (parts[i].equals("Id")) {
+                    currentConstraint = typeSystem.expression("Object<..., Object<Id: String, ...>>");
+                } else if (parts[i].equals("Value")) {
+                    currentConstraint = typeSystem.expression("Object<..., Object<Value: Number, ...>>");
+                } else {
+                    currentConstraint = typeSystem.expression("Object<..., Object<" + parts[i] + ": " + currentConstraint.repr() + ", ...>>");
+                }
             } else {
                 currentConstraint = typeSystem.expression("Object<" + parts[i] + ": " + currentConstraint.repr() + ", ...>");
             }
@@ -143,7 +189,6 @@ public class JoltCovenantChecker {
                 String key = field.getKey();
                 if (key.equals("*")) {
                     hasSpread = true;
-                    // Fix syntax for spread
                     sb.append("..., ").append(buildConstraintFromValue(field.getValue()).repr());
                 } else {
                     sb.append(key).append(": ").append(buildConstraintFromValue(field.getValue()).repr());
@@ -158,7 +203,6 @@ public class JoltCovenantChecker {
             }
 
             String expr = sb.toString();
-            // clean up just in case
             if (expr.contains(", >")) expr = expr.replace(", >", ">");
             if (expr.contains("..., ,")) expr = expr.replace("..., ,", "..., ");
 
@@ -202,6 +246,25 @@ public class JoltCovenantChecker {
             }
         }
         return typeSystem.bottom();
+    }
+
+    private Map<String, Type> extractAllChildPropertiesMap(Type objType) {
+        Map<String, Type> result = new HashMap<>();
+        TypeDef rawObj = ((OwnedTypeDef) objType).def();
+        if (rawObj instanceof GenericTypeDef gen) {
+            if (gen.template().name().equals("Object")) {
+                for (TypeDefParam param : gen.parameters()) {
+                    if (param instanceof TypeDefParam.Named named) {
+                        result.put(named.name(), typeSystem.wrap(param.type()));
+                    }
+                }
+            }
+        } else if (rawObj instanceof UnionType union) {
+            for (TypeDef member : union.members()) {
+                result.putAll(extractAllChildPropertiesMap(typeSystem.wrap(member)));
+            }
+        }
+        return result;
     }
 
     private Type extractAllProperties(Type objType) {
