@@ -1,0 +1,7 @@
+{
+  "type": "object",
+  "properties": {
+    "Rating": { "type": "number" },
+    "RatingRange": { "type": "number" }
+  }
+}

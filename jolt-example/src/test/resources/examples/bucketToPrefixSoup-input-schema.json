@@ -1,0 +1,13 @@
+{
+  "type": "object",
+  "properties": {
+    "Rating": { "type": "number" },
+    "SecondaryRatings": {
+      "type": "object",
+      "properties": {
+        "quality": { "type": "number" },
+        "design": { "type": "number" }
+      }
+    }
+  }
+}
