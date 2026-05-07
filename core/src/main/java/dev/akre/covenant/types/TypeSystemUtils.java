@@ -4,6 +4,7 @@ import dev.akre.covenant.api.Type;
 import dev.akre.covenant.api.TypeAttribute;
 import dev.akre.covenant.types.FunctionType.Signature;
 
+import com.google.re2j.Pattern;
 import java.util.*;
 import java.util.function.BiFunction;
 import java.util.function.Function;
@@ -113,7 +114,7 @@ public class TypeSystemUtils {
             regex = regex.substring(1, regex.length() - 1);
         }
         try {
-            return java.util.regex.Pattern.compile(regex).matcher(name).find();
+            return Pattern.compile(regex).matcher(name).find();
         } catch (Exception e) {
             return false;
         }

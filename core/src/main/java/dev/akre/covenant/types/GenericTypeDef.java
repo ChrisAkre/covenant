@@ -1,6 +1,7 @@
 package dev.akre.covenant.types;
 
 import dev.akre.covenant.types.AbstractTypeSystemBuilder.PatternConstructor.Pattern;
+import com.google.re2j.Pattern;
 import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
@@ -66,7 +67,7 @@ public record GenericTypeDef(TemplateType template, Pattern pattern, List<TypeDe
             regex = regex.substring(1, regex.length() - 1);
         }
         try {
-            return java.util.regex.Pattern.compile(regex).matcher(name).find();
+            return Pattern.compile(regex).matcher(name).find();
         } catch (Exception e) {
             return false;
         }
@@ -247,7 +248,7 @@ public record GenericTypeDef(TemplateType template, Pattern pattern, List<TypeDe
                     if (tp instanceof TypeDefParam.Named named) {
                         String name = named.name();
                         // Quote if contains spaces or is a number
-                        if (name.contains(" ") || name.matches("\\d+")) {
+                        if (name.contains(" ") || Pattern.matches("\\d+", name)) {
                             name = "'" + name.replace("'", "''") + "'";
                         }
                         return name
@@ -256,7 +257,7 @@ public record GenericTypeDef(TemplateType template, Pattern pattern, List<TypeDe
                     }
                     if (tp instanceof TypeDefParam.Constrained constrained) {
                         String name = constrained.value();
-                        if (name.contains(" ") || name.matches("\\d+")) {
+                        if (name.contains(" ") || Pattern.matches("\\d+", name)) {
                             name = "'" + name.replace("'", "''") + "'";
                         }
                         return "[" + constrained.keyword() + " " + name + "]" + (constrained.optional() ? "?: " : ": ")
