@@ -1,0 +1,29 @@
+--- a/core/src/main/java/dev/akre/covenant/types/TypeParser.java
++++ b/core/src/main/java/dev/akre/covenant/types/TypeParser.java
+@@ -19,10 +19,12 @@
+     public TypeExpr parse(String expression) {
+             Parser.InputState state = Lexer.tokenize(expression);
+             Parser.Result<TypeExpr> result = expression(0).parse(state);
+-            if (result instanceof Parser.Success<TypeExpr>(TypeExpr value, Parser.InputState remaining)) {
+-                if (!remaining.isEndOfInput()) {
+-                    Parser.Token t = remaining.head();
+-                    throw new IllegalArgumentException("Unexpected token at position " + t.position() + ": '" + t.value() + "'");
+-                }
+-                return value;
+-            } else if (result instanceof Parser.Failure f) {
+-                throw new IllegalArgumentException("Parse error at position " + f.position() + ": " + f.message());
+-            }
+-            throw new IllegalStateException("Unknown result type");
++            if (result instanceof Parser.Success<TypeExpr> success) {
++                TypeExpr value = success.value();
++                Parser.InputState remaining = success.remaining();
++                if (!remaining.isEndOfInput()) {
++                    Parser.Token t = remaining.head();
++                    throw new IllegalArgumentException("Unexpected token at position " + t.position() + ": '" + t.value() + "'");
++                }
++                return value;
++            } else if (result instanceof Parser.Failure f) {
++                throw new IllegalArgumentException("Parse error at position " + f.position() + ": " + f.message());
++            }
++            throw new IllegalStateException("Unknown result type");
+     }

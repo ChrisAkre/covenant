@@ -63,7 +63,9 @@ public class NormalizerUtils {
             BiFunction<TypeDef, TypeDef, Collection<TypeDef>> operator,
             BiFunction<TypeDef, TypeDef, Collection<TypeDef>> inverseOperator) {
         return (self, other) -> {
-            if (self instanceof NegationType(TypeDef inner) && other instanceof NegationType(TypeDef otherInner)) {
+            if (self instanceof NegationType && other instanceof NegationType) {
+                TypeDef inner = ((NegationType) self).def();
+                TypeDef otherInner = ((NegationType) other).def();
                 return subsumptionCheck.test(inner, otherInner)
                         ? Set.of(other)
                         : subsumptionCheck.test(otherInner, inner)
@@ -73,9 +75,11 @@ public class NormalizerUtils {
                                                 .<TypeDef>map(NegationType::new)
                                                 .collect(Collectors.toSet()))
                                         .orElse(null);
-            } else if (self instanceof NegationType(TypeDef inner)) {
+            } else if (self instanceof NegationType) {
+                TypeDef inner = ((NegationType) self).def();
                 return subsumptionCheck.test(other, inner) ? Set.of() : null;
-            } else if (other instanceof NegationType(TypeDef otherInner)) {
+            } else if (other instanceof NegationType) {
+                TypeDef otherInner = ((NegationType) other).def();
                 return subsumptionCheck.test(self, otherInner) ? Set.of() : null;
             } else if (subsumptionCheck.test(self, other)) {
                 return Set.of(self);

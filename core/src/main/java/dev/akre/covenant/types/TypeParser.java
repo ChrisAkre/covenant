@@ -19,7 +19,9 @@ public final class TypeParser {
     public TypeExpr parse(String expression) {
             Parser.InputState state = Lexer.tokenize(expression);
             Parser.Result<TypeExpr> result = expression(0).parse(state);
-            if (result instanceof Parser.Success<TypeExpr>(TypeExpr value, Parser.InputState remaining)) {
+            if (result instanceof Parser.Success<TypeExpr> success) {
+                TypeExpr value = success.value();
+                Parser.InputState remaining = success.remaining();
                 if (!remaining.isEndOfInput()) {
                     Parser.Token t = remaining.head();
                     throw new IllegalArgumentException("Unexpected token at position " + t.position() + ": '" + t.value() + "'");
