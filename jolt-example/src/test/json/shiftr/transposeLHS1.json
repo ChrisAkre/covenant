@@ -1,0 +1,43 @@
+{
+  "inputSchema": {
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "properties": {
+    "data": {
+      "type": "object",
+      "properties": {
+        "clientId": {
+          "type": "string"
+        },
+        "clientName": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "clientId",
+        "clientName"
+      ]
+    }
+  },
+  "required": [
+    "data"
+  ]
+},
+  "spec": {
+        "data" : {
+            "@clientName" : "CLIENTNAME"  // verify that we can look down the tree
+        }
+    },
+  "expectedSchema": {
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "properties": {
+    "CLIENTNAME": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "CLIENTNAME"
+  ]
+}
+}

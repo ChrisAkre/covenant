@@ -1,0 +1,74 @@
+{
+  "inputSchema": {
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "properties": {
+    "Photos": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "Id": {
+            "type": "string"
+          },
+          "Caption": {
+            "type": "string"
+          },
+          "Url": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "Caption",
+          "Id",
+          "Url"
+        ]
+      }
+    }
+  },
+  "required": [
+    "Photos"
+  ]
+},
+  "spec": {
+        "Photos": {
+            "*": {
+                "Id": "photo-&1-id",
+                "Caption": "photo-&1-caption",
+                "Url": "photo-&1-url"
+            }
+        }
+    },
+  "expectedSchema": {
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "properties": {
+    "photo-0-id": {
+      "type": "string"
+    },
+    "photo-0-caption": {
+      "type": "string"
+    },
+    "photo-0-url": {
+      "type": "string"
+    },
+    "photo-1-id": {
+      "type": "string"
+    },
+    "photo-1-caption": {
+      "type": "string"
+    },
+    "photo-1-url": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "photo-0-caption",
+    "photo-0-id",
+    "photo-0-url",
+    "photo-1-caption",
+    "photo-1-id",
+    "photo-1-url"
+  ]
+}
+}

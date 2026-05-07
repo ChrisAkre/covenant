@@ -1,0 +1,72 @@
+{
+  "inputSchema": {
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "properties": {
+    "data": {
+      "type": "object",
+      "properties": {
+        "clientId": {
+          "type": "string"
+        },
+        "clientNameStuff": {
+          "type": "object",
+          "properties": {
+            "clientName": {
+              "type": "string"
+            },
+            "otherClientStuff": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "clientName",
+            "otherClientStuff"
+          ]
+        }
+      },
+      "required": [
+        "clientId",
+        "clientNameStuff"
+      ]
+    }
+  },
+  "required": [
+    "data"
+  ]
+},
+  "spec": {
+        "data" : {
+            // Verify we can write data out to a RHS with syntactic sugar @ in the middle of two literals: "literal.@SUGAR.literal"
+            "@(clientNameStuff.clientName)" : "data.@clientId.clientName"
+        }
+    },
+  "expectedSchema": {
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "properties": {
+    "data": {
+      "type": "object",
+      "properties": {
+        "1234": {
+          "type": "object",
+          "properties": {
+            "clientName": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "clientName"
+          ]
+        }
+      },
+      "required": [
+        "1234"
+      ]
+    }
+  },
+  "required": [
+    "data"
+  ]
+}
+}

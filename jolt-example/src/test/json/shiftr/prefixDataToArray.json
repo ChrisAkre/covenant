@@ -1,0 +1,56 @@
+{
+  "inputSchema": {
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "properties": {
+    "photo-1-id": {
+      "type": "string"
+    },
+    "photo-1-url": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "photo-1-id",
+    "photo-1-url"
+  ]
+},
+  "spec": {
+        "photo-1-id": "Photos[1].Id",
+        "photo-1-url": "Photos[1].Url"
+    },
+  "expectedSchema": {
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "properties": {
+    "Photos": {
+      "type": "array",
+      "items": {
+        "anyOf": [
+          {
+            "type": "null"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "Id": {
+                "type": "string"
+              },
+              "Url": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "Id",
+              "Url"
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "required": [
+    "Photos"
+  ]
+}
+}

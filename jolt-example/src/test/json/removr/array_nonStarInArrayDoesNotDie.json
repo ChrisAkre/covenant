@@ -1,0 +1,66 @@
+{
+  "inputSchema": {
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "properties": {
+    "arrayObjects": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "a": {
+            "type": "string"
+          },
+          "testStay": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "a",
+          "testStay"
+        ]
+      }
+    }
+  },
+  "required": [
+    "arrayObjects"
+  ]
+},
+  "spec": {
+    "arrayObjects": {
+      "pants": {
+        "a": ""
+      },
+      "abc*" : {
+        "a": ""
+      }
+    }
+  },
+  "expectedSchema": {
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "properties": {
+    "arrayObjects": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "a": {
+            "type": "string"
+          },
+          "testStay": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "a",
+          "testStay"
+        ]
+      }
+    }
+  },
+  "required": [
+    "arrayObjects"
+  ]
+}
+}

@@ -1,0 +1,1139 @@
+{
+  "inputSchema": {
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "properties": {
+    "review": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "authorid": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "campaignid": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "categoryancestorid": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "contentlocale": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "hascomments": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "hasphotos": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "hastags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "hasvideos": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "helpfulness": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "isfeatured": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "isratingsonly": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "isrecommended": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "issubjectactive": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "issyndicated": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "lastmoderatedtime": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "lastmodificationtime": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "moderatorcode": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "productid": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "rating": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "submissionid": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "submissiontime": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "totalcommentcount": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "totalfeedbackcount": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "totalnegativefeedbackcount": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "totalpositivefeedbackcount": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "userlocation": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "additionalfield": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "contextdatavalue": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "tag": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "secondaryrating": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "additionalfield",
+        "authorid",
+        "campaignid",
+        "categoryancestorid",
+        "contentlocale",
+        "contextdatavalue",
+        "hascomments",
+        "hasphotos",
+        "hastags",
+        "hasvideos",
+        "helpfulness",
+        "id",
+        "isfeatured",
+        "isratingsonly",
+        "isrecommended",
+        "issubjectactive",
+        "issyndicated",
+        "lastmoderatedtime",
+        "lastmodificationtime",
+        "moderatorcode",
+        "productid",
+        "rating",
+        "secondaryrating",
+        "submissionid",
+        "submissiontime",
+        "tag",
+        "totalcommentcount",
+        "totalfeedbackcount",
+        "totalnegativefeedbackcount",
+        "totalpositivefeedbackcount",
+        "userlocation"
+      ]
+    },
+    "product": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "averageoverallrating": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "categoryancestorid": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "categoryid": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "isactive": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "isdisabled": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "lastanswertime": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "lastquestiontime": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "lastreviewtime": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "laststorytime": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "name": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "ratingsonlyreviewcount": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "totalanswercount": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "totalquestioncount": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "totalreviewcount": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "totalstorycount": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "averageoverallrating",
+        "categoryancestorid",
+        "categoryid",
+        "id",
+        "isactive",
+        "isdisabled",
+        "lastanswertime",
+        "lastquestiontime",
+        "lastreviewtime",
+        "laststorytime",
+        "name",
+        "ratingsonlyreviewcount",
+        "totalanswercount",
+        "totalquestioncount",
+        "totalreviewcount",
+        "totalstorycount"
+      ]
+    }
+  },
+  "required": [
+    "product",
+    "review"
+  ]
+},
+  "spec": {
+        "*": {
+            "*": {
+                "0": "&2.&1.bucketFieldName",
+                "1": "&2.&1.searchType"
+            }
+        }
+    },
+  "expectedSchema": {
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "properties": {
+    "product": {
+      "type": "object",
+      "properties": {
+        "totalquestioncount": {
+          "type": "object",
+          "properties": {
+            "bucketFieldName": {
+              "type": "string"
+            },
+            "searchType": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "bucketFieldName",
+            "searchType"
+          ]
+        },
+        "isdisabled": {
+          "type": "object",
+          "properties": {
+            "bucketFieldName": {
+              "type": "string"
+            },
+            "searchType": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "bucketFieldName",
+            "searchType"
+          ]
+        },
+        "ratingsonlyreviewcount": {
+          "type": "object",
+          "properties": {
+            "bucketFieldName": {
+              "type": "string"
+            },
+            "searchType": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "bucketFieldName",
+            "searchType"
+          ]
+        },
+        "lastreviewtime": {
+          "type": "object",
+          "properties": {
+            "bucketFieldName": {
+              "type": "string"
+            },
+            "searchType": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "bucketFieldName",
+            "searchType"
+          ]
+        },
+        "categoryancestorid": {
+          "type": "object",
+          "properties": {
+            "bucketFieldName": {
+              "type": "string"
+            },
+            "searchType": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "bucketFieldName",
+            "searchType"
+          ]
+        },
+        "id": {
+          "type": "object",
+          "properties": {
+            "bucketFieldName": {
+              "type": "string"
+            },
+            "searchType": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "bucketFieldName",
+            "searchType"
+          ]
+        },
+        "categoryid": {
+          "type": "object",
+          "properties": {
+            "bucketFieldName": {
+              "type": "string"
+            },
+            "searchType": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "bucketFieldName",
+            "searchType"
+          ]
+        },
+        "isactive": {
+          "type": "object",
+          "properties": {
+            "bucketFieldName": {
+              "type": "string"
+            },
+            "searchType": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "bucketFieldName",
+            "searchType"
+          ]
+        },
+        "name": {
+          "type": "object",
+          "properties": {
+            "bucketFieldName": {
+              "type": "string"
+            },
+            "searchType": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "bucketFieldName",
+            "searchType"
+          ]
+        },
+        "totalstorycount": {
+          "type": "object",
+          "properties": {
+            "bucketFieldName": {
+              "type": "string"
+            },
+            "searchType": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "bucketFieldName",
+            "searchType"
+          ]
+        },
+        "totalreviewcount": {
+          "type": "object",
+          "properties": {
+            "bucketFieldName": {
+              "type": "string"
+            },
+            "searchType": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "bucketFieldName",
+            "searchType"
+          ]
+        },
+        "averageoverallrating": {
+          "type": "object",
+          "properties": {
+            "bucketFieldName": {
+              "type": "string"
+            },
+            "searchType": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "bucketFieldName",
+            "searchType"
+          ]
+        },
+        "lastanswertime": {
+          "type": "object",
+          "properties": {
+            "bucketFieldName": {
+              "type": "string"
+            },
+            "searchType": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "bucketFieldName",
+            "searchType"
+          ]
+        },
+        "lastquestiontime": {
+          "type": "object",
+          "properties": {
+            "bucketFieldName": {
+              "type": "string"
+            },
+            "searchType": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "bucketFieldName",
+            "searchType"
+          ]
+        },
+        "laststorytime": {
+          "type": "object",
+          "properties": {
+            "bucketFieldName": {
+              "type": "string"
+            },
+            "searchType": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "bucketFieldName",
+            "searchType"
+          ]
+        },
+        "totalanswercount": {
+          "type": "object",
+          "properties": {
+            "bucketFieldName": {
+              "type": "string"
+            },
+            "searchType": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "bucketFieldName",
+            "searchType"
+          ]
+        }
+      },
+      "required": [
+        "averageoverallrating",
+        "categoryancestorid",
+        "categoryid",
+        "id",
+        "isactive",
+        "isdisabled",
+        "lastanswertime",
+        "lastquestiontime",
+        "lastreviewtime",
+        "laststorytime",
+        "name",
+        "ratingsonlyreviewcount",
+        "totalanswercount",
+        "totalquestioncount",
+        "totalreviewcount",
+        "totalstorycount"
+      ]
+    },
+    "review": {
+      "type": "object",
+      "properties": {
+        "moderatorcode": {
+          "type": "object",
+          "properties": {
+            "bucketFieldName": {
+              "type": "string"
+            },
+            "searchType": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "bucketFieldName",
+            "searchType"
+          ]
+        },
+        "totalnegativefeedbackcount": {
+          "type": "object",
+          "properties": {
+            "bucketFieldName": {
+              "type": "string"
+            },
+            "searchType": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "bucketFieldName",
+            "searchType"
+          ]
+        },
+        "tag": {
+          "type": "object",
+          "properties": {
+            "bucketFieldName": {
+              "type": "string"
+            },
+            "searchType": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "bucketFieldName",
+            "searchType"
+          ]
+        },
+        "isratingsonly": {
+          "type": "object",
+          "properties": {
+            "bucketFieldName": {
+              "type": "string"
+            },
+            "searchType": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "bucketFieldName",
+            "searchType"
+          ]
+        },
+        "userlocation": {
+          "type": "object",
+          "properties": {
+            "bucketFieldName": {
+              "type": "string"
+            },
+            "searchType": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "bucketFieldName",
+            "searchType"
+          ]
+        },
+        "totalfeedbackcount": {
+          "type": "object",
+          "properties": {
+            "bucketFieldName": {
+              "type": "string"
+            },
+            "searchType": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "bucketFieldName",
+            "searchType"
+          ]
+        },
+        "lastmodificationtime": {
+          "type": "object",
+          "properties": {
+            "bucketFieldName": {
+              "type": "string"
+            },
+            "searchType": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "bucketFieldName",
+            "searchType"
+          ]
+        },
+        "totalpositivefeedbackcount": {
+          "type": "object",
+          "properties": {
+            "bucketFieldName": {
+              "type": "string"
+            },
+            "searchType": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "bucketFieldName",
+            "searchType"
+          ]
+        },
+        "helpfulness": {
+          "type": "object",
+          "properties": {
+            "bucketFieldName": {
+              "type": "string"
+            },
+            "searchType": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "bucketFieldName",
+            "searchType"
+          ]
+        },
+        "isrecommended": {
+          "type": "object",
+          "properties": {
+            "bucketFieldName": {
+              "type": "string"
+            },
+            "searchType": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "bucketFieldName",
+            "searchType"
+          ]
+        },
+        "id": {
+          "type": "object",
+          "properties": {
+            "bucketFieldName": {
+              "type": "string"
+            },
+            "searchType": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "bucketFieldName",
+            "searchType"
+          ]
+        },
+        "secondaryrating": {
+          "type": "object",
+          "properties": {
+            "bucketFieldName": {
+              "type": "string"
+            },
+            "searchType": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "bucketFieldName",
+            "searchType"
+          ]
+        },
+        "contentlocale": {
+          "type": "object",
+          "properties": {
+            "bucketFieldName": {
+              "type": "string"
+            },
+            "searchType": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "bucketFieldName",
+            "searchType"
+          ]
+        },
+        "hasvideos": {
+          "type": "object",
+          "properties": {
+            "bucketFieldName": {
+              "type": "string"
+            },
+            "searchType": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "bucketFieldName",
+            "searchType"
+          ]
+        },
+        "productid": {
+          "type": "object",
+          "properties": {
+            "bucketFieldName": {
+              "type": "string"
+            },
+            "searchType": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "bucketFieldName",
+            "searchType"
+          ]
+        },
+        "authorid": {
+          "type": "object",
+          "properties": {
+            "bucketFieldName": {
+              "type": "string"
+            },
+            "searchType": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "bucketFieldName",
+            "searchType"
+          ]
+        },
+        "contextdatavalue": {
+          "type": "object",
+          "properties": {
+            "bucketFieldName": {
+              "type": "string"
+            },
+            "searchType": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "bucketFieldName",
+            "searchType"
+          ]
+        },
+        "issyndicated": {
+          "type": "object",
+          "properties": {
+            "bucketFieldName": {
+              "type": "string"
+            },
+            "searchType": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "bucketFieldName",
+            "searchType"
+          ]
+        },
+        "hascomments": {
+          "type": "object",
+          "properties": {
+            "bucketFieldName": {
+              "type": "string"
+            },
+            "searchType": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "bucketFieldName",
+            "searchType"
+          ]
+        },
+        "additionalfield": {
+          "type": "object",
+          "properties": {
+            "bucketFieldName": {
+              "type": "string"
+            },
+            "searchType": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "bucketFieldName",
+            "searchType"
+          ]
+        },
+        "submissionid": {
+          "type": "object",
+          "properties": {
+            "bucketFieldName": {
+              "type": "string"
+            },
+            "searchType": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "bucketFieldName",
+            "searchType"
+          ]
+        },
+        "hastags": {
+          "type": "object",
+          "properties": {
+            "bucketFieldName": {
+              "type": "string"
+            },
+            "searchType": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "bucketFieldName",
+            "searchType"
+          ]
+        },
+        "totalcommentcount": {
+          "type": "object",
+          "properties": {
+            "bucketFieldName": {
+              "type": "string"
+            },
+            "searchType": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "bucketFieldName",
+            "searchType"
+          ]
+        },
+        "isfeatured": {
+          "type": "object",
+          "properties": {
+            "bucketFieldName": {
+              "type": "string"
+            },
+            "searchType": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "bucketFieldName",
+            "searchType"
+          ]
+        },
+        "categoryancestorid": {
+          "type": "object",
+          "properties": {
+            "bucketFieldName": {
+              "type": "string"
+            },
+            "searchType": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "bucketFieldName",
+            "searchType"
+          ]
+        },
+        "issubjectactive": {
+          "type": "object",
+          "properties": {
+            "bucketFieldName": {
+              "type": "string"
+            },
+            "searchType": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "bucketFieldName",
+            "searchType"
+          ]
+        },
+        "submissiontime": {
+          "type": "object",
+          "properties": {
+            "bucketFieldName": {
+              "type": "string"
+            },
+            "searchType": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "bucketFieldName",
+            "searchType"
+          ]
+        },
+        "hasphotos": {
+          "type": "object",
+          "properties": {
+            "bucketFieldName": {
+              "type": "string"
+            },
+            "searchType": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "bucketFieldName",
+            "searchType"
+          ]
+        },
+        "rating": {
+          "type": "object",
+          "properties": {
+            "bucketFieldName": {
+              "type": "string"
+            },
+            "searchType": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "bucketFieldName",
+            "searchType"
+          ]
+        },
+        "campaignid": {
+          "type": "object",
+          "properties": {
+            "bucketFieldName": {
+              "type": "string"
+            },
+            "searchType": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "bucketFieldName",
+            "searchType"
+          ]
+        },
+        "lastmoderatedtime": {
+          "type": "object",
+          "properties": {
+            "bucketFieldName": {
+              "type": "string"
+            },
+            "searchType": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "bucketFieldName",
+            "searchType"
+          ]
+        }
+      },
+      "required": [
+        "additionalfield",
+        "authorid",
+        "campaignid",
+        "categoryancestorid",
+        "contentlocale",
+        "contextdatavalue",
+        "hascomments",
+        "hasphotos",
+        "hastags",
+        "hasvideos",
+        "helpfulness",
+        "id",
+        "isfeatured",
+        "isratingsonly",
+        "isrecommended",
+        "issubjectactive",
+        "issyndicated",
+        "lastmoderatedtime",
+        "lastmodificationtime",
+        "moderatorcode",
+        "productid",
+        "rating",
+        "secondaryrating",
+        "submissionid",
+        "submissiontime",
+        "tag",
+        "totalcommentcount",
+        "totalfeedbackcount",
+        "totalnegativefeedbackcount",
+        "totalpositivefeedbackcount",
+        "userlocation"
+      ]
+    }
+  },
+  "required": [
+    "product",
+    "review"
+  ]
+}
+}

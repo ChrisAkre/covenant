@@ -1,0 +1,97 @@
+{
+  "inputSchema": {
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "properties": {
+    "@context": {
+      "type": "string"
+    },
+    "$name": {
+      "type": "string"
+    },
+    "&ingredient": {
+      "type": "string"
+    },
+    "[yield": {
+      "type": "string"
+    },
+    "[]yield": {
+      "type": "string"
+    },
+    "]yield": {
+      "type": "string"
+    },
+    "*": {
+      "type": "string"
+    },
+    "#": {
+      "type": "string"
+    },
+    "(": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "#",
+    "$name",
+    "&ingredient",
+    "(",
+    "*",
+    "@context",
+    "[]yield",
+    "[yield",
+    "]yield"
+  ]
+},
+  "spec": {
+        // TEST escaping all the things when they are the first char(s) of the spec LHS and RHS
+        "\\@context": "\\@A",
+        "\\$name": "\\$B",
+        "\\&ingredient": "\\&C",
+        "\\[yield": "\\[D",
+        "\\[\\]yield": "\\[\\]E",
+        "\\]yield": "\\]F",
+        "\\*" : "\\*G",
+        "\\#" : "\\#H"
+    },
+  "expectedSchema": {
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "properties": {
+    "@A": {
+      "type": "string"
+    },
+    "$B": {
+      "type": "string"
+    },
+    "&C": {
+      "type": "string"
+    },
+    "[D": {
+      "type": "string"
+    },
+    "[]E": {
+      "type": "string"
+    },
+    "]F": {
+      "type": "string"
+    },
+    "*G": {
+      "type": "string"
+    },
+    "#H": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "#H",
+    "$B",
+    "&C",
+    "*G",
+    "@A",
+    "[D",
+    "[]E",
+    "]F"
+  ]
+}
+}

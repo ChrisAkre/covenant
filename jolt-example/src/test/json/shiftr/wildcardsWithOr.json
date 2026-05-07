@@ -1,0 +1,159 @@
+{
+  "inputSchema": {
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "properties": {
+    "foo-a-v": {
+      "type": "integer"
+    },
+    "bar-a-v": {
+      "type": "integer"
+    },
+    "foo-b-v": {
+      "type": "integer"
+    },
+    "bar-b-v": {
+      "type": "integer"
+    },
+    "foo-c-v": {
+      "type": "integer"
+    },
+    "bar-c-v": {
+      "type": "integer"
+    },
+    "foo-d-v": {
+      "type": "integer"
+    },
+    "bar-d-v": {
+      "type": "integer"
+    },
+    "foo-e-v": {
+      "type": "integer"
+    },
+    "bar-e-v": {
+      "type": "integer"
+    },
+    "foo-f-v": {
+      "type": "integer"
+    },
+    "bar-f-v": {
+      "type": "integer"
+    },
+    "foo-g-v": {
+      "type": "integer"
+    },
+    "bar-g-v": {
+      "type": "integer"
+    },
+    "foo-h-v": {
+      "type": "integer"
+    },
+    "bar-h-v": {
+      "type": "integer"
+    },
+    "flat": {
+      "type": "integer"
+    }
+  },
+  "required": [
+    "bar-a-v",
+    "bar-b-v",
+    "bar-c-v",
+    "bar-d-v",
+    "bar-e-v",
+    "bar-f-v",
+    "bar-g-v",
+    "bar-h-v",
+    "flat",
+    "foo-a-v",
+    "foo-b-v",
+    "foo-c-v",
+    "foo-d-v",
+    "foo-e-v",
+    "foo-f-v",
+    "foo-g-v",
+    "foo-h-v"
+  ]
+},
+  "spec": {
+		"bar-a-v|foo-a-v": "i",
+		"bar-b-v|foo-b-*": "h",
+		"bar-c-*|foo-c-v": "g",
+		"bar-d-*|foo-d-*": "f",
+
+		"foo-e-v|bar-e-v": "e",
+		"foo-f-v|bar-f-*": "d",
+		"foo-g-*|bar-g-v": "c",
+		"foo-h-*|bar-h-*": "b",
+
+		"flat":"a"
+	},
+  "expectedSchema": {
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "properties": {
+    "a": {
+      "type": "integer"
+    },
+    "b": {
+      "type": "array",
+      "items": {
+        "type": "integer"
+      }
+    },
+    "c": {
+      "type": "array",
+      "items": {
+        "type": "integer"
+      }
+    },
+    "d": {
+      "type": "array",
+      "items": {
+        "type": "integer"
+      }
+    },
+    "e": {
+      "type": "array",
+      "items": {
+        "type": "integer"
+      }
+    },
+    "f": {
+      "type": "array",
+      "items": {
+        "type": "integer"
+      }
+    },
+    "g": {
+      "type": "array",
+      "items": {
+        "type": "integer"
+      }
+    },
+    "h": {
+      "type": "array",
+      "items": {
+        "type": "integer"
+      }
+    },
+    "i": {
+      "type": "array",
+      "items": {
+        "type": "integer"
+      }
+    }
+  },
+  "required": [
+    "a",
+    "b",
+    "c",
+    "d",
+    "e",
+    "f",
+    "g",
+    "h",
+    "i"
+  ]
+}
+}
