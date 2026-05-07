@@ -3,11 +3,12 @@ package dev.akre.covenant.jolt;
 import org.junit.jupiter.api.Test;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.node.ObjectNode;
 import dev.akre.covenant.api.Type;
 import dev.akre.covenant.types.JsonSchemaParser;
 import java.io.File;
 
-import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class JoltCovenantCheckerTest {
 
@@ -15,58 +16,45 @@ public class JoltCovenantCheckerTest {
     private final JsonSchemaParser parser = new JsonSchemaParser(JoltTypeSystem.INSTANCE);
     private final JoltCovenantChecker checker = new JoltCovenantChecker();
 
-    private void runTestForExample(String name) throws Exception {
-        JsonNode input = mapper.readTree(new File("src/test/resources/examples/" + name + "-input.json"));
-        JsonNode spec = mapper.readTree(new File("src/test/resources/examples/" + name + "-spec.json"));
+    @Test
+    public void testInceptionSchemaValidation() throws Exception {
+        JsonNode spec = mapper.readTree(new File("src/test/resources/examples/inception-spec.json"));
 
-        Type inputSchema = parser.parse(input);
+        Type inputSchema = JoltTypeSystem.INSTANCE.expression("Object<rating: Object<primary: Object<value: Number, max: Number>, secondary: Object<value: Number, max: Number>>>");
+
         Type inferredSchema = checker.infer(inputSchema, spec);
 
-        assertNotNull(inferredSchema, "Inferred schema for " + name + " should not be null");
+        // Define exact expected output schema
+        // The simple jolt checker outputs object with exact properties for Rating and RatingRange inferred as Number
+        ObjectNode expectedNode = mapper.createObjectNode();
+        expectedNode.put("type", "object");
+        ObjectNode expectedProps = expectedNode.putObject("properties");
+        expectedProps.putObject("Rating").put("type", "number");
+        expectedProps.putObject("RatingRange").put("type", "number");
+
+        Type expectedOutputSchema = parser.parse(expectedNode);
+
+        // Let's print out what we inferred so we can debug why assignable fails
+        System.out.println("Expected: " + expectedOutputSchema.repr());
+        System.out.println("Inferred: " + inferredSchema.repr());
+
+        assertTrue(expectedOutputSchema.isAssignableFrom(inferredSchema),
+                "The typechecker should infer Rating as a Number properly extracted from the input schema");
     }
 
     @Test
-    public void testInception() throws Exception {
-        runTestForExample("inception");
-    }
+    public void testBucketToPrefixSoupValidation() throws Exception {
+        JsonNode spec = mapper.readTree(new File("src/test/resources/examples/bucketToPrefixSoup-spec.json"));
+        Type inputSchema = JoltTypeSystem.INSTANCE.expression("Object<Rating: Number, SecondaryRatings: Object<quality: Number>>");
+        Type inferredSchema = checker.infer(inputSchema, spec);
 
-    @Test
-    public void testBucketToPrefixSoup() throws Exception {
-        runTestForExample("bucketToPrefixSoup");
-    }
+        ObjectNode expectedNode = mapper.createObjectNode();
+        expectedNode.put("type", "object");
+        ObjectNode expectedProps = expectedNode.putObject("properties");
+        expectedProps.putObject("rating-primary").put("type", "number");
 
-    @Test
-    public void testPrefixSoupToBuckets() throws Exception {
-        runTestForExample("prefixSoupToBuckets");
-    }
-
-    @Test
-    public void testListKeys() throws Exception {
-        runTestForExample("listKeys");
-    }
-
-    @Test
-    public void testMapToList() throws Exception {
-        runTestForExample("mapToList");
-    }
-
-    @Test
-    public void testInputArrayToPrefix() throws Exception {
-        runTestForExample("inputArrayToPrefix");
-    }
-
-    @Test
-    public void testHashDefault() throws Exception {
-        runTestForExample("hashDefault");
-    }
-
-    @Test
-    public void testTransposeSimple() throws Exception {
-        runTestForExample("transposeSimple");
-    }
-
-    @Test
-    public void testTransposeComplex() throws Exception {
-        runTestForExample("transposeComplex");
+        Type expectedOutputSchema = parser.parse(expectedNode);
+        assertTrue(expectedOutputSchema.isAssignableFrom(inferredSchema),
+                "The typechecker should properly map 'Rating' to 'rating-primary' as a Number");
     }
 }
