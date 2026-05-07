@@ -1,0 +1,69 @@
+{
+  "inputSchema": {
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "properties": {
+    "arrayObjects": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "zero": {
+            "type": "string"
+          },
+          "one": {
+            "type": "string"
+          },
+          "two": {
+            "type": "integer"
+          },
+          "three": {
+            "type": "integer"
+          },
+          "four": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  },
+  "required": [
+    "arrayObjects"
+  ]
+},
+  "spec": {
+    "arrayObjects": {
+      "0" : "",  // test lower bound
+      "2" : "",
+      "4" : "",   // test upper bound of list
+
+      // Things that should not cause errors / problems
+      "10": "",   // Index larger than input array
+      "-8": "",   // Index value is negative
+      "a" : ""    // Index value is not a number
+      }
+  },
+  "expectedSchema": {
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "properties": {
+    "arrayObjects": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "one": {
+            "type": "string"
+          },
+          "three": {
+            "type": "integer"
+          }
+        }
+      }
+    }
+  },
+  "required": [
+    "arrayObjects"
+  ]
+}
+}

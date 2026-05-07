@@ -1,0 +1,34 @@
+{
+  "inputSchema": {
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "properties": {
+    "Photos": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "required": [
+    "Photos"
+  ]
+},
+  "spec": {
+        "Photos": {
+            "1": "photo-&-url"
+        }
+    },
+  "expectedSchema": {
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "properties": {
+    "photo-1-url": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "photo-1-url"
+  ]
+}
+}

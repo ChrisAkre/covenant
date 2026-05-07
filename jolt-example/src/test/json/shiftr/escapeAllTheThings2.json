@@ -1,0 +1,97 @@
+{
+  "inputSchema": {
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "properties": {
+    "aaa@context": {
+      "type": "string"
+    },
+    "bbb$name": {
+      "type": "string"
+    },
+    "ccc&ingredient": {
+      "type": "string"
+    },
+    "ddd[yield": {
+      "type": "string"
+    },
+    "eee[]yield": {
+      "type": "string"
+    },
+    "fff]yield": {
+      "type": "string"
+    },
+    "ggg*": {
+      "type": "string"
+    },
+    "hhh#": {
+      "type": "string"
+    },
+    "yyy(": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "aaa@context",
+    "bbb$name",
+    "ccc&ingredient",
+    "ddd[yield",
+    "eee[]yield",
+    "fff]yield",
+    "ggg*",
+    "hhh#",
+    "yyy("
+  ]
+},
+  "spec": {
+        // TEST escaping all the things when they are in the middle of the LHS and RHS keys
+        "aaa\\@context": "aaa\\@A",
+        "bbb\\$name": "bbb\\$B",
+        "ccc\\&ingredient": "ccc\\&C",
+        "ddd\\[yield": "ddd\\[D",
+        "eee\\[\\]yield": "eee\\[\\]E",
+        "fff\\]yield": "fff\\]F",
+        "ggg\\*" : "ggg\\*G",
+        "hhh\\#" : "hhh\\#H"
+    },
+  "expectedSchema": {
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "properties": {
+    "aaa@A": {
+      "type": "string"
+    },
+    "bbb$B": {
+      "type": "string"
+    },
+    "ccc&C": {
+      "type": "string"
+    },
+    "ddd[D": {
+      "type": "string"
+    },
+    "eee[]E": {
+      "type": "string"
+    },
+    "fff]F": {
+      "type": "string"
+    },
+    "ggg*G": {
+      "type": "string"
+    },
+    "hhh#H": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "aaa@A",
+    "bbb$B",
+    "ccc&C",
+    "ddd[D",
+    "eee[]E",
+    "fff]F",
+    "ggg*G",
+    "hhh#H"
+  ]
+}
+}

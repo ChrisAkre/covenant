@@ -1,0 +1,74 @@
+{
+  "inputSchema": {
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "properties": {
+    "rating": {
+      "type": "object",
+      "properties": {
+        "primary": {
+          "type": "object",
+          "properties": {
+            "value": {
+              "type": "integer"
+            },
+            "max": {
+              "type": "integer"
+            }
+          },
+          "required": [
+            "max",
+            "value"
+          ]
+        },
+        "quality": {
+          "type": "object",
+          "properties": {
+            "value": {
+              "type": "integer"
+            },
+            "max": {
+              "type": "integer"
+            }
+          },
+          "required": [
+            "max",
+            "value"
+          ]
+        }
+      },
+      "required": [
+        "primary",
+        "quality"
+      ]
+    }
+  },
+  "required": [
+    "rating"
+  ]
+},
+  "spec": {
+        "rating": {
+            "*": ""
+        }
+    },
+  "expectedSchema": {
+  "$schema": "http://json-schema.org/schema#",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "properties": {
+      "value": {
+        "type": "integer"
+      },
+      "max": {
+        "type": "integer"
+      }
+    },
+    "required": [
+      "max",
+      "value"
+    ]
+  }
+}
+}

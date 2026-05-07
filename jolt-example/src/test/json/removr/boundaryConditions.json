@@ -1,0 +1,78 @@
+{
+  "inputSchema": {
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "properties": {
+    "iamnotinspec": {
+      "type": "string"
+    },
+    "nested": {
+      "type": "object",
+      "properties": {
+        "level1": {
+          "type": "string"
+        },
+        "level2": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "level1",
+        "level2"
+      ]
+    },
+    "wildcard": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "iamnotinspec",
+    "nested",
+    "wildcard"
+  ]
+},
+  "spec": {
+        "iamnotininput":"",
+        "nested":
+        {
+            "a":{
+                "b":""
+            }
+        },
+        "wildcard":{
+            "*":""
+        }
+    },
+  "expectedSchema": {
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "properties": {
+    "iamnotinspec": {
+      "type": "string"
+    },
+    "nested": {
+      "type": "object",
+      "properties": {
+        "level1": {
+          "type": "string"
+        },
+        "level2": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "level1",
+        "level2"
+      ]
+    },
+    "wildcard": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "iamnotinspec",
+    "nested",
+    "wildcard"
+  ]
+}
+}

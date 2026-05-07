@@ -1,0 +1,85 @@
+{
+  "inputSchema": {
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "properties": {
+    "pants": {
+      "type": "array",
+      "items": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "order": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id"
+              ]
+            }
+          },
+          "required": [
+            "order"
+          ]
+        }
+      }
+    }
+  },
+  "required": [
+    "pants"
+  ]
+},
+  "spec": {
+        "pants[]" : {
+            "*[]" : {
+                "*" : {
+                    "order" : {
+                        "url" : "http://default.com"
+                    }
+                }
+            }
+        }
+    },
+  "expectedSchema": {
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "properties": {
+    "pants": {
+      "type": "array",
+      "items": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "order": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "url": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "url"
+              ]
+            }
+          },
+          "required": [
+            "order"
+          ]
+        }
+      }
+    }
+  },
+  "required": [
+    "pants"
+  ]
+}
+}

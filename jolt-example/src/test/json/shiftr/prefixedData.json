@@ -1,0 +1,72 @@
+{
+  "inputSchema": {
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "properties": {
+    "data": {
+      "type": "object",
+      "properties": {
+        "tunaOrder": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "marlinOrder": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "marlinOrder",
+        "tunaOrder"
+      ]
+    }
+  },
+  "required": [
+    "data"
+  ]
+},
+  "spec": {
+        "data" : {
+            "tunaOrder" : {
+                "*" : {
+                    "tuna-*" : {
+                        "$(0,1)" : "TunaFishOrder[]"
+                    }
+                }
+            },
+            "marlinOrder" : {
+                "*" : {
+                    "marlin-*" : {
+                        "$(0,1)" : "MarlinFishOrder[]"
+                    }
+                }
+            }
+        }
+    },
+  "expectedSchema": {
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "properties": {
+    "TunaFishOrder": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "MarlinFishOrder": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "required": [
+    "MarlinFishOrder",
+    "TunaFishOrder"
+  ]
+}
+}

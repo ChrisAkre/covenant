@@ -1,0 +1,67 @@
+{
+  "inputSchema": {
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "properties": {
+    "states": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "capitals": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "required": [
+    "capitals",
+    "states"
+  ]
+},
+  "spec": {
+        "states": {
+            "*": {
+                "*": {
+                    "$": "states[&2].state"
+                }
+            }
+        },
+        "capitals": {
+            "*": {
+                "*": {
+                    "$": "states[&2].capital"
+                }
+            }
+        }
+    },
+  "expectedSchema": {
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "properties": {
+    "states": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "state": {
+            "type": "string"
+          },
+          "capital": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "capital",
+          "state"
+        ]
+      }
+    }
+  },
+  "required": [
+    "states"
+  ]
+}
+}

@@ -1,0 +1,26 @@
+{
+  "inputSchema": {
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object"
+},
+  "spec": {
+        "array": [],
+        "map": {}
+    },
+  "expectedSchema": {
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "properties": {
+    "array": {
+      "type": "array"
+    },
+    "map": {
+      "type": "object"
+    }
+  },
+  "required": [
+    "array",
+    "map"
+  ]
+}
+}
