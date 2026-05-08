@@ -1,0 +1,129 @@
+{
+  "inputSchema": {
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string"
+    },
+    "text": {
+      "type": "string"
+    },
+    "rating": {
+      "type": "integer"
+    },
+    "statistics": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "feedbackCount": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "feedbackCount",
+        "id"
+      ]
+    },
+    "author": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "other": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "other"
+        ]
+      }
+    }
+  },
+  "required": [
+    "author",
+    "id",
+    "rating",
+    "statistics",
+    "text"
+  ]
+},
+  "spec": {
+
+        "statistics" : "stats",   // "rename" statistics -> stats
+
+        "id|text|rating" : "&",   // This is nice and compact.  Good use of the "|" LHS operator.
+
+        "author" : {
+            "*" :{
+                "id|name" : "&2.[&1].&"   // This is a bit hokey, in that we need to enumerate the entire tree that we came down.
+                                          // Note this could have been "author[&1].&"
+            }
+        }
+    },
+  "expectedSchema": {
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string"
+    },
+    "text": {
+      "type": "string"
+    },
+    "rating": {
+      "type": "integer"
+    },
+    "author": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ]
+      }
+    },
+    "stats": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "feedbackCount": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "feedbackCount",
+        "id"
+      ]
+    }
+  },
+  "required": [
+    "author",
+    "id",
+    "rating",
+    "stats",
+    "text"
+  ]
+}
+}

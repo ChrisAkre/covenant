@@ -1,0 +1,56 @@
+{
+  "inputSchema": {
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "properties": {
+    "rating-primary": {
+      "type": "array",
+      "items": {
+        "type": "integer"
+      }
+    },
+    "rating-quality": {
+      "type": "array",
+      "items": {
+        "type": "integer"
+      }
+    },
+    "rating-multi": {
+      "type": "integer"
+    }
+  },
+  "required": [
+    "rating-multi",
+    "rating-primary",
+    "rating-quality"
+  ]
+},
+  "spec": {
+        "rating-*" : "ONE",
+
+        "rating-multi" : "MANY"  // this is more specific than the "rating-*" so it should "win"
+    },
+  "expectedSchema": {
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "properties": {
+    "rating-primary": {
+      "type": "integer"
+    },
+    "rating-quality": {
+      "type": "integer"
+    },
+    "rating-multi": {
+      "type": "array",
+      "items": {
+        "type": "integer"
+      }
+    }
+  },
+  "required": [
+    "rating-multi",
+    "rating-primary",
+    "rating-quality"
+  ]
+}
+}

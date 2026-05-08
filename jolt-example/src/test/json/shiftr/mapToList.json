@@ -1,0 +1,63 @@
+{
+  "inputSchema": {
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "properties": {
+    "ratings": {
+      "type": "object",
+      "properties": {
+        "primary": {
+          "type": "integer"
+        },
+        "quality": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "primary",
+        "quality"
+      ]
+    }
+  },
+  "required": [
+    "ratings"
+  ]
+},
+  "spec": {
+        "ratings": {
+            "*": {
+                // #2 means go two levels up the tree, and ask the "ratings" node, how many of its children have been matched
+                //  this allows us to put the Name and the Value into the same object in the Ratings array
+                "$": "Ratings[#2].Name",
+                "@": "Ratings[#2].Value"
+            }
+        }
+    },
+  "expectedSchema": {
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "properties": {
+    "Ratings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "Name": {
+            "type": "string"
+          },
+          "Value": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "Name",
+          "Value"
+        ]
+      }
+    }
+  },
+  "required": [
+    "Ratings"
+  ]
+}
+}

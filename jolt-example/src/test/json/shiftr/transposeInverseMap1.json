@@ -1,0 +1,95 @@
+{
+  "inputSchema": {
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "properties": {
+    "data": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "clientId": {
+            "type": "string"
+          },
+          "clientName": {
+            "type": "string"
+          },
+          "otherStuff": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "clientId",
+          "clientName",
+          "otherStuff"
+        ]
+      }
+    }
+  },
+  "required": [
+    "data"
+  ]
+},
+  "spec": {
+        "data" : {
+            // We can use the RHS @ sign to look down the tree to find a key for the output
+            "*" : "data.@clientId"
+        }
+    },
+  "expectedSchema": {
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "properties": {
+    "data": {
+      "type": "object",
+      "properties": {
+        "1": {
+          "type": "object",
+          "properties": {
+            "clientId": {
+              "type": "string"
+            },
+            "clientName": {
+              "type": "string"
+            },
+            "otherStuff": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "clientId",
+            "clientName",
+            "otherStuff"
+          ]
+        },
+        "2": {
+          "type": "object",
+          "properties": {
+            "clientId": {
+              "type": "string"
+            },
+            "clientName": {
+              "type": "string"
+            },
+            "otherStuff": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "clientId",
+            "clientName",
+            "otherStuff"
+          ]
+        }
+      },
+      "required": [
+        "1",
+        "2"
+      ]
+    }
+  },
+  "required": [
+    "data"
+  ]
+}
+}

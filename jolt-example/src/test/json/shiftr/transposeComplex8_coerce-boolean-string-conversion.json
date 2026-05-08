@@ -1,0 +1,106 @@
+{
+  "inputSchema": {
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "properties": {
+    "clients": {
+      "type": "object",
+      "properties": {
+        "Acme": {
+          "type": "object",
+          "properties": {
+            "clientId": {
+              "type": "string"
+            },
+            "enabled": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "clientId",
+            "enabled"
+          ]
+        },
+        "Axe": {
+          "type": "object",
+          "properties": {
+            "clientId": {
+              "type": "integer"
+            },
+            "enabled": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "clientId",
+            "enabled"
+          ]
+        },
+        "Bob's Burgers": {
+          "type": "object",
+          "properties": {
+            "clientId": {
+              "type": "integer"
+            },
+            "enabled": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "clientId",
+            "enabled"
+          ]
+        }
+      },
+      "required": [
+        "Acme",
+        "Axe",
+        "Bob's Burgers"
+      ]
+    }
+  },
+  "required": [
+    "clients"
+  ]
+},
+  "spec": {
+        "clients" : {
+            "*": { // clientName
+                "clientId": "clientsById.@(1,enabled)[]"  // coerce the boolean into the string "true" or "false"
+            }
+        }
+    },
+  "expectedSchema": {
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "properties": {
+    "clientsById": {
+      "type": "object",
+      "properties": {
+        "true": {
+          "type": "array",
+          "items": {
+            "type": [
+              "integer",
+              "string"
+            ]
+          }
+        },
+        "false": {
+          "type": "array",
+          "items": {
+            "type": "integer"
+          }
+        }
+      },
+      "required": [
+        "false",
+        "true"
+      ]
+    }
+  },
+  "required": [
+    "clientsById"
+  ]
+}
+}
