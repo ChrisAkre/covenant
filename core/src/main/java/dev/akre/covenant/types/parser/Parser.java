@@ -107,6 +107,7 @@ public interface Parser<T> {
         SYMBOL_LITERAL,
         INT_LITERAL,
         FLOAT_LITERAL,
+        REGEX_LITERAL,
 
         TILDE,      // ~
         PIPE,       // |

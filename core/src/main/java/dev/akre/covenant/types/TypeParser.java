@@ -129,6 +129,8 @@ public final class TypeParser {
                 return new Parser.Success<>(new TypeExpr.FloatExpr(Double.valueOf(token.value())), input.tail());
             case STRING_LITERAL:
                 return new Parser.Success<>(new TypeExpr.StringExpr(stripQuotes(token.value(), "\"")), input.tail());
+            case REGEX_LITERAL:
+                return new Parser.Success<>(new TypeExpr.StringExpr(stripQuotes(token.value(), "/")), input.tail());
             case SYMBOL_LITERAL:
                 return new Parser.Success<>(new TypeExpr.SymbolExpr(stripQuotes(token.value(), "'")), input.tail());
             case IDENTIFIER: {
