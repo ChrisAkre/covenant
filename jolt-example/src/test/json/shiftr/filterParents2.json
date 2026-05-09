@@ -1,0 +1,80 @@
+{
+  "inputSchema": {
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "properties": {
+    "books": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "book": {
+            "type": "object",
+            "properties": {
+              "title": {
+                "type": "string"
+              },
+              "ISBN": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "ISBN",
+              "title"
+            ]
+          },
+          "availability": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "availability",
+          "book"
+        ]
+      }
+    }
+  },
+  "required": [
+    "books"
+  ]
+},
+  "spec": {
+        "books": {
+            "*": {
+                "availability": {
+                    "*": { // match all elements of the availability array
+                        "*": { // match any availability type
+                            "@(3,book.title)": "&[]"  // Look up the tree 3 levels, then back down and grab the value for the "title"
+                            //  and write out to the top level
+                        }
+                    }
+                }
+            }
+        }
+    },
+  "expectedSchema": {
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "properties": {
+    "paperback": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "online": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "required": [
+    "online",
+    "paperback"
+  ]
+}
+}

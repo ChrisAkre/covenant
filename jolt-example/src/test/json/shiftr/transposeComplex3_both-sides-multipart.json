@@ -1,0 +1,84 @@
+{
+  "inputSchema": {
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "properties": {
+    "data": {
+      "type": "object",
+      "properties": {
+        "clientIdStuff": {
+          "type": "object",
+          "properties": {
+            "clientId": {
+              "type": "string"
+            },
+            "orderIdStuff": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "clientId",
+            "orderIdStuff"
+          ]
+        },
+        "clientNameStuff": {
+          "type": "object",
+          "properties": {
+            "clientName": {
+              "type": "string"
+            },
+            "otherClientStuff": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "clientName",
+            "otherClientStuff"
+          ]
+        }
+      },
+      "required": [
+        "clientIdStuff",
+        "clientNameStuff"
+      ]
+    }
+  },
+  "required": [
+    "data"
+  ]
+},
+  "spec": {
+        "data" : {
+            // Verify we can write data out to a "literal.@().literal" location
+            "@(clientNameStuff.clientName)" : "data.@(clientIdStuff.clientId).clientName"
+        }
+    },
+  "expectedSchema": {
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "properties": {
+    "data": {
+      "type": "object",
+      "properties": {
+        "1234": {
+          "type": "object",
+          "properties": {
+            "clientName": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "clientName"
+          ]
+        }
+      },
+      "required": [
+        "1234"
+      ]
+    }
+  },
+  "required": [
+    "data"
+  ]
+}
+}

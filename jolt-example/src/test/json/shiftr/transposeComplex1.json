@@ -1,0 +1,63 @@
+{
+  "inputSchema": {
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "properties": {
+    "data": {
+      "type": "object",
+      "properties": {
+        "clientId": {
+          "type": "string"
+        },
+        "clientNameStuff": {
+          "type": "object",
+          "properties": {
+            "clientName": {
+              "type": "string"
+            },
+            "otherClientStuff": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "clientName",
+            "otherClientStuff"
+          ]
+        }
+      },
+      "required": [
+        "clientId",
+        "clientNameStuff"
+      ]
+    }
+  },
+  "required": [
+    "data"
+  ]
+},
+  "spec": {
+        "data" : {
+            "@clientNameStuff.clientName" : "bookMap.@clientId"
+        }
+    },
+  "expectedSchema": {
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "properties": {
+    "bookMap": {
+      "type": "object",
+      "properties": {
+        "1234": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "1234"
+      ]
+    }
+  },
+  "required": [
+    "bookMap"
+  ]
+}
+}

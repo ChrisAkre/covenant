@@ -1,0 +1,49 @@
+{
+  "inputSchema": {
+  "$schema": "http://json-schema.org/schema#",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "properties": {
+      "url": {
+        "type": "string"
+      },
+      "caption": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "url"
+    ]
+  }
+},
+  "spec": {
+        "*": {
+            "url": "http://default.com",
+            "caption": "Default Caption"
+        },
+        "3": {
+            "url": "http://tuna.com",
+            "caption": "The Best"
+        }
+    },
+  "expectedSchema": {
+  "$schema": "http://json-schema.org/schema#",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "properties": {
+      "url": {
+        "type": "string"
+      },
+      "caption": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "caption",
+      "url"
+    ]
+  }
+}
+}

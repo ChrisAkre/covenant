@@ -1,0 +1,87 @@
+{
+  "inputSchema": {
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "properties": {
+    "entities": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string"
+          },
+          "data": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "data",
+          "type"
+        ]
+      }
+    }
+  },
+  "required": [
+    "entities"
+  ]
+},
+  "spec": [
+        {
+            "operation": "shift",
+            "spec": {
+                "entities": {
+                    // The "*" matches each Map pair of "type" and "data".
+                    // We then write the Map pair, to the value of the "type" key, in a forced array
+                    "*" : "@type[]"
+                }
+            }
+        }
+    ],
+  "expectedSchema": {
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "properties": {
+    "alpha": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string"
+          },
+          "data": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "data",
+          "type"
+        ]
+      }
+    },
+    "beta": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string"
+          },
+          "data": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "data",
+          "type"
+        ]
+      }
+    }
+  },
+  "required": [
+    "alpha",
+    "beta"
+  ]
+}
+}

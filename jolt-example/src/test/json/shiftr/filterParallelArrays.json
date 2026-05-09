@@ -1,0 +1,57 @@
+{
+  "inputSchema": {
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "properties": {
+    "states": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "capitals": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "required": [
+    "capitals",
+    "states"
+  ]
+},
+  "spec": {
+        "states": {
+            "*": {
+                "Ar*": { // only match states that start with "Ar"
+                         // for those states, grab the captital, and use that as the output value
+                    "@(3,capitals[&1])": "capitals[]",
+                    "$" : "states[]"
+                }
+            }
+        }
+    },
+  "expectedSchema": {
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "properties": {
+    "states": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "capitals": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "required": [
+    "capitals",
+    "states"
+  ]
+}
+}

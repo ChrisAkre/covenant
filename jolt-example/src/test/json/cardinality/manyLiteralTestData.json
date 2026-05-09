@@ -1,0 +1,126 @@
+{
+  "inputSchema": {
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "properties": {
+    "categories": {
+      "type": "object",
+      "properties": {
+        "brand": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "brand",
+        "category"
+      ]
+    },
+    "stuff": {
+      "type": "object",
+      "properties": {
+        "nestedStuff": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "nestedStuff"
+      ]
+    },
+    "isSingleton": {
+      "type": "string"
+    },
+    "nullData": {
+      "type": "null"
+    },
+    "emptyArray": {
+      "type": "array"
+    }
+  },
+  "required": [
+    "categories",
+    "emptyArray",
+    "isSingleton",
+    "nullData",
+    "stuff"
+  ]
+},
+  "spec": {
+
+        // In the input above Category is a Map, we want it to be an Array
+        //  Take the input map, and set it as index 0 of an array
+        "categories" : "MANY",
+
+        "stuff" : {
+            "nestedStuff" : "MANY"
+        },
+
+        "data" : "MANY",
+
+        "nullData" : "MANY",
+
+        "emptyArray" : "MANY",
+
+        "doesNotHitAnything" : "MANY"
+
+    },
+  "expectedSchema": {
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "properties": {
+    "categories": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "brand": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "brand",
+          "category"
+        ]
+      }
+    },
+    "stuff": {
+      "type": "object",
+      "properties": {
+        "nestedStuff": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "nestedStuff"
+      ]
+    },
+    "isSingleton": {
+      "type": "string"
+    },
+    "nullData": {
+      "type": "array"
+    },
+    "emptyArray": {
+      "type": "array"
+    }
+  },
+  "required": [
+    "categories",
+    "emptyArray",
+    "isSingleton",
+    "nullData",
+    "stuff"
+  ]
+}
+}

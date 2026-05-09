@@ -1,0 +1,213 @@
+{
+  "inputSchema": {
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "properties": {
+    "photos": {
+      "type": "object",
+      "properties": {
+        "url": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "caption": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "caption",
+        "url"
+      ]
+    },
+    "photosArray": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "caption": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "caption",
+          "url"
+        ]
+      }
+    },
+    "views": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "count": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "count"
+        ]
+      }
+    },
+    "nullParent": {
+      "type": "null"
+    },
+    "emptyArray": {
+      "type": "array"
+    },
+    "zion": {
+      "type": "object",
+      "properties": {
+        "neo": {
+          "type": "string"
+        },
+        "matrix": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matrix",
+        "neo"
+      ]
+    }
+  },
+  "required": [
+    "emptyArray",
+    "nullParent",
+    "photos",
+    "photosArray",
+    "views",
+    "zion"
+  ]
+},
+  "spec": {
+
+        // This is the more common use case
+        "photos" : {
+            "@" : "MANY",  // make photos an array
+            "*" : { // for each item in the array
+                "url" : "ONE"   // url should be singular
+            }
+        },
+
+        "photosArray" : {
+            "*" : { // for each item in the array
+                "url" : "ONE"   // url should be singular
+            }
+        },
+
+        // This is a corner case
+        "views" : {
+            "@" : "ONE",   // make the views be singular
+            "count" : "MANY"   // make the count be many
+        },
+
+        "nullParent" : {
+            "@" : "MANY"
+        },
+
+        "emptyArray" : {
+            "@" : "MANY"
+        },
+
+        "zion" : {
+            "neo" : "ONE",
+            "*" : "MANY"
+        }
+    },
+  "expectedSchema": {
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "properties": {
+    "photos": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string"
+          },
+          "caption": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "caption",
+          "url"
+        ]
+      }
+    },
+    "photosArray": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string"
+          },
+          "caption": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "caption",
+          "url"
+        ]
+      }
+    },
+    "views": {
+      "type": "object",
+      "properties": {
+        "count": {
+          "type": "array",
+          "items": {
+            "type": "integer"
+          }
+        }
+      },
+      "required": [
+        "count"
+      ]
+    },
+    "nullParent": {
+      "type": "array"
+    },
+    "emptyArray": {
+      "type": "array"
+    },
+    "zion": {
+      "type": "object",
+      "properties": {
+        "neo": {
+          "type": "string"
+        },
+        "matrix": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "matrix",
+        "neo"
+      ]
+    }
+  },
+  "required": [
+    "emptyArray",
+    "nullParent",
+    "photos",
+    "photosArray",
+    "views",
+    "zion"
+  ]
+}
+}

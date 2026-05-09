@@ -1,0 +1,115 @@
+{
+  "inputSchema": {
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "properties": {
+    "clientsActive": {
+      "type": "boolean"
+    },
+    "clients": {
+      "type": "object",
+      "properties": {
+        "Acme": {
+          "type": "object",
+          "properties": {
+            "clientId": {
+              "type": "string"
+            },
+            "index": {
+              "type": "integer"
+            }
+          },
+          "required": [
+            "clientId",
+            "index"
+          ]
+        },
+        "Axe": {
+          "type": "object",
+          "properties": {
+            "clientId": {
+              "type": "string"
+            },
+            "index": {
+              "type": "integer"
+            }
+          },
+          "required": [
+            "clientId",
+            "index"
+          ]
+        }
+      },
+      "required": [
+        "Acme",
+        "Axe"
+      ]
+    },
+    "data": {
+      "type": "object",
+      "properties": {
+        "bookId": {
+          "type": "null"
+        },
+        "bookName": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "bookId",
+        "bookName"
+      ]
+    }
+  },
+  "required": [
+    "clients",
+    "clientsActive",
+    "data"
+  ]
+},
+  "spec": {
+        "clientsActive" : {
+            "true" : {
+                "@(2,clients)" : {
+                    // Test the ability to continue to match after doing a Transpose
+                    "*" : {
+                        "clientId" : "clientIds[@(1,index)]"
+                    }
+                },
+                // Verify that it something does not exist, it does not output a null
+                "@(2,pants)" : "pants"
+            }
+        },
+        "data" : {
+            // Verify the ability for Transpose to lookup and use a "valid" null, aka one that was in the input data
+            "@bookId": "books.@bookName"
+        }
+    },
+  "expectedSchema": {
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "properties": {
+    "clientIds": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "books": {
+      "type": "object",
+      "properties": {
+        "Enchiridion": {
+          "type": "null"
+        }
+      },
+      "required": [
+        "Enchiridion"
+      ]
+    }
+  },
+  "required": [
+    "books",
+    "clientIds"
+  ]
+}
+}

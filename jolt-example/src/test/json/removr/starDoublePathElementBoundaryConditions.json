@@ -1,0 +1,109 @@
+{
+  "inputSchema": {
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "properties": {
+    "cdv-2_2$en": {
+      "type": "string"
+    },
+    "cdv-BecomeMember$en": {
+      "type": "string"
+    },
+    "cdv-4$en": {
+      "type": "string"
+    },
+    "cdv-4": {
+      "type": "string"
+    },
+    "cdv-": {
+      "type": "string"
+    },
+    "cdv-$": {
+      "type": "string"
+    },
+    "cdv-1$": {
+      "type": "string"
+    },
+    "cdv-$1": {
+      "type": "string"
+    },
+    "": {
+      "type": "string"
+    },
+    "cdv-3_1": {
+      "type": "string"
+    },
+    "tag-DoShoutProductsFreeYouFro$en": {
+      "type": "string"
+    },
+    "tag-DoShoutProductsFreeYouFro": {
+      "type": "string"
+    },
+    "tag-3_2$en": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "required": [
+    "",
+    "cdv-",
+    "cdv-$",
+    "cdv-$1",
+    "cdv-1$",
+    "cdv-2_2$en",
+    "cdv-3_1",
+    "cdv-4",
+    "cdv-4$en",
+    "cdv-BecomeMember$en",
+    "tag-3_2$en",
+    "tag-DoShoutProductsFreeYouFro",
+    "tag-DoShoutProductsFreeYouFro$en"
+  ]
+},
+  "spec": {
+       "cdv-*$*":"",
+       "tag-*$*":""
+    },
+  "expectedSchema": {
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "properties": {
+    "cdv-$": {
+      "type": "string"
+    },
+    "cdv-1$": {
+      "type": "string"
+    },
+    "cdv-$1": {
+      "type": "string"
+    },
+    "cdv-": {
+      "type": "string"
+    },
+    "": {
+      "type": "string"
+    },
+    "cdv-4": {
+      "type": "string"
+    },
+    "cdv-3_1": {
+      "type": "string"
+    },
+    "tag-DoShoutProductsFreeYouFro": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "",
+    "cdv-",
+    "cdv-$",
+    "cdv-$1",
+    "cdv-1$",
+    "cdv-3_1",
+    "cdv-4",
+    "tag-DoShoutProductsFreeYouFro"
+  ]
+}
+}

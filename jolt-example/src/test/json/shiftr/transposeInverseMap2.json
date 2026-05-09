@@ -1,0 +1,43 @@
+{
+  "inputSchema": {
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "properties": {
+    "data": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "clientId": {
+            "type": "string"
+          },
+          "clientName": {
+            "type": "string"
+          },
+          "otherStuff": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "clientId",
+          "clientName",
+          "otherStuff"
+        ]
+      }
+    }
+  },
+  "required": [
+    "data"
+  ]
+},
+  "spec": {
+        "data" : {
+            // Verify that if the RHS @ does not find anything, nothing get written
+            "*" : "data.@pants"
+        }
+    },
+  "expectedSchema": {
+  "$schema": "http://json-schema.org/schema#",
+  "type": "null"
+}
+}

@@ -1,0 +1,69 @@
+{
+  "inputSchema": {
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "properties": {
+    "rating-primary": {
+      "type": "integer"
+    },
+    "rating-Price": {
+      "type": "integer"
+    },
+    "rating-Design": {
+      "type": "integer"
+    },
+    "rating-RatingDimension3": {
+      "type": "integer"
+    }
+  },
+  "required": [
+    "rating-Design",
+    "rating-Price",
+    "rating-RatingDimension3",
+    "rating-primary"
+  ]
+},
+  "spec": {
+        // match one explicitly
+        "rating-primary": "Rating",
+
+        // match the rest using the * wildcard.
+        "rating-*": "SecondaryRatings.&(0,1)"
+        // Assuming "rating-Price" :
+        // "SecondaryRatings.&" = "rating-Price"   // the whole key, syntatic sugar version
+        // "SecondaryRatings.&0" = "rating-Price"  // the whole key, explict about how far up the tree to look, aka 0
+        // "SecondaryRatings.&(0,1)" = "Price"     // the first * in the key &0 levels up the intput tree
+    },
+  "expectedSchema": {
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "properties": {
+    "Rating": {
+      "type": "integer"
+    },
+    "SecondaryRatings": {
+      "type": "object",
+      "properties": {
+        "Price": {
+          "type": "integer"
+        },
+        "Design": {
+          "type": "integer"
+        },
+        "RatingDimension3": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "Design",
+        "Price",
+        "RatingDimension3"
+      ]
+    }
+  },
+  "required": [
+    "Rating",
+    "SecondaryRatings"
+  ]
+}
+}

@@ -15,15 +15,21 @@ public sealed interface TypeParameter {
         return new Spread(type);
     }
 
+    static TypeParameter matches(String name, Type type) {
+        return new Constrained(type, "matches", name, true);
+    }
+
     static TypeParameter named(String name, Type type) {
         return name.endsWith("?")
                 ? new Named(type, name.substring(0, name.length() - 1), true)
                 : new Named(type, name, false);
     }
 
-    static TypeParameter at(String name, Type type) {
-        return name.endsWith("...")
-                ? new Positional(type, null, true)
-                : new Named(type, name, false);
+    static TypeParameter at(Integer position, Type type) {
+        return at(position, type, false);
+    }
+
+    static TypeParameter at(Integer position, Type type, boolean varArg) {
+        return new Positional(type, position, false);
     }
 }

@@ -1,0 +1,154 @@
+{
+  "inputSchema": {
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "properties": {
+    "rating": {
+      "type": "object",
+      "properties": {
+        "primary": {
+          "type": "object",
+          "properties": {
+            "value": {
+              "type": "integer"
+            },
+            "max": {
+              "type": "integer"
+            }
+          },
+          "required": [
+            "max",
+            "value"
+          ]
+        },
+        "quality": {
+          "type": "object",
+          "properties": {
+            "value": {
+              "type": "integer"
+            },
+            "max": {
+              "type": "integer"
+            }
+          },
+          "required": [
+            "max",
+            "value"
+          ]
+        }
+      },
+      "required": [
+        "primary",
+        "quality"
+      ]
+    }
+  },
+  "required": [
+    "rating"
+  ]
+},
+  "spec": {
+        "*": {
+            "*": {
+                "label[]": {
+                    "1": "defaultLabel",
+                    "2": [ 1, "tuna", 3, "marlin" ]
+                }
+            }
+        }
+    },
+  "expectedSchema": {
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "properties": {
+    "rating": {
+      "type": "object",
+      "properties": {
+        "primary": {
+          "type": "object",
+          "properties": {
+            "value": {
+              "type": "integer"
+            },
+            "max": {
+              "type": "integer"
+            },
+            "label": {
+              "type": "array",
+              "items": {
+                "anyOf": [
+                  {
+                    "type": [
+                      "null",
+                      "string"
+                    ]
+                  },
+                  {
+                    "type": "array",
+                    "items": {
+                      "type": [
+                        "integer",
+                        "string"
+                      ]
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          "required": [
+            "label",
+            "max",
+            "value"
+          ]
+        },
+        "quality": {
+          "type": "object",
+          "properties": {
+            "value": {
+              "type": "integer"
+            },
+            "max": {
+              "type": "integer"
+            },
+            "label": {
+              "type": "array",
+              "items": {
+                "anyOf": [
+                  {
+                    "type": [
+                      "null",
+                      "string"
+                    ]
+                  },
+                  {
+                    "type": "array",
+                    "items": {
+                      "type": [
+                        "integer",
+                        "string"
+                      ]
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          "required": [
+            "label",
+            "max",
+            "value"
+          ]
+        }
+      },
+      "required": [
+        "primary",
+        "quality"
+      ]
+    }
+  },
+  "required": [
+    "rating"
+  ]
+}
+}

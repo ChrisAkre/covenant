@@ -1,0 +1,70 @@
+{
+  "inputSchema": {
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "properties": {
+    "foo": {
+      "type": "integer"
+    },
+    "bar": {
+      "type": "integer"
+    },
+    "baz": {
+      "type": "integer"
+    },
+    "tuna": {
+      "type": "integer"
+    }
+  },
+  "required": [
+    "bar",
+    "baz",
+    "foo",
+    "tuna"
+  ]
+},
+  "spec": {
+        "*": {
+            "@": "a.b.originalValues",
+            "$": "a.b.originalKeys"
+        }
+    },
+  "expectedSchema": {
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "properties": {
+    "a": {
+      "type": "object",
+      "properties": {
+        "b": {
+          "type": "object",
+          "properties": {
+            "originalKeys": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "originalValues": {
+              "type": "array",
+              "items": {
+                "type": "integer"
+              }
+            }
+          },
+          "required": [
+            "originalKeys",
+            "originalValues"
+          ]
+        }
+      },
+      "required": [
+        "b"
+      ]
+    }
+  },
+  "required": [
+    "a"
+  ]
+}
+}
