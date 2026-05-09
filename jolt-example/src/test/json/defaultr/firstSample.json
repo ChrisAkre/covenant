@@ -1,0 +1,182 @@
+{
+  "inputSchema": {
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "properties": {
+    "Rating": {
+      "type": "integer"
+    },
+    "SecondaryRatings": {
+      "type": "object",
+      "properties": {
+        "quality": {
+          "type": "object",
+          "properties": {
+            "Range": {
+              "type": "integer"
+            },
+            "Value": {
+              "type": "integer"
+            },
+            "Id": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "Id",
+            "Range",
+            "Value"
+          ]
+        },
+        "sharpness": {
+          "type": "object",
+          "properties": {
+            "Value": {
+              "type": "integer"
+            },
+            "Id": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "Id",
+            "Value"
+          ]
+        }
+      },
+      "required": [
+        "quality",
+        "sharpness"
+      ]
+    }
+  },
+  "required": [
+    "Rating",
+    "SecondaryRatings"
+  ]
+},
+  "spec": {
+        "RatingRange": 5,
+        "SecondaryRatings": {
+            "quality|value": {
+                "ValueLabel": null,
+                "Label": null,
+                "MaxLabel": "Great",
+                "MinLabel": "Terrible",
+                "DisplayType": "NORMAL"
+            },
+            "*": {
+                "Range": 5,
+                "ValueLabel": null,
+                "Label": null,
+                "MaxLabel": "High",
+                "MinLabel": "Low",
+                "DisplayType": "NORMAL"
+            }
+        }
+    },
+  "expectedSchema": {
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "properties": {
+    "Rating": {
+      "type": "integer"
+    },
+    "RatingRange": {
+      "type": "integer"
+    },
+    "SecondaryRatings": {
+      "type": "object",
+      "properties": {
+        "quality": {
+          "type": "object",
+          "properties": {
+            "Range": {
+              "type": "integer"
+            },
+            "Value": {
+              "type": "integer"
+            },
+            "Id": {
+              "type": "string"
+            },
+            "ValueLabel": {
+              "type": "null"
+            },
+            "Label": {
+              "type": "null"
+            },
+            "MaxLabel": {
+              "type": "string"
+            },
+            "MinLabel": {
+              "type": "string"
+            },
+            "DisplayType": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "DisplayType",
+            "Id",
+            "Label",
+            "MaxLabel",
+            "MinLabel",
+            "Range",
+            "Value",
+            "ValueLabel"
+          ]
+        },
+        "sharpness": {
+          "type": "object",
+          "properties": {
+            "Range": {
+              "type": "integer"
+            },
+            "Value": {
+              "type": "integer"
+            },
+            "Id": {
+              "type": "string"
+            },
+            "ValueLabel": {
+              "type": "null"
+            },
+            "Label": {
+              "type": "null"
+            },
+            "MaxLabel": {
+              "type": "string"
+            },
+            "MinLabel": {
+              "type": "string"
+            },
+            "DisplayType": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "DisplayType",
+            "Id",
+            "Label",
+            "MaxLabel",
+            "MinLabel",
+            "Range",
+            "Value",
+            "ValueLabel"
+          ]
+        }
+      },
+      "required": [
+        "quality",
+        "sharpness"
+      ]
+    }
+  },
+  "required": [
+    "Rating",
+    "RatingRange",
+    "SecondaryRatings"
+  ]
+}
+}

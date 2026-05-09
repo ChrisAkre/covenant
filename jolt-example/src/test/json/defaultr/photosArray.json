@@ -1,0 +1,70 @@
+{
+  "inputSchema": {
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "properties": {
+    "photos": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string"
+          },
+          "caption": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "url"
+        ]
+      }
+    }
+  },
+  "required": [
+    "photos"
+  ]
+},
+  "spec": {
+        "photos[]": {
+            "*": {
+                "url": "http://default.com",
+                "caption": "Default Caption"
+            },
+            "0|3": {
+                "caption": "Or-ed caption."
+            },
+            "3": {
+                "url": "http://tuna.com",
+                "caption": "The Best"
+            }
+        }
+    },
+  "expectedSchema": {
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "properties": {
+    "photos": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string"
+          },
+          "caption": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "caption",
+          "url"
+        ]
+      }
+    }
+  },
+  "required": [
+    "photos"
+  ]
+}
+}

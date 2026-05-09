@@ -1,0 +1,33 @@
+{
+  "inputSchema": {
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "properties": {
+    "clientId": {
+      "type": "string"
+    },
+    "clientName": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "clientId",
+    "clientName"
+  ]
+},
+  "spec": {
+        "@clientName" : "@clientId"   // verify that data can be transposed at the root level
+    },
+  "expectedSchema": {
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "properties": {
+    "1234": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "1234"
+  ]
+}
+}

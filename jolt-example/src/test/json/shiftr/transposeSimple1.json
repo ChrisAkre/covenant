@@ -1,0 +1,43 @@
+{
+  "inputSchema": {
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "properties": {
+    "data": {
+      "type": "object",
+      "properties": {
+        "clientId": {
+          "type": "string"
+        },
+        "clientName": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "clientId",
+        "clientName"
+      ]
+    }
+  },
+  "required": [
+    "data"
+  ]
+},
+  "spec": {
+        "data" : {
+            "@clientName" : "@clientId"
+        }
+    },
+  "expectedSchema": {
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "properties": {
+    "1234": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "1234"
+  ]
+}
+}

@@ -1,0 +1,140 @@
+{
+  "inputSchema": {
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "properties": {
+    "Photos": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "Id": {
+            "type": "string"
+          },
+          "Caption": {
+            "type": "string"
+          },
+          "Sizes": {
+            "type": "object",
+            "properties": {
+              "thumbnail": {
+                "type": "object",
+                "properties": {
+                  "Url": {
+                    "type": "string"
+                  },
+                  "Id": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "Id",
+                  "Url"
+                ]
+              },
+              "normal": {
+                "type": "object",
+                "properties": {
+                  "Url": {
+                    "type": "string"
+                  },
+                  "Id": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "Id",
+                  "Url"
+                ]
+              }
+            },
+            "required": [
+              "normal",
+              "thumbnail"
+            ]
+          },
+          "SizesOrder": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "Caption",
+          "Id",
+          "Sizes",
+          "SizesOrder"
+        ]
+      }
+    }
+  },
+  "required": [
+    "Photos"
+  ]
+},
+  "spec": {
+        "Photos": {
+            "*": {
+                "Id": "photos[&1].id",
+                "Caption": "photos[&1].caption",
+                "Sizes": {
+                    "*": {
+                        "Url": "photos[&3].sizes.&1"
+                    }
+                },
+                "SizesOrder": "photos[&1].sizesOrder"
+            }
+        }
+    },
+  "expectedSchema": {
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "properties": {
+    "photos": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "caption": {
+            "type": "string"
+          },
+          "sizes": {
+            "type": "object",
+            "properties": {
+              "thumbnail": {
+                "type": "string"
+              },
+              "normal": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "normal",
+              "thumbnail"
+            ]
+          },
+          "sizesOrder": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "caption",
+          "id",
+          "sizes",
+          "sizesOrder"
+        ]
+      }
+    }
+  },
+  "required": [
+    "photos"
+  ]
+}
+}

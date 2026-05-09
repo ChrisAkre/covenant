@@ -1,0 +1,73 @@
+{
+  "inputSchema": {
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "properties": {
+    "key": {
+      "type": "null"
+    },
+    "bunch-O-keys": {
+      "type": "object",
+      "properties": {
+        "a": {
+          "type": "null"
+        },
+        "b": {
+          "type": "null"
+        },
+        "c": {
+          "type": "null"
+        }
+      },
+      "required": [
+        "a",
+        "b",
+        "c"
+      ]
+    }
+  },
+  "required": [
+    "bunch-O-keys",
+    "key"
+  ]
+},
+  "spec": {
+        "key": "value",
+        "bunch-O-keys" : {
+            "*" : "values.&",
+            "@(1,notLegit)" : "notLegit" // verify that if we lookup something that does not exist we do not write out a null
+        }
+    },
+  "expectedSchema": {
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "properties": {
+    "value": {
+      "type": "null"
+    },
+    "values": {
+      "type": "object",
+      "properties": {
+        "a": {
+          "type": "null"
+        },
+        "b": {
+          "type": "null"
+        },
+        "c": {
+          "type": "null"
+        }
+      },
+      "required": [
+        "a",
+        "b",
+        "c"
+      ]
+    }
+  },
+  "required": [
+    "value",
+    "values"
+  ]
+}
+}

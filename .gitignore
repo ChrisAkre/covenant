@@ -23,6 +23,7 @@ gha-creds-*.json
 /.m2/
 node_modules/
 __pycache__/
+extract.py
 
 # Maven Release Plugin
 release.properties
@@ -30,3 +31,4 @@ pom.xml.releaseBackup
 pom.xml.tag
 pom.xml.next
 pom.xml.backup
+build.log

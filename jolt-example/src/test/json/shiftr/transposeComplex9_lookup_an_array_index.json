@@ -1,0 +1,140 @@
+{
+  "inputSchema": {
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "properties": {
+    "clients": {
+      "type": "object",
+      "properties": {
+        "Acme": {
+          "type": "object",
+          "properties": {
+            "clientId": {
+              "type": "string"
+            },
+            "index": {
+              "type": "integer"
+            }
+          },
+          "required": [
+            "clientId",
+            "index"
+          ]
+        },
+        "Axe": {
+          "type": "object",
+          "properties": {
+            "clientId": {
+              "type": "string"
+            },
+            "index": {
+              "type": "integer"
+            }
+          },
+          "required": [
+            "clientId",
+            "index"
+          ]
+        },
+        "Bob's Burgers": {
+          "type": "object",
+          "properties": {
+            "clientId": {
+              "type": "string"
+            },
+            "index": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "clientId",
+            "index"
+          ]
+        },
+        "PhoVan": {
+          "type": "object",
+          "properties": {
+            "clientId": {
+              "type": "string"
+            },
+            "index": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "clientId",
+            "index"
+          ]
+        },
+        "Weyland-Yutani": {
+          "type": "object",
+          "properties": {
+            "clientId": {
+              "type": "string"
+            },
+            "index": {
+              "type": "integer"
+            }
+          },
+          "required": [
+            "clientId",
+            "index"
+          ]
+        },
+        "UmbrellaCorporation": {
+          "type": "object",
+          "properties": {
+            "clientId": {
+              "type": "string"
+            },
+            "index": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "clientId",
+            "index"
+          ]
+        }
+      },
+      "required": [
+        "Acme",
+        "Axe",
+        "Bob's Burgers",
+        "PhoVan",
+        "UmbrellaCorporation",
+        "Weyland-Yutani"
+      ]
+    }
+  },
+  "required": [
+    "clients"
+  ]
+},
+  "spec": {
+        "clients" : {
+            "*": {
+                // test the abilyt to lookup the numeric index using a @ / Transpose operator, aka [@(1,index)]
+                "clientId": "clientIdArray[@(1,index)]"
+            }
+        }
+    },
+  "expectedSchema": {
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "properties": {
+    "clientIdArray": {
+      "type": "array",
+      "items": {
+        "type": [
+          "null",
+          "string"
+        ]
+      }
+    }
+  },
+  "required": [
+    "clientIdArray"
+  ]
+}
+}

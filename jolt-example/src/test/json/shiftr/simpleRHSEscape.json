@@ -1,0 +1,135 @@
+{
+  "inputSchema": {
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "properties": {
+    "rating": {
+      "type": "object",
+      "properties": {
+        "primary": {
+          "type": "object",
+          "properties": {
+            "value": {
+              "type": "integer"
+            },
+            "max": {
+              "type": "integer"
+            }
+          },
+          "required": [
+            "max",
+            "value"
+          ]
+        },
+        "quality": {
+          "type": "object",
+          "properties": {
+            "value": {
+              "type": "integer"
+            },
+            "max": {
+              "type": "integer"
+            }
+          },
+          "required": [
+            "max",
+            "value"
+          ]
+        }
+      },
+      "required": [
+        "primary",
+        "quality"
+      ]
+    },
+    "foo.bar": {
+      "type": "string"
+    },
+    "test": {
+      "type": "object",
+      "properties": {
+        "use_as_data": {
+          "type": "string"
+        },
+        "use_as_path": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "use_as_data",
+        "use_as_path"
+      ]
+    }
+  },
+  "required": [
+    "foo.bar",
+    "rating",
+    "test"
+  ]
+},
+  "spec": {
+        "rating": {
+            "primary": {
+                // escape the '.' so that an output key can have a dot in it
+                "value": "data.rating\\.primary"
+            },
+            "*": {
+                "value": "data.rating\\.&1"
+            }
+        },
+
+        "foo.bar" : "foobar",
+        "test" : {
+            "use_as_data" : {
+                "data" : {
+                    "@(3,foo\\.bar)" : "test.data"
+                }
+            },
+            "use_as_path" : "test.@(2,foo\\.bar)"
+        }
+    },
+  "expectedSchema": {
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "properties": {
+    "data": {
+      "type": "object",
+      "properties": {
+        "rating.primary": {
+          "type": "integer"
+        },
+        "rating.quality": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "rating.primary",
+        "rating.quality"
+      ]
+    },
+    "foobar": {
+      "type": "string"
+    },
+    "test": {
+      "type": "object",
+      "properties": {
+        "data": {
+          "type": "string"
+        },
+        "baz": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "baz",
+        "data"
+      ]
+    }
+  },
+  "required": [
+    "data",
+    "foobar",
+    "test"
+  ]
+}
+}

@@ -1,6 +1,7 @@
 package dev.akre.covenant.types;
 
 import dev.akre.covenant.api.Type;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 public class ObjectsTypeTest {
@@ -138,12 +139,27 @@ public class ObjectsTypeTest {
 
     @Test
     public void testObjectConcatenation() {
-        Type.GenericType aObject = (Type.GenericType) SYSTEM.expression("Object<a: Int>");
-        Type.GenericType bObject = (Type.GenericType) SYSTEM.expression("Object<b: String>");
-        Type.GenericType anyObject = (Type.GenericType) SYSTEM.expression("Object<...>");
+        Type.GenericType aObject = SYSTEM.expression("Object<a: Int>");
+        Type.GenericType bObject = SYSTEM.expression("Object<b: String>");
+        Type.GenericType anyObject = SYSTEM.expression("Object<...>");
 
         SYSTEM.assertThat(aObject).concat(bObject).isEquivalentTo("Object<a: Int, b: String>");
 
         SYSTEM.assertThat(aObject).concat(anyObject).isEquivalentTo("Object<...>");
     }
+
+        @Test
+        public void testSpreadIntersectionUnification() {
+            SYSTEM.assertThat("Object<[matches /.*/]: Object<Range: Number, ...>>")
+                    .intersect("Object<[matches /.*/]: Object<Id: String, ...>>")
+                    .isEquivalentTo("Object<[matches /.*/]: Object<Range: Number, Id: String, ...>>");
+
+            SYSTEM.assertThat("Object<[matches /.*/]: Object<a: Int>>")
+                    .intersect("Object<[matches /.*/]: Object<a: String>>")
+                    .isEquivalentTo("Bottom");
+
+            SYSTEM.assertThat("Object<[matches /a.*/]: Object<[matches /b.*/]: Int>>")
+                    .intersect("Object<[matches /a.*/]: Object<[matches /b.*/]: Number>>")
+                    .isEquivalentTo("Object<[matches /a.*/]: Object<[matches /b.*/]: Int>>");
+        }
 }

@@ -1,0 +1,123 @@
+{
+  "inputSchema": {
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "properties": {
+    "foo": {
+      "type": "integer"
+    },
+    "bar": {
+      "type": "integer"
+    },
+    "baz": {
+      "type": "integer"
+    },
+    "tuna": {
+      "type": "integer"
+    },
+    "tuna-1": {
+      "type": "integer"
+    },
+    "tuna-2": {
+      "type": "integer"
+    },
+    "tuna-3": {
+      "type": "integer"
+    },
+    "tuna_2-1": {
+      "type": "integer"
+    },
+    "tuna_2-2": {
+      "type": "integer"
+    },
+    "tuna.3-1-1": {
+      "type": "integer"
+    },
+    "tuna.3-1-2": {
+      "type": "integer"
+    }
+  },
+  "required": [
+    "bar",
+    "baz",
+    "foo",
+    "tuna",
+    "tuna-1",
+    "tuna-2",
+    "tuna-3",
+    "tuna.3-1-1",
+    "tuna.3-1-2",
+    "tuna_2-1",
+    "tuna_2-2"
+  ]
+},
+  "spec": {
+        "foo": "a.b.c",
+        "bar|baz": "a.b.d",
+        "tuna": "a.b.e",
+
+        "tuna.*-*-*": "a.b.3Star",
+        "tuna_*-*": "a.b.2Star",
+        "tuna-*": "a.b.1Star"
+    },
+  "expectedSchema": {
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "properties": {
+    "a": {
+      "type": "object",
+      "properties": {
+        "b": {
+          "type": "object",
+          "properties": {
+            "c": {
+              "type": "integer"
+            },
+            "d": {
+              "type": "array",
+              "items": {
+                "type": "integer"
+              }
+            },
+            "e": {
+              "type": "integer"
+            },
+            "3Star": {
+              "type": "array",
+              "items": {
+                "type": "integer"
+              }
+            },
+            "2Star": {
+              "type": "array",
+              "items": {
+                "type": "integer"
+              }
+            },
+            "1Star": {
+              "type": "array",
+              "items": {
+                "type": "integer"
+              }
+            }
+          },
+          "required": [
+            "1Star",
+            "2Star",
+            "3Star",
+            "c",
+            "d",
+            "e"
+          ]
+        }
+      },
+      "required": [
+        "b"
+      ]
+    }
+  },
+  "required": [
+    "a"
+  ]
+}
+}
