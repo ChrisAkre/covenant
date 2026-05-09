@@ -113,7 +113,7 @@ public class TypeSystemUtils {
             regex = regex.substring(1, regex.length() - 1);
         }
         try {
-            return java.util.regex.Pattern.compile(regex).matcher(name).find();
+            return com.google.re2j.Pattern.compile(regex).matcher(name).find();
         } catch (Exception e) {
             return false;
         }
