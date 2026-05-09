@@ -40,4 +40,12 @@ public class OverloadsTest {
                 .overloadsTo("(Int) -> Int", "(String) -> String")
                 .evaluatesTo("String|Int");
     }
+
+    @Test
+    public void testDomainSplitting() {
+        TestTypeSystem system = TestTypeSystem.of(JsonTypeSystem.INSTANCE);
+        system.assertThat("<T1:~Null>(T1, Any) -> T1 & (Null, T2) -> T2")
+                .withArgs("top", "~Null")
+                .evaluatesTo("~Null");
+    }
 }
