@@ -1,0 +1,231 @@
+{
+  "inputSchema": {
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object"
+},
+  "spec": {
+        "Rating": 3,
+        "RatingRange": 5,
+        "SecondaryRatings": {
+            "quality": {
+                "Range": 10,
+                "Value": 6,
+                "Id": "quality",
+                "DisplayType": "SLIDER"
+            },
+            "sharpness": {
+                "Value": 4,
+                "Id": "sharpness",
+                "DisplayType": "PIXELS"
+            },
+            "value": {
+                "Id": "value",
+                "Value": 4
+            },
+            "totallyDefault": {
+                "Id": "totallyDefault",
+                "Range": 3,
+                "Value": 2
+            },
+
+            "quality|value": {
+                "Range": 7,
+                "MaxLabel": "Great",
+                "MinLabel": "Terrible",
+                "DisplayType": "NORMAL"
+            },
+            "*": {
+                "Range": 5,
+                "ValueLabel": null,
+                "Label": null,
+                "MaxLabel": "High",
+                "MinLabel": "Low",
+                "DisplayType": "DEFAULT"
+            }
+        }
+    },
+  "expectedSchema": {
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "properties": {
+    "Rating": {
+      "type": "integer"
+    },
+    "RatingRange": {
+      "type": "integer"
+    },
+    "SecondaryRatings": {
+      "type": "object",
+      "properties": {
+        "quality": {
+          "type": "object",
+          "properties": {
+            "Range": {
+              "type": "integer"
+            },
+            "Value": {
+              "type": "integer"
+            },
+            "Id": {
+              "type": "string"
+            },
+            "ValueLabel": {
+              "type": "null"
+            },
+            "Label": {
+              "type": "null"
+            },
+            "MaxLabel": {
+              "type": "string"
+            },
+            "MinLabel": {
+              "type": "string"
+            },
+            "DisplayType": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "DisplayType",
+            "Id",
+            "Label",
+            "MaxLabel",
+            "MinLabel",
+            "Range",
+            "Value",
+            "ValueLabel"
+          ]
+        },
+        "sharpness": {
+          "type": "object",
+          "properties": {
+            "Range": {
+              "type": "integer"
+            },
+            "Value": {
+              "type": "integer"
+            },
+            "Id": {
+              "type": "string"
+            },
+            "ValueLabel": {
+              "type": "null"
+            },
+            "Label": {
+              "type": "null"
+            },
+            "MaxLabel": {
+              "type": "string"
+            },
+            "MinLabel": {
+              "type": "string"
+            },
+            "DisplayType": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "DisplayType",
+            "Id",
+            "Label",
+            "MaxLabel",
+            "MinLabel",
+            "Range",
+            "Value",
+            "ValueLabel"
+          ]
+        },
+        "value": {
+          "type": "object",
+          "properties": {
+            "Range": {
+              "type": "integer"
+            },
+            "Value": {
+              "type": "integer"
+            },
+            "Id": {
+              "type": "string"
+            },
+            "ValueLabel": {
+              "type": "null"
+            },
+            "Label": {
+              "type": "null"
+            },
+            "MaxLabel": {
+              "type": "string"
+            },
+            "MinLabel": {
+              "type": "string"
+            },
+            "DisplayType": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "DisplayType",
+            "Id",
+            "Label",
+            "MaxLabel",
+            "MinLabel",
+            "Range",
+            "Value",
+            "ValueLabel"
+          ]
+        },
+        "totallyDefault": {
+          "type": "object",
+          "properties": {
+            "Range": {
+              "type": "integer"
+            },
+            "Value": {
+              "type": "integer"
+            },
+            "Id": {
+              "type": "string"
+            },
+            "ValueLabel": {
+              "type": "null"
+            },
+            "Label": {
+              "type": "null"
+            },
+            "MaxLabel": {
+              "type": "string"
+            },
+            "MinLabel": {
+              "type": "string"
+            },
+            "DisplayType": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "DisplayType",
+            "Id",
+            "Label",
+            "MaxLabel",
+            "MinLabel",
+            "Range",
+            "Value",
+            "ValueLabel"
+          ]
+        }
+      },
+      "required": [
+        "quality",
+        "sharpness",
+        "totallyDefault",
+        "value"
+      ]
+    }
+  },
+  "required": [
+    "Rating",
+    "RatingRange",
+    "SecondaryRatings"
+  ]
+}
+}

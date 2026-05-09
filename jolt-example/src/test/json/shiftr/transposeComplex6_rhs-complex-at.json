@@ -1,0 +1,85 @@
+{
+  "inputSchema": {
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "properties": {
+    "data": {
+      "type": "object",
+      "properties": {
+        "clientIdStuff": {
+          "type": "object",
+          "properties": {
+            "clientId": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "clientId"
+          ]
+        },
+        "clientNameStuff": {
+          "type": "object",
+          "properties": {
+            "clientName": {
+              "type": "string"
+            },
+            "otherClientStuff": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "clientName",
+            "otherClientStuff"
+          ]
+        }
+      },
+      "required": [
+        "clientIdStuff",
+        "clientNameStuff"
+      ]
+    }
+  },
+  "required": [
+    "data"
+  ]
+},
+  "spec": {
+        "data" : {
+            "clientNameStuff" : {
+                // walk down the tree till we find a clientName
+                //  1) go two levels up the tree the "2" from "@(2,...)"
+                //  2) then walk down to find a clientId : "1234"
+                //  3) use the "1234" value as part of the output path
+                "clientName" : "data.@(2,clientIdStuff.clientId).clientName"
+            }
+        }
+    },
+  "expectedSchema": {
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "properties": {
+    "data": {
+      "type": "object",
+      "properties": {
+        "1234": {
+          "type": "object",
+          "properties": {
+            "clientName": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "clientName"
+          ]
+        }
+      },
+      "required": [
+        "1234"
+      ]
+    }
+  },
+  "required": [
+    "data"
+  ]
+}
+}

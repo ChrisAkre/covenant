@@ -1,0 +1,71 @@
+{
+  "inputSchema": {
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "properties": {
+    "books": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "availability": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "availability",
+          "title"
+        ]
+      }
+    }
+  },
+  "required": [
+    "books"
+  ]
+},
+  "spec": {
+        "books": {
+            "*": {
+                "availability": {
+                    "*": { // match all elements of the availability array
+                        "paperback": { // if the word paperback exists match it
+                            "@(3,title)": "PaperBacks"  // Look up the tree 3 levels, then back down and grab the value for the "title"
+                                                        //  and write it to PaperBacks in the output
+                        },
+                        "online" : {
+                            "@(3,title)": "Online"
+                        }
+                    }
+                }
+            }
+        }
+    },
+  "expectedSchema": {
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "properties": {
+    "PaperBacks": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "Online": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "required": [
+    "Online",
+    "PaperBacks"
+  ]
+}
+}

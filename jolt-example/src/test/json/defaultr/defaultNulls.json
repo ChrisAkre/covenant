@@ -1,0 +1,21 @@
+{
+  "inputSchema": {
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object"
+},
+  "spec": {
+        "foo": null
+    },
+  "expectedSchema": {
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "properties": {
+    "foo": {
+      "type": "null"
+    }
+  },
+  "required": [
+    "foo"
+  ]
+}
+}

@@ -1,0 +1,49 @@
+{
+  "inputSchema": {
+  "$schema": "http://json-schema.org/schema#",
+  "type": "array",
+  "items": {
+    "type": "array",
+    "items": {
+      "type": "object",
+      "properties": {
+        "removeThis": {
+          "type": "string"
+        },
+        "testStay": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "removeThis",
+        "testStay"
+      ]
+    }
+  }
+},
+  "spec": {
+    "*": {
+      "*" : {
+        "removeThis": ""
+      }
+    }
+  },
+  "expectedSchema": {
+  "$schema": "http://json-schema.org/schema#",
+  "type": "array",
+  "items": {
+    "type": "array",
+    "items": {
+      "type": "object",
+      "properties": {
+        "testStay": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "testStay"
+      ]
+    }
+  }
+}
+}

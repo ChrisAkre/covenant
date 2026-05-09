@@ -1,0 +1,157 @@
+{
+  "inputSchema": {
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "properties": {
+    "~emVersion": {
+      "type": "string"
+    },
+    "authorId": {
+      "type": "string"
+    },
+    "campaignId": {
+      "type": "string"
+    },
+    "contentLocale": {
+      "type": "string"
+    },
+    "id": {
+      "type": "string"
+    },
+    "productId": {
+      "type": "string"
+    },
+    "ipAddress": {
+      "type": "string"
+    },
+    "ipAdd": {
+      "type": "string"
+    },
+    "lastModificationTime": {
+      "type": "string"
+    },
+    "submissionId": {
+      "type": "string"
+    },
+    "this": {
+      "type": "string"
+    },
+    "configured": {
+      "type": "object",
+      "properties": {
+        "a": {
+          "type": "string"
+        },
+        "c": {
+          "type": "object",
+          "properties": {
+            "d": {
+              "type": "string"
+            },
+            "f": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "d",
+            "f"
+          ]
+        }
+      },
+      "required": [
+        "a",
+        "c"
+      ]
+    },
+    "non-nested-input": {
+      "type": "object"
+    },
+    "iamnotinspec": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "authorId",
+    "campaignId",
+    "configured",
+    "contentLocale",
+    "iamnotinspec",
+    "id",
+    "ipAdd",
+    "ipAddress",
+    "lastModificationTime",
+    "non-nested-input",
+    "productId",
+    "submissionId",
+    "this",
+    "~emVersion"
+  ]
+},
+  "spec": {
+        "~emVersion": "",
+        "authorId": "",
+        "campaignId": "",
+        "contentLocale": "",
+        "id": "",
+        "productId": "",
+
+        "ipAddress|ipAdd": "",
+        "lastModificationTime": "",
+        "submissionId": "",
+
+        "non-nested-input":{
+            "a":""
+        },
+        "configured": {
+            "c": {
+                "d":""
+            }
+        },
+        "iamnotininput":""
+
+    },
+  "expectedSchema": {
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "properties": {
+    "this": {
+      "type": "string"
+    },
+    "configured": {
+      "type": "object",
+      "properties": {
+        "a": {
+          "type": "string"
+        },
+        "c": {
+          "type": "object",
+          "properties": {
+            "f": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "f"
+          ]
+        }
+      },
+      "required": [
+        "a",
+        "c"
+      ]
+    },
+    "non-nested-input": {
+      "type": "object"
+    },
+    "iamnotinspec": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "configured",
+    "iamnotinspec",
+    "non-nested-input",
+    "this"
+  ]
+}
+}

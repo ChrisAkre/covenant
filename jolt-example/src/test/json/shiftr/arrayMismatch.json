@@ -1,0 +1,93 @@
+{
+  "inputSchema": {
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string"
+    },
+    "text": {
+      "type": "string"
+    },
+    "rating": {
+      "type": "integer"
+    },
+    "statistics": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "feedbackCount": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "feedbackCount",
+        "id"
+      ]
+    },
+    "author": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ]
+      }
+    }
+  },
+  "required": [
+    "author",
+    "id",
+    "rating",
+    "statistics",
+    "text"
+  ]
+},
+  "spec": {
+
+        "id" : "Id",
+        "text" : "ReviewText",
+        "rating" : "Rating",
+
+        "statistics" : {
+            "0" : {
+                "feedbackCount" : "FeedbackCount"
+            }
+        },
+        "author" : {
+            "id" : "AuthorId",
+            "name" : "AuthorName"
+        }
+    },
+  "expectedSchema": {
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "properties": {
+    "Id": {
+      "type": "string"
+    },
+    "ReviewText": {
+      "type": "string"
+    },
+    "Rating": {
+      "type": "integer"
+    }
+  },
+  "required": [
+    "Id",
+    "Rating",
+    "ReviewText"
+  ]
+}
+}

@@ -1,0 +1,21 @@
+{
+  "inputSchema": {
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "properties": {
+    "ineedtoberemoved": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "ineedtoberemoved"
+  ]
+},
+  "spec": {
+        "ineedtoberemoved":"eh?"
+    },
+  "expectedSchema": {
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object"
+}
+}

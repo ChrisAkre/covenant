@@ -14,6 +14,7 @@ public final class Lexer {
         PATTERNS.put(Parser.TokenType.ARROW, Pattern.compile("^->"));
         PATTERNS.put(Parser.TokenType.ELLIPSIS, Pattern.compile("^\\.\\.\\."));
         PATTERNS.put(Parser.TokenType.FLOAT_LITERAL, Pattern.compile("^-?[0-9]+\\.[0-9]+"));
+        PATTERNS.put(Parser.TokenType.REGEX_LITERAL, Pattern.compile("^/([^/]|\\\\/)*/"));
         PATTERNS.put(Parser.TokenType.INT_LITERAL, Pattern.compile("^-?[0-9]+"));
         PATTERNS.put(Parser.TokenType.STRING_LITERAL, Pattern.compile("^\"([^\"]|\"\")*\""));
         PATTERNS.put(Parser.TokenType.SYMBOL_LITERAL, Pattern.compile("^'([^']|'')*'"));

@@ -1,0 +1,133 @@
+{
+  "inputSchema": {
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "properties": {
+    "level1": {
+      "type": "object",
+      "properties": {
+        "L1Attribute": {
+          "type": "string"
+        },
+        "L1SecondAttribtue": {
+          "type": "integer"
+        },
+        "level2": {
+          "type": "object",
+          "properties": {
+            "L2Attribute": {
+              "type": "string"
+            },
+            "L2SecondAttribute": {
+              "type": "integer"
+            },
+            "leveln": {
+              "type": "object",
+              "properties": {
+                "L3Attribute": {
+                  "type": "string"
+                },
+                "L3SecondAttribute": {
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "L3Attribute",
+                "L3SecondAttribute"
+              ]
+            }
+          },
+          "required": [
+            "L2Attribute",
+            "L2SecondAttribute",
+            "leveln"
+          ]
+        }
+      },
+      "required": [
+        "L1Attribute",
+        "L1SecondAttribtue",
+        "level2"
+      ]
+    }
+  },
+  "required": [
+    "level1"
+  ]
+},
+  "spec": [
+        {
+            "operation": "shift",
+            "spec": {
+                "level*": {
+                    "*Attribute": "&1.&0",
+                    "*SecondAttribtue": "&1.&0",
+                    "level*": {
+                        "*Attribute": "&1.&0",
+                        "*SecondAttribute": "&1.&0",
+                        "level*": {
+                            "*Attribute": "&1.&0",
+                            "*SecondAttribute": "&1.&0"
+                        }
+                    }
+                }
+            }
+        }
+    ],
+  "expectedSchema": {
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "properties": {
+    "level1": {
+      "type": "object",
+      "properties": {
+        "L1Attribute": {
+          "type": "string"
+        },
+        "L1SecondAttribtue": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "L1Attribute",
+        "L1SecondAttribtue"
+      ]
+    },
+    "level2": {
+      "type": "object",
+      "properties": {
+        "L2Attribute": {
+          "type": "string"
+        },
+        "L2SecondAttribute": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "L2Attribute",
+        "L2SecondAttribute"
+      ]
+    },
+    "leveln": {
+      "type": "object",
+      "properties": {
+        "L3Attribute": {
+          "type": "string"
+        },
+        "L3SecondAttribute": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "L3Attribute",
+        "L3SecondAttribute"
+      ]
+    }
+  },
+  "required": [
+    "level1",
+    "level2",
+    "leveln"
+  ]
+}
+}

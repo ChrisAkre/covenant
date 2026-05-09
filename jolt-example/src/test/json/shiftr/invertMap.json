@@ -1,0 +1,184 @@
+{
+  "inputSchema": {
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "properties": {
+    "catalogConfig": {
+      "type": "object",
+      "properties": {
+        "ROOT": {
+          "type": "object",
+          "properties": {
+            "fields": {
+              "type": "object",
+              "properties": {
+                "review": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "question": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              },
+              "required": [
+                "question",
+                "review"
+              ]
+            }
+          },
+          "required": [
+            "fields"
+          ]
+        },
+        "category7": {
+          "type": "object",
+          "properties": {
+            "fields": {
+              "type": "object",
+              "properties": {
+                "review": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              },
+              "required": [
+                "review"
+              ]
+            }
+          },
+          "required": [
+            "fields"
+          ]
+        },
+        "category8": {
+          "type": "object",
+          "properties": {
+            "fields": {
+              "type": "object",
+              "properties": {
+                "review": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "question": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              },
+              "required": [
+                "question",
+                "review"
+              ]
+            }
+          },
+          "required": [
+            "fields"
+          ]
+        }
+      },
+      "required": [
+        "ROOT",
+        "category7",
+        "category8"
+      ]
+    }
+  },
+  "required": [
+    "catalogConfig"
+  ]
+},
+  "spec": {
+        "catalogConfig": {
+            "*": {
+                "fields": {
+                    "*": {
+                        "*" : {
+                            // We need to match the leaf levels of the inputs, and then use the $ wildcard, to pull the key of our parent
+                            "*" : {
+                                "$4" : "&1.&3.[]"  // trailing [] tells Shiftr to make an array, even if there is only one output
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    },
+  "expectedSchema": {
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "properties": {
+    "Age": {
+      "type": "object",
+      "properties": {
+        "review": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "question": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "question",
+        "review"
+      ]
+    },
+    "Gender": {
+      "type": "object",
+      "properties": {
+        "review": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "question": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "question",
+        "review"
+      ]
+    },
+    "Quality": {
+      "type": "object",
+      "properties": {
+        "review": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "review"
+      ]
+    }
+  },
+  "required": [
+    "Age",
+    "Gender",
+    "Quality"
+  ]
+}
+}

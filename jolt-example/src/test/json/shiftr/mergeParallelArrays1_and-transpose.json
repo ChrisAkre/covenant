@@ -1,0 +1,65 @@
+{
+  "inputSchema": {
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "properties": {
+    "states": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "capitals": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "required": [
+    "capitals",
+    "states"
+  ]
+},
+  "spec": {             // Level 2 : the root
+        "capitals": {     // Level 1 : capitals
+
+            // Write out the "value" of each array index, aka 0->Montgomery, so the "Montgomery" part
+            // to "states.Alabama" where "Alabama" is 2 levels up the tree,
+            //   then down into the "states" array, indexing using the same index value we matched
+            "*": "states.@(2,states[&])"
+        }
+    },
+  "expectedSchema": {
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "properties": {
+    "states": {
+      "type": "object",
+      "properties": {
+        "Alabama": {
+          "type": "string"
+        },
+        "Alaska": {
+          "type": "string"
+        },
+        "Arizona": {
+          "type": "string"
+        },
+        "Arkansas": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "Alabama",
+        "Alaska",
+        "Arizona",
+        "Arkansas"
+      ]
+    }
+  },
+  "required": [
+    "states"
+  ]
+}
+}

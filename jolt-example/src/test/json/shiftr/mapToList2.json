@@ -1,0 +1,147 @@
+{
+  "inputSchema": {
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "properties": {
+    "cdvHisto": {
+      "type": "object",
+      "properties": {
+        "Expertise": {
+          "type": "object",
+          "properties": {
+            "Intermediate": {
+              "type": "integer"
+            }
+          },
+          "required": [
+            "Intermediate"
+          ]
+        },
+        "HowLong": {
+          "type": "object",
+          "properties": {
+            "UpTo1Year": {
+              "type": "integer"
+            },
+            "Under1Month": {
+              "type": "integer"
+            },
+            "Over1Year": {
+              "type": "integer"
+            }
+          },
+          "required": [
+            "Over1Year",
+            "Under1Month",
+            "UpTo1Year"
+          ]
+        }
+      },
+      "required": [
+        "Expertise",
+        "HowLong"
+      ]
+    }
+  },
+  "required": [
+    "cdvHisto"
+  ]
+},
+  "spec": {
+        "cdvHisto": {
+            "*": {
+                "$": [ "ContextDataDistribution.&1.Id", "ContextDataDistribution.&1.Label" ],
+                "*": {
+                    "@": "ContextDataDistribution.&2.Values.[#2].Count",
+                    "$": "ContextDataDistribution.&2.Values.[#2].Value"
+                }
+            }
+        }
+    },
+  "expectedSchema": {
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "properties": {
+    "ContextDataDistribution": {
+      "type": "object",
+      "properties": {
+        "Expertise": {
+          "type": "object",
+          "properties": {
+            "Id": {
+              "type": "string"
+            },
+            "Label": {
+              "type": "string"
+            },
+            "Values": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "Count": {
+                    "type": "integer"
+                  },
+                  "Value": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "Count",
+                  "Value"
+                ]
+              }
+            }
+          },
+          "required": [
+            "Id",
+            "Label",
+            "Values"
+          ]
+        },
+        "HowLong": {
+          "type": "object",
+          "properties": {
+            "Id": {
+              "type": "string"
+            },
+            "Label": {
+              "type": "string"
+            },
+            "Values": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "Count": {
+                    "type": "integer"
+                  },
+                  "Value": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "Count",
+                  "Value"
+                ]
+              }
+            }
+          },
+          "required": [
+            "Id",
+            "Label",
+            "Values"
+          ]
+        }
+      },
+      "required": [
+        "Expertise",
+        "HowLong"
+      ]
+    }
+  },
+  "required": [
+    "ContextDataDistribution"
+  ]
+}
+}
