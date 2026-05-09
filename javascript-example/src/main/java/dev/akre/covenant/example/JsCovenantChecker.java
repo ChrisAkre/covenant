@@ -4,7 +4,6 @@ import tools.jackson.databind.JsonNode;
 import dev.akre.covenant.api.Type;
 import dev.akre.covenant.types.AbstractTypeSystem;
 import dev.akre.covenant.types.JsonSchemaParser;
-import dev.akre.covenant.types.OwnedTypeDef;
 import org.antlr.v4.runtime.CharStreams;
 import org.antlr.v4.runtime.CommonTokenStream;
 import tools.jackson.databind.ObjectMapper;
