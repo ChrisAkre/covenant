@@ -1,6 +1,5 @@
 package dev.akre.covenant.types;
 
-import dev.akre.covenant.types.AbstractTypeSystemBuilder.PatternConstructor.Pattern;
 import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
@@ -10,8 +9,15 @@ import java.util.stream.Collectors;
 /**
  * A type created by applying parameters to a TemplateType.
  */
-public record GenericTypeDef(TemplateType template, Pattern pattern, List<TypeDefParam> parameters) implements TypeDef {
-    public GenericTypeDef(TemplateType template, Pattern pattern, List<TypeDefParam> parameters) {
+public record GenericTypeDef(
+        TemplateType template,
+        AbstractTypeSystemBuilder.PatternConstructor.Pattern pattern,
+        List<TypeDefParam> parameters)
+        implements TypeDef {
+    public GenericTypeDef(
+            TemplateType template,
+            AbstractTypeSystemBuilder.PatternConstructor.Pattern pattern,
+            List<TypeDefParam> parameters) {
         this.template = template;
         this.pattern = pattern;
         this.parameters = List.copyOf(parameters);
@@ -66,7 +72,7 @@ public record GenericTypeDef(TemplateType template, Pattern pattern, List<TypeDe
             regex = regex.substring(1, regex.length() - 1);
         }
         try {
-            return java.util.regex.Pattern.compile(regex).matcher(name).find();
+            return com.google.re2j.Pattern.compile(regex).matcher(name).find();
         } catch (Exception e) {
             return false;
         }
@@ -83,7 +89,7 @@ public record GenericTypeDef(TemplateType template, Pattern pattern, List<TypeDe
                 return false;
             }
 
-            if (pattern == Pattern.OBJECT) {
+            if (pattern == AbstractTypeSystemBuilder.PatternConstructor.Pattern.OBJECT) {
                 return satisfiesObject(system, otherGeneric);
             } else {
                 return satisfiesPositional(system, otherGeneric);
@@ -247,7 +253,7 @@ public record GenericTypeDef(TemplateType template, Pattern pattern, List<TypeDe
                     if (tp instanceof TypeDefParam.Named named) {
                         String name = named.name();
                         // Quote if contains spaces or is a number
-                        if (name.contains(" ") || name.matches("\\d+")) {
+                        if (name.contains(" ") || com.google.re2j.Pattern.matches("\\d+", name)) {
                             name = "'" + name.replace("'", "''") + "'";
                         }
                         return name
@@ -256,7 +262,7 @@ public record GenericTypeDef(TemplateType template, Pattern pattern, List<TypeDe
                     }
                     if (tp instanceof TypeDefParam.Constrained constrained) {
                         String name = constrained.value();
-                        if (name.contains(" ") || name.matches("\\d+")) {
+                        if (name.contains(" ") || com.google.re2j.Pattern.matches("\\d+", name)) {
                             name = "'" + name.replace("'", "''") + "'";
                         }
                         return "[" + constrained.keyword() + " " + name + "]" + (constrained.optional() ? "?: " : ": ")
@@ -283,12 +289,12 @@ public record GenericTypeDef(TemplateType template, Pattern pattern, List<TypeDe
         if (other instanceof AtomType a && !system.satisfies(template, a)) return Set.of();
 
         if (other instanceof GenericTypeDef otherGeneric && template.equals(otherGeneric.template())) {
-            if (pattern == Pattern.POSITIONAL && otherGeneric.pattern == Pattern.POSITIONAL) {
+            if (pattern == AbstractTypeSystemBuilder.PatternConstructor.Pattern.POSITIONAL && otherGeneric.pattern == AbstractTypeSystemBuilder.PatternConstructor.Pattern.POSITIONAL) {
                 if (!this.satisfiesOther(system, otherGeneric) && !otherGeneric.satisfiesOther(system, this)) {
                     // Positional types are generally disjoint if they don't satisfy each other
                     return Set.of();
                 }
-            } else if (pattern == Pattern.OBJECT && otherGeneric.pattern == Pattern.OBJECT) {
+            } else if (pattern == AbstractTypeSystemBuilder.PatternConstructor.Pattern.OBJECT && otherGeneric.pattern == AbstractTypeSystemBuilder.PatternConstructor.Pattern.OBJECT) {
                 List<TypeDefParam> mergedParams = new java.util.ArrayList<>();
 
                 TypeDefParam s1 = this.parameters.stream()
@@ -401,8 +407,8 @@ public record GenericTypeDef(TemplateType template, Pattern pattern, List<TypeDe
 
         if (other instanceof GenericTypeDef otherGeneric
                 && template.equals(otherGeneric.template())
-                && pattern == Pattern.OBJECT
-                && otherGeneric.pattern == Pattern.OBJECT) {
+                && pattern == AbstractTypeSystemBuilder.PatternConstructor.Pattern.OBJECT
+                && otherGeneric.pattern == AbstractTypeSystemBuilder.PatternConstructor.Pattern.OBJECT) {
             boolean thisOpen = !(this.spreadParam() instanceof BottomType);
             boolean otherOpen = !(otherGeneric.spreadParam() instanceof BottomType);
 
