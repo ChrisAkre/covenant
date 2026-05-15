@@ -67,10 +67,20 @@ public class JoltCovenantChecker {
             for (String p : targetPaths) {
                 String trimmed = p.trim();
                 Type sourceValue = currentType;
-                if (trimmed.startsWith("@") && !trimmed.contains(".") && !trimmed.contains("[")) {
+                
+                if (trimmed.startsWith("#")) {
+                    String constant = trimmed.substring(1);
+                    sourceValue = typeSystem.expression("'" + constant.replace("'", "''") + "'");
+                } else if (trimmed.startsWith("@") && !trimmed.contains(".") && !trimmed.contains("[")) {
                      sourceValue = lookupTranspose(trimmed, typeStack, matchedGroups);
                 }
+                
                 String path = substitute(trimmed, matchedGroups, typeStack);
+                // In shiftr, if RHS starts with #, it might be a literal if escaped, or a constant.
+                // But shiftr doesn't usually use # for constants on RHS of a mapping?
+                // Actually, Jolt 'default' uses #. Shiftr might not.
+                // Let's keep it as is for now but avoid stripping it from the path if it matched literal.
+                
                 pathPlacements.computeIfAbsent(path, k -> new ArrayList<>()).add(sourceValue);
             }
         } else if (specNode.isArray()) {
@@ -95,7 +105,7 @@ public class JoltCovenantChecker {
                     transposes.add(entry);
                 } else if (k.equals("*")) {
                     wildcards.add(entry);
-                } else if (k.startsWith("$") && !k.contains("(")) {
+                } else if (k.startsWith("$")) {
                     special.add(entry);
                 } else if (k.contains("*") && !isEscaped(k, k.indexOf("*"))) {
                     globs.add(entry);
@@ -148,9 +158,7 @@ public class JoltCovenantChecker {
                     }
                 }
                 
-                // If input is an atom (String/Number), try to match the glob against the type itself
-                if (!matchedAny && (isAtom(currentType))) {
-                     // Assume it matches and use glob parts as groups (e.g. if glob is tuna-*, group 1 is *)
+                if (!matchedAny && isAtom(currentType)) {
                      String[] groups = new String[p.matcher("").groupCount() + 1];
                      Arrays.fill(groups, "match"); 
                      groups[0] = glob;
@@ -159,24 +167,38 @@ public class JoltCovenantChecker {
             }
 
             for (Map.Entry<String, JsonNode> entry : wildcards) {
+                boolean matchedAny = false;
                 for (String key : allInputKeys) {
                     if (!matchedInThisObject.contains(key)) {
                         Type childType = term(currentType, key);
                         if (childType != null && !childType.isBottom()) {
+                            matchedAny = true;
                             processMatch(childType, entry.getValue(), key, new String[]{key}, matchedGroups, typeStack, pathPlacements, true);
                         }
                     }
+                }
+                if (!matchedAny && isAtom(currentType)) {
+                     processMatch(currentType, entry.getValue(), "*", new String[]{"*"}, matchedGroups, typeStack, pathPlacements, false);
                 }
             }
 
             for (Map.Entry<String, JsonNode> entry : special) {
                 String k = entry.getKey();
-                String currentMatchedKey = matchedGroups.isEmpty() ? "root" : matchedGroups.get(matchedGroups.size() - 1)[0];
-                if (k.contains("(")) {
-                    currentMatchedKey = substitute(k, matchedGroups, typeStack);
+                int level = 0;
+                if (k.length() > 1 && Character.isDigit(k.charAt(1))) {
+                     level = Integer.parseInt(k.substring(1));
                 }
+                
+                String val;
+                if (k.contains("(")) {
+                     val = substitute(k, matchedGroups, typeStack);
+                } else {
+                     int index = matchedGroups.size() - 1 - level;
+                     val = (index >= 0 && index < matchedGroups.size()) ? matchedGroups.get(index)[0] : "root";
+                }
+                
                 List<String[]> nextGroups = new ArrayList<>(matchedGroups);
-                nextGroups.add(new String[]{currentMatchedKey});
+                nextGroups.add(new String[]{val});
                 traverse(typeSystem.type("String"), entry.getValue(), nextGroups, typeStack, pathPlacements);
             }
         }
@@ -349,18 +371,10 @@ public class JoltCovenantChecker {
             if (segment.startsWith("[") && segment.endsWith("]")) {
                 current = typeSystem.template("Array").construct(List.of(new TypeParameter.Spread(current)));
             } else if (segment.startsWith("{{") && segment.endsWith("}}")) {
-                String typeRepr = segment.substring(2, segment.length() - 2).trim();
-                if (typeRepr.equals("String") || typeRepr.equals("Int") || typeRepr.equals("Number")) {
-                     current = typeSystem.template("Object").construct(List.of(
-                        new TypeParameter.Constrained(current, "matches", "\".*\"", false),
-                        new TypeParameter.Spread(typeSystem.top())
-                    ));
-                } else {
-                     current = typeSystem.template("Object").construct(List.of(
-                        new TypeParameter.Named(current, typeRepr, false),
-                        new TypeParameter.Spread(typeSystem.top())
-                    ));
-                }
+                current = typeSystem.template("Object").construct(List.of(
+                    new TypeParameter.Constrained(current, "matches", ".*", false),
+                    new TypeParameter.Spread(typeSystem.top())
+                ));
             } else if (!segment.isEmpty()) {
                 current = typeSystem.template("Object").construct(List.of(
                     new TypeParameter.Named(current, unescape(segment), false),
