@@ -17,20 +17,25 @@ public interface Type {
      */
     String repr();
 
-    /**
-     * @return true if this type has numeric semantics.
-     */
-    boolean isNumeric();
+    default boolean isNumeric() {
+        return attributes().contains(TypeAttribute.NUMERIC_SEMANTICS);
+    }
 
-    /**
-     * @return true if this type has string semantics.
-     */
-    boolean isString();
+    default boolean isString() {
+        return attributes().contains(TypeAttribute.STRING_SEMANTICS);
+    }
 
-    /**
-     * @return true if this type has boolean semantics.
-     */
-    boolean isBoolean();
+    default boolean isBoolean() {
+        return attributes().contains(TypeAttribute.BOOLEAN_SEMANTICS);
+    }
+
+    default boolean isTop() {
+        return attributes().contains(TypeAttribute.TOP_SEMANTICS);
+    }
+
+    default boolean isBottom() {
+        return attributes().contains(TypeAttribute.BOTTOM_SEMANTICS);
+    }
 
     /**
      * @return true if this type represents an object.

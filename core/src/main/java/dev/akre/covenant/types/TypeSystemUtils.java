@@ -120,7 +120,7 @@ public class TypeSystemUtils {
         return resolvedSegment;
     }
 
-    private static boolean matches(TypeDefParam.Constrained c, String name) {
+    public static boolean matches(TypeDefParam.Constrained c, String name) {
         if (!c.keyword().equals("matches")) return false;
         String regex = c.value();
         if (regex.startsWith("\"") && regex.endsWith("\"")) {

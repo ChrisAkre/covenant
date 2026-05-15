@@ -327,7 +327,15 @@ public record GenericTypeDef(
                                     n1.name(),
                                     n1.optional() && n2.optional()));
                         } else {
-                            TypeDef intersected = system.intersectDef(t1, t2Spread);
+                            TypeDef constraintType = null;
+                            for (TypeDefParam tp : otherGeneric.parameters) {
+                                if (tp instanceof TypeDefParam.Constrained c && TypeSystemUtils.matches(c, n1.name())) {
+                                    constraintType = tp.type();
+                                    break;
+                                }
+                            }
+                            TypeDef t2 = constraintType != null ? constraintType : t2Spread;
+                            TypeDef intersected = system.intersectDef(t1, t2);
                             if (intersected instanceof BottomType && !n1.optional()) return Set.of();
                             if (!(intersected instanceof BottomType)) {
                                 mergedParams.add(new TypeDefParam.Named(intersected, n1.name(), n1.optional()));
@@ -363,7 +371,15 @@ public record GenericTypeDef(
                     if (tp2 instanceof TypeDefParam.Named n2) {
                         if (processedNamed.contains(n2.name())) continue;
                         TypeDef t2 = n2.type();
-                        TypeDef intersected = system.intersectDef(t2, t1Spread);
+                        TypeDef constraintType = null;
+                        for (TypeDefParam tp : this.parameters) {
+                            if (tp instanceof TypeDefParam.Constrained c && TypeSystemUtils.matches(c, n2.name())) {
+                                constraintType = tp.type();
+                                break;
+                            }
+                        }
+                        TypeDef t1 = constraintType != null ? constraintType : t1Spread;
+                        TypeDef intersected = system.intersectDef(t2, t1);
                         if (intersected instanceof BottomType && !n2.optional()) return Set.of();
                         if (!(intersected instanceof BottomType)) {
                             mergedParams.add(new TypeDefParam.Named(intersected, n2.name(), n2.optional()));

@@ -21,7 +21,8 @@ public class JoltCovenantChecker {
         Map<String, List<Type>> pathPlacements = new LinkedHashMap<>();
         List<Type> typeStack = new ArrayList<>();
         typeStack.add(inputSchema);
-        traverse(inputSchema, spec, new ArrayList<>(), typeStack, pathPlacements);
+        List<String[]> matchedGroups = new ArrayList<>();
+        traverse(inputSchema, spec, matchedGroups, typeStack, pathPlacements);
         
         if (pathPlacements.isEmpty()) {
             return typeSystem.bottom();
@@ -42,7 +43,11 @@ public class JoltCovenantChecker {
             finalPlacements.add(buildNestedObjectFromPath(path, valueType));
         }
         
-        return typeSystem.intersect(finalPlacements.toArray(new Type[0]));
+        try {
+            return typeSystem.intersect(finalPlacements.toArray(new Type[0]));
+        } catch (Exception e) {
+            return typeSystem.bottom();
+        }
     }
 
     private Type buildArrayOf(List<Type> types) {
@@ -55,43 +60,45 @@ public class JoltCovenantChecker {
         return typeSystem.isAssignableTo(inferred, expectedSchema);
     }
 
-    private void traverse(Type currentType, JsonNode specNode, List<String> matchedKeys, List<Type> typeStack, Map<String, List<Type>> pathPlacements) {
+    private void traverse(Type currentType, JsonNode specNode, List<String[]> matchedGroups, List<Type> typeStack, Map<String, List<Type>> pathPlacements) {
         if (specNode.isTextual()) {
             String specValue = specNode.asText();
-            Type sourceValue = currentType;
-            
-            if (specValue.startsWith("@")) {
-                sourceValue = lookupTranspose(specValue, typeStack, matchedKeys);
-            }
-            
             String[] targetPaths = specValue.split(",");
             for (String p : targetPaths) {
-                String path = substitute(p.trim(), matchedKeys, typeStack);
+                String trimmed = p.trim();
+                Type sourceValue = currentType;
+                if (trimmed.startsWith("@") && !trimmed.contains(".") && !trimmed.contains("[")) {
+                     sourceValue = lookupTranspose(trimmed, typeStack, matchedGroups);
+                }
+                String path = substitute(trimmed, matchedGroups, typeStack);
                 pathPlacements.computeIfAbsent(path, k -> new ArrayList<>()).add(sourceValue);
             }
         } else if (specNode.isArray()) {
             for (JsonNode element : specNode) {
-                traverse(currentType, element, matchedKeys, typeStack, pathPlacements);
+                traverse(currentType, element, matchedGroups, typeStack, pathPlacements);
             }
         } else if (specNode.isObject()) {
             if (specNode.has("@")) {
-                traverse(currentType, specNode.get("@"), matchedKeys, typeStack, pathPlacements);
+                traverse(currentType, specNode.get("@"), matchedGroups, typeStack, pathPlacements);
             }
 
             Map<String, JsonNode> explicit = new LinkedHashMap<>();
             List<Map.Entry<String, JsonNode>> wildcards = new ArrayList<>();
             List<Map.Entry<String, JsonNode>> special = new ArrayList<>();
             List<Map.Entry<String, JsonNode>> transposes = new ArrayList<>();
+            List<Map.Entry<String, JsonNode>> globs = new ArrayList<>();
 
             for (Map.Entry<String, JsonNode> entry : specNode.properties()) {
                 String k = entry.getKey();
                 if (k.equals("@")) continue;
-                if (k.startsWith("@")) {
+                if (k.startsWith("@") && !k.contains("*") && !k.contains("|") && !k.contains("&")) {
                     transposes.add(entry);
                 } else if (k.equals("*")) {
                     wildcards.add(entry);
-                } else if (k.startsWith("$")) {
+                } else if (k.startsWith("$") && !k.contains("(")) {
                     special.add(entry);
+                } else if (k.contains("*") && !isEscaped(k, k.indexOf("*"))) {
+                    globs.add(entry);
                 } else if (k.contains("|") && !isEscaped(k, k.indexOf("|"))) {
                     String[] parts = k.split("\\|");
                     for (String part : parts) {
@@ -102,56 +109,102 @@ public class JoltCovenantChecker {
                 }
             }
 
+            Set<String> matchedInThisObject = new HashSet<>();
+            Set<String> allInputKeys = extractKeys(currentType);
+
             for (Map.Entry<String, JsonNode> entry : transposes) {
-                Type lookupValue = lookupTranspose(entry.getKey(), typeStack, matchedKeys);
-                List<String> nextKeys = new ArrayList<>(matchedKeys);
-                String repr = lookupValue.repr();
-                if (repr.startsWith("'") && repr.endsWith("'")) {
-                    nextKeys.add(repr.substring(1, repr.length() - 1));
-                } else {
-                    nextKeys.add(repr);
-                }
-                traverse(currentType, entry.getValue(), nextKeys, typeStack, pathPlacements);
+                Type lookupValue = lookupTranspose(entry.getKey(), typeStack, matchedGroups);
+                String valStr = getRepresentativeValue(lookupValue);
+                processMatch(currentType, entry.getValue(), valStr, new String[]{valStr}, matchedGroups, typeStack, pathPlacements, false);
             }
 
             for (Map.Entry<String, JsonNode> entry : explicit.entrySet()) {
                 String key = entry.getKey();
                 Type childType = term(currentType, key);
-                if (childType != null && !isBottom(childType)) {
-                    List<String> nextKeys = new ArrayList<>(matchedKeys);
-                    nextKeys.add(key);
-                    List<Type> nextStack = new ArrayList<>(typeStack);
-                    nextStack.add(childType);
-                    traverse(childType, entry.getValue(), nextKeys, nextStack, pathPlacements);
+                if (childType != null && !childType.isBottom()) {
+                    matchedInThisObject.add(key);
+                    processMatch(childType, entry.getValue(), key, new String[]{key}, matchedGroups, typeStack, pathPlacements, true);
+                }
+            }
+
+            for (Map.Entry<String, JsonNode> entry : globs) {
+                String glob = entry.getKey();
+                Pattern p = Pattern.compile("^" + glob.replace(".", "\\.").replace("*", "(.*)") + "$");
+                
+                boolean matchedAny = false;
+                for (String inputKey : allInputKeys) {
+                    if (!matchedInThisObject.contains(inputKey)) {
+                        Matcher m = p.matcher(inputKey);
+                        if (m.matches()) {
+                            Type childType = term(currentType, inputKey);
+                            if (childType != null && !childType.isBottom()) {
+                                matchedAny = true;
+                                matchedInThisObject.add(inputKey);
+                                String[] groups = new String[m.groupCount() + 1];
+                                for (int i = 0; i <= m.groupCount(); i++) groups[i] = m.group(i);
+                                processMatch(childType, entry.getValue(), inputKey, groups, matchedGroups, typeStack, pathPlacements, true);
+                            }
+                        }
+                    }
+                }
+                
+                // If input is an atom (String/Number), try to match the glob against the type itself
+                if (!matchedAny && (isAtom(currentType))) {
+                     // Assume it matches and use glob parts as groups (e.g. if glob is tuna-*, group 1 is *)
+                     String[] groups = new String[p.matcher("").groupCount() + 1];
+                     Arrays.fill(groups, "match"); 
+                     groups[0] = glob;
+                     processMatch(currentType, entry.getValue(), glob, groups, matchedGroups, typeStack, pathPlacements, false);
                 }
             }
 
             for (Map.Entry<String, JsonNode> entry : wildcards) {
-                Set<String> allKeys = extractKeys(currentType);
-                for (String key : allKeys) {
-                    if (!explicit.containsKey(key)) {
+                for (String key : allInputKeys) {
+                    if (!matchedInThisObject.contains(key)) {
                         Type childType = term(currentType, key);
-                        if (childType != null && !isBottom(childType)) {
-                            List<String> nextKeys = new ArrayList<>(matchedKeys);
-                            nextKeys.add(key);
-                            List<Type> nextStack = new ArrayList<>(typeStack);
-                            nextStack.add(childType);
-                            traverse(childType, entry.getValue(), nextKeys, nextStack, pathPlacements);
+                        if (childType != null && !childType.isBottom()) {
+                            processMatch(childType, entry.getValue(), key, new String[]{key}, matchedGroups, typeStack, pathPlacements, true);
                         }
                     }
                 }
             }
 
             for (Map.Entry<String, JsonNode> entry : special) {
-                List<String> nextKeys = new ArrayList<>(matchedKeys);
-                String currentMatchedKey = matchedKeys.isEmpty() ? "root" : matchedKeys.get(matchedKeys.size() - 1);
-                nextKeys.add(currentMatchedKey);
-                traverse(typeSystem.type("String"), entry.getValue(), nextKeys, typeStack, pathPlacements);
+                String k = entry.getKey();
+                String currentMatchedKey = matchedGroups.isEmpty() ? "root" : matchedGroups.get(matchedGroups.size() - 1)[0];
+                if (k.contains("(")) {
+                    currentMatchedKey = substitute(k, matchedGroups, typeStack);
+                }
+                List<String[]> nextGroups = new ArrayList<>(matchedGroups);
+                nextGroups.add(new String[]{currentMatchedKey});
+                traverse(typeSystem.type("String"), entry.getValue(), nextGroups, typeStack, pathPlacements);
             }
         }
     }
 
-    private Type lookupTranspose(String op, List<Type> typeStack, List<String> matchedKeys) {
+    private boolean isAtom(Type type) {
+        TypeDef def = typeSystem.unwrap(type);
+        return def instanceof AtomType;
+    }
+
+    private void processMatch(Type childType, JsonNode innerSpec, String key, String[] groups, List<String[]> matchedGroups, List<Type> typeStack, Map<String, List<Type>> pathPlacements, boolean pushStack) {
+        List<String[]> nextGroups = new ArrayList<>(matchedGroups);
+        nextGroups.add(groups);
+        List<Type> nextStack = new ArrayList<>(typeStack);
+        if (pushStack) nextStack.add(childType);
+        traverse(childType, innerSpec, nextGroups, nextStack, pathPlacements);
+    }
+
+    private String getRepresentativeValue(Type type) {
+        String repr = type.repr();
+        if (repr.startsWith("'") && repr.endsWith("'")) {
+            return repr.substring(1, repr.length() - 1);
+        }
+        if (repr.matches("\\d+")) return repr;
+        return "{{ " + repr + " }}";
+    }
+
+    private Type lookupTranspose(String op, List<Type> typeStack, List<String[]> matchedGroups) {
         if (op.equals("@")) return typeStack.get(typeStack.size() - 1);
         
         String content;
@@ -167,16 +220,13 @@ public class JoltCovenantChecker {
         int level = 0;
         String path = "";
         
-        if (parts.length > 0) {
-            try {
-                level = Integer.parseInt(parts[0]);
-                if (parts.length > 1) {
-                    path = parts[1];
-                }
-            } catch (NumberFormatException e) {
-                // It's a path, level 0 assumed
-                path = parts[0];
+        try {
+            level = Integer.parseInt(parts[0].trim());
+            if (parts.length > 1) {
+                path = parts[1].trim();
             }
+        } catch (NumberFormatException e) {
+            path = parts[0].trim();
         }
         
         int stackIndex = typeStack.size() - 1 - level;
@@ -185,8 +235,7 @@ public class JoltCovenantChecker {
         Type root = typeStack.get(stackIndex);
         if (path.isEmpty()) return root;
         
-        // Path might contain & substitutions!
-        path = substitute(path, matchedKeys, typeStack);
+        path = substitute(path, matchedGroups, typeStack);
         
         Type current = root;
         String[] segments = path.split("(?<!\\\\)\\.");
@@ -208,41 +257,69 @@ public class JoltCovenantChecker {
         return s.replace("\\", "");
     }
 
-    private String substitute(String path, List<String> matchedKeys, List<Type> typeStack) {
+    private String substitute(String path, List<String[]> matchedGroups, List<Type> typeStack) {
         StringBuilder sb = new StringBuilder();
         for (int i = 0; i < path.length(); i++) {
             char c = path.charAt(i);
             if (c == '\\' && i + 1 < path.length()) {
                 sb.append(path.charAt(i + 1));
                 i++;
-            } else if (c == '&') {
+            } else if (c == '&' || c == '$') {
                 int start = i + 1;
                 int end = start;
-                while (end < path.length() && Character.isDigit(path.charAt(end))) {
-                    end++;
-                }
                 int level = 0;
-                if (end > start) {
-                    level = Integer.parseInt(path.substring(start, end));
-                    i = end - 1;
-                }
-                int index = matchedKeys.size() - 1 - level;
-                if (index >= 0 && index < matchedKeys.size()) {
-                    sb.append(matchedKeys.get(index));
-                }
-            } else if (c == '@' && i + 1 < path.length() && path.charAt(i+1) == '(') {
-                int end = path.indexOf(')', i);
-                if (end != -1) {
-                    Type val = lookupTranspose(path.substring(i, end + 1), typeStack, matchedKeys);
-                    String repr = val.repr();
-                    if (repr.startsWith("'") && repr.endsWith("'")) {
-                        sb.append(repr.substring(1, repr.length() - 1));
-                    } else {
-                        sb.append(repr);
+                int groupIndex = 0;
+                
+                if (end < path.length() && path.charAt(end) == '(') {
+                    int close = path.indexOf(')', end);
+                    if (close != -1) {
+                        String content = path.substring(end + 1, close);
+                        String[] parts = content.split(",");
+                        try {
+                            level = Integer.parseInt(parts[0].trim());
+                            if (parts.length > 1) groupIndex = Integer.parseInt(parts[1].trim());
+                        } catch (NumberFormatException e) {}
+                        i = close;
                     }
-                    i = end;
                 } else {
-                    sb.append(c);
+                    while (end < path.length() && Character.isDigit(path.charAt(end))) {
+                        end++;
+                    }
+                    if (end > start) {
+                        level = Integer.parseInt(path.substring(start, end));
+                        i = end - 1;
+                    }
+                }
+                
+                int index = matchedGroups.size() - 1 - level;
+                if (index >= 0 && index < matchedGroups.size()) {
+                    String[] groups = matchedGroups.get(index);
+                    if (groupIndex >= 0 && groupIndex < groups.length) {
+                        sb.append(groups[groupIndex]);
+                    }
+                }
+            } else if (c == '@') {
+                int end = i + 1;
+                if (end < path.length() && path.charAt(end) == '(') {
+                    int close = path.indexOf(')', end);
+                    if (close != -1) {
+                        Type val = lookupTranspose(path.substring(i, close + 1), typeStack, matchedGroups);
+                        sb.append(getRepresentativeValue(val));
+                        i = close;
+                    } else {
+                        sb.append(c);
+                    }
+                } else {
+                    while (end < path.length() && (Character.isLetterOrDigit(path.charAt(end)) || path.charAt(end) == '_' || path.charAt(end) == '.')) {
+                        end++;
+                    }
+                    if (end > i + 1) {
+                        Type val = lookupTranspose(path.substring(i, end), typeStack, matchedGroups);
+                        sb.append(getRepresentativeValue(val));
+                        i = end - 1;
+                    } else {
+                        sb.append(c);
+                    }
                 }
             } else {
                 sb.append(c);
@@ -255,14 +332,38 @@ public class JoltCovenantChecker {
         Type current = leafType;
         String[] segments = path.split("(?<!\\\\)\\.");
         for (int i = segments.length - 1; i >= 0; i--) {
-            String segment = unescape(segments[i]);
+            String segment = segments[i];
             if (segment.isEmpty()) continue;
+            
+            boolean isArrayAppend = false;
+            if (segment.endsWith("[]") || segment.contains("[#")) {
+                isArrayAppend = true;
+                if (segment.endsWith("[]")) segment = segment.substring(0, segment.length() - 2);
+                else segment = segment.substring(0, segment.indexOf('['));
+            }
+            
+            if (isArrayAppend) {
+                current = typeSystem.template("Array").construct(List.of(new TypeParameter.Spread(current)));
+            }
             
             if (segment.startsWith("[") && segment.endsWith("]")) {
                 current = typeSystem.template("Array").construct(List.of(new TypeParameter.Spread(current)));
-            } else {
+            } else if (segment.startsWith("{{") && segment.endsWith("}}")) {
+                String typeRepr = segment.substring(2, segment.length() - 2).trim();
+                if (typeRepr.equals("String") || typeRepr.equals("Int") || typeRepr.equals("Number")) {
+                     current = typeSystem.template("Object").construct(List.of(
+                        new TypeParameter.Constrained(current, "matches", "\".*\"", false),
+                        new TypeParameter.Spread(typeSystem.top())
+                    ));
+                } else {
+                     current = typeSystem.template("Object").construct(List.of(
+                        new TypeParameter.Named(current, typeRepr, false),
+                        new TypeParameter.Spread(typeSystem.top())
+                    ));
+                }
+            } else if (!segment.isEmpty()) {
                 current = typeSystem.template("Object").construct(List.of(
-                    new TypeParameter.Named(current, segment, false),
+                    new TypeParameter.Named(current, unescape(segment), false),
                     new TypeParameter.Spread(typeSystem.top())
                 ));
             }
@@ -271,19 +372,16 @@ public class JoltCovenantChecker {
     }
 
     private Type term(Type type, String key) {
-        TypeDef subject = typeSystem.unwrap((dev.akre.covenant.api.Type) type);
+        if (type.isBottom()) return type;
+        TypeDef subject = typeSystem.unwrap(type);
         TypeDef segment = typeSystem.unwrap((dev.akre.covenant.api.Type) typeSystem.expression("'" + key.replace("'", "''") + "'"));
         TypeDef result = TypeSystemUtils.termAt(typeSystem, subject, segment);
         return typeSystem.wrap(result);
     }
 
-    private boolean isBottom(Type type) {
-        return typeSystem.unwrap((dev.akre.covenant.api.Type) type) instanceof BottomType;
-    }
-
     private Set<String> extractKeys(Type type) {
-        Set<String> keys = new HashSet<>();
-        TypeDef def = typeSystem.unwrap((dev.akre.covenant.api.Type) type);
+        Set<String> keys = new LinkedHashSet<>();
+        TypeDef def = typeSystem.unwrap(type);
         collectKeys(def, keys);
         return keys;
     }
@@ -293,11 +391,15 @@ public class JoltCovenantChecker {
             for (TypeDef member : u.members()) {
                 collectKeys(member, keys);
             }
-        } else if (def instanceof GenericTypeDef g && g.pattern() == AbstractTypeSystemBuilder.PatternConstructor.Pattern.OBJECT) {
-            for (TypeDefParam tp : g.parameters()) {
-                if (tp instanceof TypeDefParam.Named n) {
-                    keys.add(n.name());
+        } else if (def instanceof GenericTypeDef g) {
+            if (g.pattern() == AbstractTypeSystemBuilder.PatternConstructor.Pattern.OBJECT) {
+                for (TypeDefParam tp : g.parameters()) {
+                    if (tp instanceof TypeDefParam.Named n) {
+                        keys.add(n.name());
+                    }
                 }
+            } else if (g.pattern() == AbstractTypeSystemBuilder.PatternConstructor.Pattern.ARRAY) {
+                keys.add("0");
             }
         }
     }
