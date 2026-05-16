@@ -109,7 +109,7 @@ public class JoltCovenantChecker {
             for (Map.Entry<String, JsonNode> entry : specNode.properties()) {
                 String k = entry.getKey();
                 if (k.equals("@")) continue;
-                if (k.startsWith("@") && !k.contains("*") && !k.contains("|") && !k.contains("&") && !k.contains("$")) {
+                if (k.startsWith("@")) {
                     transposes.add(entry);
                 } else if (k.equals("*")) {
                     wildcards.add(entry);
@@ -133,7 +133,7 @@ public class JoltCovenantChecker {
             for (Map.Entry<String, JsonNode> entry : transposes) {
                 Type lookupValue = lookupTranspose(entry.getKey(), typeStack, matchedGroups);
                 String valStr = getRepresentativeValue(lookupValue);
-                processMatch(currentType, entry.getValue(), valStr, new String[]{valStr}, matchedGroups, typeStack, pathPlacements, false);
+                processMatch(lookupValue, entry.getValue(), valStr, new String[]{valStr}, matchedGroups, typeStack, pathPlacements, false);
             }
 
             for (Map.Entry<String, JsonNode> entry : explicit.entrySet()) {
@@ -297,7 +297,22 @@ public class JoltCovenantChecker {
         Type current = root;
         String[] segments = splitPath(path);
         for (String seg : segments) {
-            current = term(current, unescape(seg));
+            List<String> subParts = decomposeSegment(seg);
+            for (String part : subParts) {
+                if (part.startsWith("[") && part.endsWith("]")) {
+                    String inner = part.substring(1, part.length() - 1);
+                    if (inner.startsWith("'") && inner.endsWith("'")) {
+                        inner = inner.substring(1, inner.length() - 1);
+                    }
+                    if (inner.equals("*") || inner.equals("match")) {
+                        current = typeSystem.wrap(TypeSystemUtils.valueTypeOf(typeSystem, typeSystem.unwrap(current)));
+                    } else {
+                        current = term(current, unescape(inner));
+                    }
+                } else {
+                    current = term(current, unescape(part));
+                }
+            }
         }
         return current;
     }
@@ -311,7 +326,18 @@ public class JoltCovenantChecker {
     }
 
     private String unescape(String s) {
-        return s.replace("\\", "");
+        StringBuilder sb = new StringBuilder();
+        boolean escaped = false;
+        for (int i = 0; i < s.length(); i++) {
+            char c = s.charAt(i);
+            if (c == '\\' && !escaped) {
+                escaped = true;
+            } else {
+                sb.append(c);
+                escaped = false;
+            }
+        }
+        return sb.toString();
     }
 
     private String substitute(String path, List<String[]> matchedGroups, List<Type> typeStack) {
@@ -322,7 +348,7 @@ public class JoltCovenantChecker {
             char c = path.charAt(i);
             if (c == '\\' && i + 1 < path.length()) {
                 char next = path.charAt(i + 1);
-                sb.append(next);
+                sb.append('\\').append(next);
                 i++;
             } else if (c == '&' || c == '$') {
                 int start = i + 1;
@@ -449,13 +475,11 @@ public class JoltCovenantChecker {
             char c = path.charAt(i);
             if (c == '\\' && !escaped) {
                 escaped = true;
+                current.append(c);
             } else if (c == '.' && !escaped) {
                 segments.add(current.toString());
                 current.setLength(0);
             } else {
-                if (escaped && c != '.') {
-                    current.append('\\');
-                }
                 current.append(c);
                 escaped = false;
             }
