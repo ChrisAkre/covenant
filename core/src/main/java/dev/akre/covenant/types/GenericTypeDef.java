@@ -65,19 +65,6 @@ public record GenericTypeDef(
                 .orElse(BottomType.INSTANCE);
     }
 
-    private boolean matches(TypeDefParam.Constrained c, String name) {
-        if (!c.keyword().equals("matches")) return false;
-        String regex = c.value();
-        if (regex.startsWith("\"") && regex.endsWith("\"")) {
-            regex = regex.substring(1, regex.length() - 1);
-        }
-        try {
-            return com.google.re2j.Pattern.compile(regex).matcher(name).find();
-        } catch (Exception e) {
-            return false;
-        }
-    }
-
     @Override
     public boolean satisfiesOther(AbstractTypeSystem system, TypeDef other) {
         if (other instanceof NominalDef n && n.name().equals(template.name())) {
@@ -177,7 +164,7 @@ public record GenericTypeDef(
                 for (TypeDefParam tp2 : other.parameters) {
                     if (tp2 instanceof TypeDefParam.Named n2 && n1.name().equals(n2.name())) {
                         requiredType = (requiredType == null) ? n2.type() : system.intersectDef(requiredType, n2.type());
-                    } else if (tp2 instanceof TypeDefParam.Constrained c2 && matches(c2, n1.name())) {
+                    } else if (tp2 instanceof TypeDefParam.Constrained c2 && TypeSystemUtils.matches(c2, n1.name())) {
                         requiredType = (requiredType == null) ? c2.type() : system.intersectDef(requiredType, c2.type());
                     }
                 }
@@ -188,11 +175,18 @@ public record GenericTypeDef(
                 }
             } else if (tp1 instanceof TypeDefParam.Constrained c1) {
                 // Source dynamic properties must be allowed by target
-                TypeDefParam tp2 = other.findConstrained(c1.keyword(), c1.value());
-                if (tp2 != null) {
-                    if (!system.satisfies(c1.type(), tp2.type())) return false;
-                } else {
+                TypeDef requiredType = null;
+                for (TypeDefParam tp2 : other.parameters) {
+                    if (tp2 instanceof TypeDefParam.Constrained c2 && c1.keyword().equals(c2.keyword())) {
+                        if (TypeSystemUtils.isRegexSubset(c1, c2)) {
+                            requiredType = (requiredType == null) ? c2.type() : system.intersectDef(requiredType, c2.type());
+                        }
+                    }
+                }
+                if (requiredType == null) {
                     if (!otherIsOpen || !system.satisfies(c1.type(), otherSpreadType)) return false;
+                } else {
+                    if (!system.satisfies(c1.type(), requiredType)) return false;
                 }
             } else if (tp1 instanceof TypeDefParam.Spread s1) {
                 // Source spread: properties not explicitly defined in 'this' but allowed by spread
@@ -220,7 +214,7 @@ public record GenericTypeDef(
                 if (findNamed(n2.name()) == null) {
                     boolean matchedByDynamic = false;
                     for (TypeDefParam thisTp : this.parameters) {
-                        if (thisTp instanceof TypeDefParam.Constrained c1 && matches(c1, n2.name())) {
+                        if (thisTp instanceof TypeDefParam.Constrained c1 && TypeSystemUtils.matches(c1, n2.name())) {
                             if (system.satisfies(c1.type(), n2.type())) {
                                 matchedByDynamic = true;
                                 break;

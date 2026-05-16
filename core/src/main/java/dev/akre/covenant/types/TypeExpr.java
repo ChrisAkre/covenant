@@ -4,6 +4,7 @@ import org.jspecify.annotations.NonNull;
 
 import java.math.BigDecimal;
 import java.util.List;
+import dk.brics.automaton.Automaton;
 
 /**
  * The purely syntactic, unevaluated Abstract Syntax Tree for Covenant types.
@@ -37,10 +38,50 @@ public sealed interface TypeExpr
         }
     }
 
-    record ConstraintExpr(String keyword, String value) implements TypeExpr {
+    final class ConstraintExpr implements TypeExpr {
+        private final String keyword;
+        private final String value;
+        private volatile dk.brics.automaton.Automaton automaton;
+
+        public ConstraintExpr(String keyword, String value) {
+            this.keyword = keyword;
+            this.value = value;
+        }
+
+        public String keyword() {
+            return keyword;
+        }
+
+        public String value() {
+            return value;
+        }
+
+        public dk.brics.automaton.Automaton automaton() {
+            if (automaton == null) {
+                synchronized (this) {
+                    if (automaton == null) {
+                        automaton = TypeSystemUtils.toAutomaton(value);
+                    }
+                }
+            }
+            return automaton;
+        }
+
         @Override
         public @NonNull String toString() {
             return keyword + " " + value;
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (!(o instanceof ConstraintExpr that)) return false;
+            return java.util.Objects.equals(keyword, that.keyword) && java.util.Objects.equals(value, that.value);
+        }
+
+        @Override
+        public int hashCode() {
+            return java.util.Objects.hash(keyword, value);
         }
     }
 
@@ -142,10 +183,63 @@ public sealed interface TypeExpr
             }
         }
 
-        record Constrained(TypeExpr type, String keyword, String value, boolean optional) implements ParamExpr {
+        final class Constrained implements ParamExpr {
+            private final TypeExpr type;
+            private final String keyword;
+            private final String value;
+            private final boolean optional;
+            private volatile dk.brics.automaton.Automaton automaton;
+
+            public Constrained(TypeExpr type, String keyword, String value, boolean optional) {
+                this.type = java.util.Objects.requireNonNull(type);
+                this.keyword = keyword;
+                this.value = value;
+                this.optional = optional;
+            }
+
+            @Override
+            public TypeExpr type() {
+                return type;
+            }
+
+            public String keyword() {
+                return keyword;
+            }
+
+            public String value() {
+                return value;
+            }
+
+            public boolean optional() {
+                return optional;
+            }
+
+            public dk.brics.automaton.Automaton automaton() {
+                if (automaton == null) {
+                    synchronized (this) {
+                        if (automaton == null) {
+                            automaton = TypeSystemUtils.toAutomaton(value);
+                        }
+                    }
+                }
+                return automaton;
+            }
+
             @Override
             public @NonNull String toString() {
                 return "[" + keyword + " " + value + "]" + (optional ? "?: " : ": ") + type;
+            }
+
+            @Override
+            public boolean equals(Object o) {
+                if (this == o) return true;
+                if (!(o instanceof Constrained that)) return false;
+                return optional == that.optional && java.util.Objects.equals(type, that.type) && java.util.Objects.equals(keyword, that.keyword) && java.util.Objects.equals(value, that.value);
+            }
+
+            @Override
+            public int hashCode() {
+                return java.util.Objects.hash(type, keyword, value, optional);
             }
         }
 

@@ -3,6 +3,8 @@ package dev.akre.covenant.types;
 import dev.akre.covenant.api.TypeAttribute;
 import dev.akre.covenant.types.FunctionType.Signature;
 import dev.akre.covenant.types.ValueConstraint.Operator;
+import dk.brics.automaton.Automaton;
+import dk.brics.automaton.RegExp;
 import org.jspecify.annotations.Nullable;
 
 import java.util.*;
@@ -125,12 +127,67 @@ public class TypeSystemUtils {
         String regex = c.value();
         if (regex.startsWith("\"") && regex.endsWith("\"")) {
             regex = regex.substring(1, regex.length() - 1);
+        } else if (regex.startsWith("/") && regex.endsWith("/")) {
+            regex = regex.substring(1, regex.length() - 1);
         }
         try {
             return com.google.re2j.Pattern.compile(regex).matcher(name).find();
         } catch (Exception e) {
             return false;
         }
+    }
+
+    public static boolean isRegexSubset(String sub, String sup) {
+        if (sub.equals(sup)) return true;
+        try {
+            Automaton subA = toAutomaton(sub);
+            Automaton supA = toAutomaton(sup);
+            return subA.subsetOf(supA);
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    public static boolean isRegexSubset(TypeDefParam.Constrained sub, TypeDefParam.Constrained sup) {
+        if (sub.value().equals(sup.value())) return true;
+        try {
+            return sub.automaton().subsetOf(sup.automaton());
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    public static Automaton toAutomaton(String regex) {
+        return new RegExp(translateRegex(stripRegex(regex))).toAutomaton();
+    }
+
+    private static String translateRegex(String regex) {
+        String translated = regex;
+        boolean anchoredStart = translated.startsWith("^");
+        if (anchoredStart) {
+            translated = translated.substring(1);
+        }
+        boolean anchoredEnd = translated.endsWith("$");
+        if (anchoredEnd) {
+            translated = translated.substring(0, translated.length() - 1);
+        }
+
+        if (!anchoredStart) {
+            translated = ".*" + translated;
+        }
+        if (!anchoredEnd) {
+            translated = translated + ".*";
+        }
+        return translated;
+    }
+
+    private static String stripRegex(String regex) {
+        if (regex.startsWith("\"") && regex.endsWith("\"")) {
+            return regex.substring(1, regex.length() - 1);
+        } else if (regex.startsWith("/") && regex.endsWith("/")) {
+            return regex.substring(1, regex.length() - 1);
+        }
+        return regex;
     }
 
     private static TypeDefParam.Named findNamed(GenericTypeDef g, String name) {
