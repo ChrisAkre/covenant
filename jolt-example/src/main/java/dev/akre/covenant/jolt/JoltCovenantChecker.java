@@ -256,7 +256,6 @@ public class JoltCovenantChecker {
         Type root = typeStack.get(stackIndex);
         if (path.isEmpty()) return root;
         
-        // Path itself might contain & substitutions
         path = substitute(path, matchedGroups, typeStack);
         
         Type current = root;
@@ -287,7 +286,7 @@ public class JoltCovenantChecker {
             char c = path.charAt(i);
             if (c == '\\' && i + 1 < path.length()) {
                 char next = path.charAt(i + 1);
-                if (next == '&' || next == '$' || next == '@' || next == '.' || next == '[' || next == ']') {
+                if (next == '.' || next == '&' || next == '$' || next == '@' || next == '[' || next == ']') {
                     sb.append('\\').append(next);
                 } else {
                     sb.append(next);
@@ -335,9 +334,7 @@ public class JoltCovenantChecker {
                     int close = path.indexOf(')', end);
                     if (close != -1) {
                         Type val = lookupTranspose(path.substring(i, close + 1), typeStack, matchedGroups);
-                        String repr = getRepresentativeValue(val);
-                        // If repr is dynamic, keep the braces for splitting later
-                        sb.append(repr);
+                        sb.append(getRepresentativeValue(val));
                         i = close;
                     } else {
                         sb.append(c);
