@@ -115,7 +115,7 @@ public class JoltCovenantChecker {
                     transposes.add(entry);
                 } else if (k.equals("*")) {
                     wildcards.add(entry);
-                } else if (k.startsWith("$") && !k.contains("(")) {
+                } else if (k.startsWith("$")) {
                     special.add(entry);
                 } else if (k.contains("*") && !isEscaped(k, k.indexOf("*"))) {
                     globs.add(entry);
@@ -259,7 +259,7 @@ public class JoltCovenantChecker {
         path = substitute(path, matchedGroups, typeStack);
         
         Type current = root;
-        String[] segments = path.split("(?<!\\\\)\\.");
+        String[] segments = splitPath(path);
         for (String seg : segments) {
             current = term(current, unescape(seg));
         }
@@ -286,11 +286,7 @@ public class JoltCovenantChecker {
             char c = path.charAt(i);
             if (c == '\\' && i + 1 < path.length()) {
                 char next = path.charAt(i + 1);
-                if (next == '.' || next == '&' || next == '$' || next == '@' || next == '[' || next == ']') {
-                    sb.append('\\').append(next);
-                } else {
-                    sb.append(next);
-                }
+                sb.append('\\').append(next);
                 i++;
             } else if (c == '&' || c == '$') {
                 int start = i + 1;
@@ -331,7 +327,7 @@ public class JoltCovenantChecker {
             } else if (c == '@') {
                 int end = i + 1;
                 if (end < path.length() && path.charAt(end) == '(') {
-                    int close = path.indexOf(')', end);
+                    int close = findClosingParen(path, end);
                     if (close != -1) {
                         Type val = lookupTranspose(path.substring(i, close + 1), typeStack, matchedGroups);
                         sb.append(getRepresentativeValue(val));
@@ -358,45 +354,103 @@ public class JoltCovenantChecker {
         return sb.toString();
     }
 
+    private int findClosingParen(String s, int open) {
+        int depth = 0;
+        for (int i = open; i < s.length(); i++) {
+            if (s.charAt(i) == '(') depth++;
+            else if (s.charAt(i) == ')') {
+                depth--;
+                if (depth == 0) return i;
+            }
+        }
+        return -1;
+    }
+
     private Type buildNestedObjectFromPath(String path, Type leafType) {
         Type current = leafType;
-        String[] segments = path.split("(?<!\\\\)\\.");
+        String[] segments = splitPath(path);
         for (int i = segments.length - 1; i >= 0; i--) {
             String segment = segments[i];
             if (segment.isEmpty()) continue;
             
-            boolean isArrayAppend = false;
-            if (segment.endsWith("[]") || segment.contains("[#")) {
-                isArrayAppend = true;
-                if (segment.endsWith("[]")) segment = segment.substring(0, segment.length() - 2);
-                else segment = segment.substring(0, segment.indexOf('['));
-            }
-            
-            if (isArrayAppend) {
-                current = typeSystem.template("Array").construct(List.of(new TypeParameter.Spread(current)));
-            }
-            
-            if (segment.startsWith("[") && segment.endsWith("]")) {
-                current = typeSystem.template("Array").construct(List.of(new TypeParameter.Spread(current)));
-            } else if (segment.startsWith("{{") && segment.endsWith("}}")) {
-                current = typeSystem.template("Object").construct(List.of(
-                    new TypeParameter.Constrained(current, "matches", ".*", false),
-                    new TypeParameter.Spread(typeSystem.top())
-                ));
-            } else if (!segment.isEmpty()) {
-                current = typeSystem.template("Object").construct(List.of(
-                    new TypeParameter.Named(current, unescape(segment), false),
-                    new TypeParameter.Spread(typeSystem.top())
-                ));
+            List<String> subSegments = decomposeSegment(segment);
+            for (int k = subSegments.size() - 1; k >= 0; k--) {
+                String sub = subSegments.get(k);
+                boolean isArrayAppend = false;
+                if (sub.endsWith("[]") || sub.contains("[#")) {
+                    isArrayAppend = true;
+                    if (sub.endsWith("[]")) sub = sub.substring(0, sub.length() - 2);
+                    else sub = sub.substring(0, sub.indexOf('['));
+                }
+                
+                if (isArrayAppend) {
+                    current = typeSystem.template("Array").construct(List.of(new TypeParameter.Spread(current)));
+                }
+                
+                if (sub.startsWith("[") && sub.endsWith("]")) {
+                    current = typeSystem.template("Array").construct(List.of(new TypeParameter.Spread(current)));
+                } else if (sub.startsWith("{{") && sub.endsWith("}}")) {
+                    current = typeSystem.template("Object").construct(List.of(
+                        new TypeParameter.Constrained(current, "matches", ".*", false),
+                        new TypeParameter.Spread(typeSystem.top())
+                    ));
+                } else if (!sub.isEmpty()) {
+                    current = typeSystem.template("Object").construct(List.of(
+                        new TypeParameter.Named(current, unescape(sub), false),
+                        new TypeParameter.Spread(typeSystem.top())
+                    ));
+                }
             }
         }
         return current;
     }
 
+    private String[] splitPath(String path) {
+        List<String> segments = new ArrayList<>();
+        StringBuilder current = new StringBuilder();
+        boolean escaped = false;
+        for (int i = 0; i < path.length(); i++) {
+            char c = path.charAt(i);
+            if (c == '\\' && !escaped) {
+                escaped = true;
+                current.append(c);
+            } else if (c == '.' && !escaped) {
+                segments.add(current.toString());
+                current.setLength(0);
+            } else {
+                current.append(c);
+                escaped = false;
+            }
+        }
+        segments.add(current.toString());
+        return segments.toArray(new String[0]);
+    }
+
+    private List<String> decomposeSegment(String segment) {
+        List<String> parts = new ArrayList<>();
+        int lastIndex = 0;
+        for (int i = 0; i < segment.length(); i++) {
+            if (segment.charAt(i) == '[' && (i == 0 || segment.charAt(i-1) != '\\')) {
+                if (i > lastIndex) {
+                    parts.add(segment.substring(lastIndex, i));
+                }
+                int close = segment.indexOf(']', i);
+                if (close != -1) {
+                    parts.add(segment.substring(i, close + 1));
+                    i = close;
+                    lastIndex = i + 1;
+                }
+            }
+        }
+        if (lastIndex < segment.length()) {
+            parts.add(segment.substring(lastIndex));
+        }
+        return parts;
+    }
+
     private Type term(Type type, String key) {
         if (type.isBottom()) return type;
         TypeDef subject = typeSystem.unwrap(type);
-        // Handle dots in key by escaping for symbol literal
         TypeDef segment = typeSystem.unwrap((dev.akre.covenant.api.Type) typeSystem.expression("'" + key.replace("'", "''") + "'"));
         TypeDef result = TypeSystemUtils.termAt(typeSystem, subject, segment);
         return typeSystem.wrap(result);

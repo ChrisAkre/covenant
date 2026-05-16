@@ -79,30 +79,7 @@ public record GenericTypeDef(
     @Override
     public String repr() {
         String inner = parameters.stream()
-                .map(tp -> {
-                    if (tp instanceof TypeDefParam.Positional pos) {
-                        return tp.type().repr() + (pos.variadic() ? "..." : "");
-                    }
-                    if (tp instanceof TypeDefParam.Named named) {
-                        String name = named.name();
-                        // Quote if contains spaces or is a number
-                        if (name.contains(" ") || com.google.re2j.Pattern.matches("\\d+", name)) {
-                            name = "'" + name.replace("'", "''") + "'";
-                        }
-                        return name
-                                + (named.optional() ? "?: " : ": ")
-                                + tp.type().repr();
-                    }
-                    if (tp instanceof TypeDefParam.Constrained constrained) {
-                        String name = constrained.value();
-                        if (name.contains(" ") || com.google.re2j.Pattern.matches("\\d+", name)) {
-                            name = "'" + name.replace("'", "''") + "'";
-                        }
-                        return "[" + constrained.keyword() + " " + name + "]" + (constrained.optional() ? "?: " : ": ")
-                                + tp.type().repr();
-                    }
-                    return "...";
-                })
+                .map(TypeDefParam::repr)
                 .collect(Collectors.joining(", "));
 
         return template.name() + "<" + inner + ">";

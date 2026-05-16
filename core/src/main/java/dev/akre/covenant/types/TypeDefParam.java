@@ -5,12 +5,29 @@ import java.util.Objects;
 public sealed interface TypeDefParam {
     TypeDef type();
 
+    String repr();
+
     record Positional(TypeDef type, Integer index, boolean variadic) implements TypeDefParam {
         public Positional { Objects.requireNonNull(type); }
+
+        @Override
+        public String repr() {
+            return type.repr() + (variadic ? "..." : "");
+        }
     }
 
     record Named(TypeDef type, String name, boolean optional) implements TypeDefParam {
         public Named { Objects.requireNonNull(type); }
+
+        @Override
+        public String repr() {
+            String qName = name;
+            // Quote if not a valid identifier (alphanumeric and underscores only, cannot start with digit)
+            if (!com.google.re2j.Pattern.matches("^[a-zA-Z_][a-zA-Z0-9_]*$", qName)) {
+                qName = "'" + qName.replace("'", "''") + "'";
+            }
+            return qName + (optional ? "?: " : ": ") + type.repr();
+        }
     }
 
     final class Constrained implements TypeDefParam {
@@ -30,6 +47,15 @@ public sealed interface TypeDefParam {
         @Override
         public TypeDef type() {
             return type;
+        }
+
+        @Override
+        public String repr() {
+            String qValue = value;
+            if (qValue.contains(" ") || com.google.re2j.Pattern.matches("\\d+", qValue)) {
+                qValue = "'" + qValue.replace("'", "''") + "'";
+            }
+            return "[" + keyword + " " + qValue + "]" + (optional ? "?: " : ": ") + type.repr();
         }
 
         public String keyword() {
@@ -75,5 +101,10 @@ public sealed interface TypeDefParam {
 
     record Spread(TypeDef type) implements TypeDefParam {
         public Spread { Objects.requireNonNull(type); }
+
+        @Override
+        public String repr() {
+            return "...";
+        }
     }
 }
