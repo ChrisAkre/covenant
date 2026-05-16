@@ -14,6 +14,48 @@ import java.util.stream.Stream;
 
 public class TypeSystemUtils {
 
+    public static boolean isPrimitive(TypeDef t) {
+        return switch (t) {
+            case UnionType u -> u.members().stream().allMatch(TypeSystemUtils::isPrimitive);
+            case IntersectionType i -> i.members().stream().anyMatch(TypeSystemUtils::isPrimitive);
+            case NominalDef n -> n.attributes().contains(dev.akre.covenant.api.TypeAttribute.STRING_SEMANTICS) ||
+                    n.attributes().contains(dev.akre.covenant.api.TypeAttribute.NUMERIC_SEMANTICS) ||
+                    n.attributes().contains(dev.akre.covenant.api.TypeAttribute.BOOLEAN_SEMANTICS) ||
+                    n.attributes().contains(dev.akre.covenant.api.TypeAttribute.NULL_SEMANTICS);
+            case GenericTypeDef g -> isPrimitive(g.template());
+            default -> false;
+        };
+    }
+
+    public static TypeDef valueTypeOf(AbstractTypeSystem system, TypeDef t) {
+        return switch (t) {
+            case UnionType u -> system.unionDef(u.members().stream()
+                    .map(m -> valueTypeOf(system, m))
+                    .toArray(TypeDef[]::new));
+            case IntersectionType i -> system.intersectDef(i.members().stream()
+                    .map(m -> valueTypeOf(system, m))
+                    .toArray(TypeDef[]::new));
+            case GenericTypeDef g -> {
+                List<TypeDef> valueTypes = new ArrayList<>();
+                for (TypeDefParam tp : g.parameters()) {
+                    if (tp instanceof TypeDefParam.Named n) {
+                        valueTypes.add(n.type());
+                    } else if (tp instanceof TypeDefParam.Positional pos) {
+                        valueTypes.add(pos.type());
+                    } else if (tp instanceof TypeDefParam.Constrained c) {
+                        valueTypes.add(c.type());
+                    } else if (tp instanceof TypeDefParam.Spread spread) {
+                        valueTypes.add(spread.type());
+                    }
+                }
+                yield system.unionDef(valueTypes.toArray(new TypeDef[0]));
+            }
+            case NominalDef n when n.attributes().contains(dev.akre.covenant.api.TypeAttribute.ARRAY) ||
+                    n.attributes().contains(dev.akre.covenant.api.TypeAttribute.OBJECT) -> system.topDef();
+            default -> system.bottomDef();
+        };
+    }
+
     public static TypeDef termAt(AbstractTypeSystem system, TypeDef subject, String segment) {
         return termAt(system, subject, new SymbolType(segment));
     }

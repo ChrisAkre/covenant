@@ -33,14 +33,12 @@ public class JoltCovenantChecker {
             String path = entry.getKey();
             List<Type> types = entry.getValue();
             
-            Type valueType;
-            if (types.size() > 1) {
-                valueType = buildArrayOf(types);
-            } else {
-                valueType = types.get(0);
+            Type combinedType = typeSystem.union(types.toArray(new Type[0]));
+            if (types.size() > 1 && !path.contains("[]")) {
+                combinedType = buildArrayOf(Collections.singletonList(combinedType));
             }
             
-            finalPlacements.add(buildNestedObjectFromPath(path, valueType));
+            finalPlacements.add(buildNestedObjectFromPath(path, combinedType));
         }
         
         try {
@@ -72,7 +70,7 @@ public class JoltCovenantChecker {
 
     private Type buildArrayOf(List<Type> types) {
         Type union = typeSystem.union(types.toArray(new Type[0]));
-        return typeSystem.template("Array").construct(List.of(new TypeParameter.Spread(union)));
+        return typeSystem.template("Array").construct(List.of(new TypeParameter.Positional(union, 0, true)));
     }
 
     public boolean verify(Type inputSchema, JsonNode spec, Type expectedSchema) {
@@ -83,7 +81,7 @@ public class JoltCovenantChecker {
     private void traverse(Type currentType, JsonNode specNode, List<String[]> matchedGroups, List<Type> typeStack, Map<String, List<Type>> pathPlacements) {
         if (specNode.isTextual()) {
             String specValue = specNode.asText();
-            String[] targetPaths = specValue.split(",");
+            List<String> targetPaths = safeSplit(specValue, ',');
             for (String p : targetPaths) {
                 String trimmed = p.trim();
                 Type sourceValue = currentType;
@@ -99,7 +97,7 @@ public class JoltCovenantChecker {
             }
         } else if (specNode.isObject()) {
             if (specNode.has("@")) {
-                traverse(currentType, specNode.get("@"), matchedGroups, typeStack, pathPlacements);
+                traverse(currentType, specNode.get("@"), matchedGroups, typeStack, pathPlacements, false);
             }
 
             Map<String, JsonNode> explicit = new LinkedHashMap<>();
@@ -168,27 +166,39 @@ public class JoltCovenantChecker {
                     }
                 }
                 
-                if (!matchedAny && isAtom(currentType)) {
+                if (!matchedAny && TypeSystemUtils.isPrimitive(typeSystem.unwrap(currentType))) {
+                     String valStr = getRepresentativeValue(currentType);
                      String[] groups = new String[p.matcher("").groupCount() + 1];
                      Arrays.fill(groups, "match"); 
-                     groups[0] = glob;
-                     processMatch(currentType, entry.getValue(), glob, groups, matchedGroups, typeStack, pathPlacements, false);
+                     groups[0] = valStr;
+                     processMatch(currentType, entry.getValue(), valStr, groups, matchedGroups, typeStack, pathPlacements, false);
                 }
             }
 
             for (Map.Entry<String, JsonNode> entry : wildcards) {
                 boolean matchedAny = false;
-                for (String key : allInputKeys) {
-                    if (!matchedInThisObject.contains(key)) {
-                        Type childType = term(currentType, key);
-                        if (childType != null && !childType.isBottom()) {
-                            matchedAny = true;
-                            processMatch(childType, entry.getValue(), key, new String[]{key}, matchedGroups, typeStack, pathPlacements, true);
+                TypeDef currentDef = typeSystem.unwrap(currentType);
+                if (currentDef instanceof dev.akre.covenant.types.NominalDef n && n.attributes().contains(dev.akre.covenant.api.TypeAttribute.ARRAY)) {
+                    Type valueType = typeSystem.wrap(TypeSystemUtils.valueTypeOf(typeSystem, currentDef));
+                    if (!valueType.isBottom()) {
+                        matchedAny = true;
+                        processMatch(valueType, entry.getValue(), "*", new String[]{"match"}, matchedGroups, typeStack, pathPlacements, true);
+                    }
+                } else {
+                    for (String key : allInputKeys) {
+                        if (!matchedInThisObject.contains(key)) {
+                            Type childType = term(currentType, key);
+                            if (childType != null && !childType.isBottom()) {
+                                matchedAny = true;
+                                processMatch(childType, entry.getValue(), key, new String[]{key}, matchedGroups, typeStack, pathPlacements, true);
+                            }
                         }
                     }
                 }
-                if (!matchedAny && isAtom(currentType)) {
-                     processMatch(currentType, entry.getValue(), "*", new String[]{"*"}, matchedGroups, typeStack, pathPlacements, false);
+                
+                if (!matchedAny && TypeSystemUtils.isPrimitive(currentDef)) {
+                     String valStr = getRepresentativeValue(currentType);
+                     processMatch(currentType, entry.getValue(), valStr, new String[]{valStr}, matchedGroups, typeStack, pathPlacements, false);
                 }
             }
 
@@ -201,6 +211,32 @@ public class JoltCovenantChecker {
                 traverse(typeSystem.type("String"), entry.getValue(), nextGroups, typeStack, pathPlacements);
             }
         }
+    }
+
+    private void traverse(Type currentType, JsonNode specNode, List<String[]> matchedGroups, List<Type> typeStack, Map<String, List<Type>> pathPlacements, boolean pushStack) {
+        List<Type> nextStack = new ArrayList<>(typeStack);
+        if (pushStack) nextStack.add(currentType);
+        traverse(currentType, specNode, matchedGroups, nextStack, pathPlacements);
+    }
+
+    private List<String> safeSplit(String s, char target) {
+        List<String> parts = new ArrayList<>();
+        StringBuilder current = new StringBuilder();
+        int depth = 0;
+        for (int i = 0; i < s.length(); i++) {
+            char c = s.charAt(i);
+            if (c == '(') depth++;
+            else if (c == ')') depth--;
+            
+            if (c == target && depth == 0) {
+                parts.add(current.toString());
+                current.setLength(0);
+            } else {
+                current.append(c);
+            }
+        }
+        parts.add(current.toString());
+        return parts;
     }
 
     private boolean isAtom(Type type) {
@@ -221,7 +257,7 @@ public class JoltCovenantChecker {
         if (repr.startsWith("'") && repr.endsWith("'")) {
             return repr.substring(1, repr.length() - 1);
         }
-        if (repr.matches("\\d+")) return repr;
+        if (repr.matches("-?\\d+(\\.\\d+)?")) return repr;
         return "{{ " + repr + " }}";
     }
 
@@ -286,7 +322,7 @@ public class JoltCovenantChecker {
             char c = path.charAt(i);
             if (c == '\\' && i + 1 < path.length()) {
                 char next = path.charAt(i + 1);
-                sb.append('\\').append(next);
+                sb.append(next);
                 i++;
             } else if (c == '&' || c == '$') {
                 int start = i + 1;
@@ -295,7 +331,7 @@ public class JoltCovenantChecker {
                 int groupIndex = 0;
                 
                 if (end < path.length() && path.charAt(end) == '(') {
-                    int close = path.indexOf(')', end);
+                    int close = findClosingParen(path, end);
                     if (close != -1) {
                         String content = path.substring(end + 1, close);
                         String[] parts = content.split(",");
@@ -384,11 +420,11 @@ public class JoltCovenantChecker {
                 }
                 
                 if (isArrayAppend) {
-                    current = typeSystem.template("Array").construct(List.of(new TypeParameter.Spread(current)));
+                    current = typeSystem.template("Array").construct(List.of(new TypeParameter.Positional(current, 0, true)));
                 }
                 
                 if (sub.startsWith("[") && sub.endsWith("]")) {
-                    current = typeSystem.template("Array").construct(List.of(new TypeParameter.Spread(current)));
+                    current = typeSystem.template("Array").construct(List.of(new TypeParameter.Positional(current, 0, true)));
                 } else if (sub.startsWith("{{") && sub.endsWith("}}")) {
                     current = typeSystem.template("Object").construct(List.of(
                         new TypeParameter.Constrained(current, "matches", ".*", false),
@@ -413,11 +449,13 @@ public class JoltCovenantChecker {
             char c = path.charAt(i);
             if (c == '\\' && !escaped) {
                 escaped = true;
-                current.append(c);
             } else if (c == '.' && !escaped) {
                 segments.add(current.toString());
                 current.setLength(0);
             } else {
+                if (escaped && c != '.') {
+                    current.append('\\');
+                }
                 current.append(c);
                 escaped = false;
             }
@@ -451,6 +489,17 @@ public class JoltCovenantChecker {
     private Type term(Type type, String key) {
         if (type.isBottom()) return type;
         TypeDef subject = typeSystem.unwrap(type);
+        
+        if (TypeSystemUtils.isPrimitive(subject)) {
+            if (key.matches("-?\\d+(\\.\\d+)?")) {
+                return typeSystem.intersect(type, typeSystem.expression("eq " + key));
+            }
+            if (key.equals("true") || key.equals("false")) {
+                return typeSystem.intersect(type, typeSystem.expression("eq " + key));
+            }
+            return typeSystem.intersect(type, typeSystem.expression("eq '" + key.replace("'", "''") + "'"));
+        }
+        
         TypeDef segment = typeSystem.unwrap((dev.akre.covenant.api.Type) typeSystem.expression("'" + key.replace("'", "''") + "'"));
         TypeDef result = TypeSystemUtils.termAt(typeSystem, subject, segment);
         return typeSystem.wrap(result);
