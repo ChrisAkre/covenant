@@ -58,10 +58,14 @@ public class TypeSystemUtils {
                         return named.type();
                     }
                     // Check dynamic constraints
+                    List<TypeDef> matchingConstraints = new java.util.ArrayList<>();
                     for (TypeDefParam tp : g.parameters()) {
                         if (tp instanceof TypeDefParam.Constrained c && matches(c, resolvedSegment)) {
-                            return tp.type(); // Simplification: return first match
+                            matchingConstraints.add(tp.type());
                         }
+                    }
+                    if (!matchingConstraints.isEmpty()) {
+                        return matchingConstraints.size() == 1 ? matchingConstraints.get(0) : system.intersectDef(matchingConstraints.toArray(new TypeDef[0]));
                     }
                     // Check if open
                     for (TypeDefParam tp : g.parameters()) {
@@ -154,6 +158,26 @@ public class TypeSystemUtils {
             return sub.automaton().subsetOf(sup.automaton());
         } catch (Exception e) {
             return false;
+        }
+    }
+
+    public static boolean doRegexesOverlap(String r1, String r2) {
+        if (r1.equals(r2)) return true;
+        try {
+            Automaton a1 = toAutomaton(r1);
+            Automaton a2 = toAutomaton(r2);
+            return !a1.intersection(a2).isEmpty();
+        } catch (Exception e) {
+            return true;
+        }
+    }
+
+    public static boolean doRegexesOverlap(TypeDefParam.Constrained c1, TypeDefParam.Constrained c2) {
+        if (c1.value().equals(c2.value())) return true;
+        try {
+            return !c1.automaton().intersection(c2.automaton()).isEmpty();
+        } catch (Exception e) {
+            return true;
         }
     }
 

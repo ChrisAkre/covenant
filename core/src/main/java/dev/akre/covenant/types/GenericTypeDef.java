@@ -153,56 +153,56 @@ public record GenericTypeDef(
     private boolean satisfiesObject(AbstractTypeSystem system, GenericTypeDef other) {
         TypeDef thisSpreadType = this.spreadParam();
         TypeDef otherSpreadType = other.spreadParam();
-        boolean thisOpen = !(thisSpreadType instanceof BottomType);
         boolean otherIsOpen = !(otherSpreadType instanceof BottomType);
 
-        // 1. Every property allowed by 'this' must be allowed by 'other'
-        // Check explicitly defined properties in 'this'
+        // 1. Check all explicit and constrained parameters in 'this'
         for (TypeDefParam tp1 : this.parameters) {
             if (tp1 instanceof TypeDefParam.Named n1) {
-                TypeDef requiredType = null;
-                for (TypeDefParam tp2 : other.parameters) {
-                    if (tp2 instanceof TypeDefParam.Named n2 && n1.name().equals(n2.name())) {
-                        requiredType = (requiredType == null) ? n2.type() : system.intersectDef(requiredType, n2.type());
-                    } else if (tp2 instanceof TypeDefParam.Constrained c2 && TypeSystemUtils.matches(c2, n1.name())) {
-                        requiredType = (requiredType == null) ? c2.type() : system.intersectDef(requiredType, c2.type());
-                    }
-                }
-                if (requiredType == null) {
-                    if (!otherIsOpen || !system.satisfies(n1.type(), otherSpreadType)) return false;
-                } else {
-                    if (!system.satisfies(n1.type(), requiredType)) return false;
-                }
+                TypeDef requiredType = TypeSystemUtils.termAt(system, other, n1.name());
+                if (!system.satisfies(n1.type(), requiredType)) return false;
             } else if (tp1 instanceof TypeDefParam.Constrained c1) {
-                // Source dynamic properties must be allowed by target
-                TypeDef requiredType = null;
+                // Find all CONSTRAINTS in 'other' that overlap with c1
+                List<TypeDef> overlappingConstraints = new java.util.ArrayList<>();
                 for (TypeDefParam tp2 : other.parameters) {
                     if (tp2 instanceof TypeDefParam.Constrained c2 && c1.keyword().equals(c2.keyword())) {
-                        if (TypeSystemUtils.isRegexSubset(c1, c2)) {
-                            requiredType = (requiredType == null) ? c2.type() : system.intersectDef(requiredType, c2.type());
+                        if (TypeSystemUtils.doRegexesOverlap(c1, c2)) {
+                            overlappingConstraints.add(c2.type());
                         }
                     }
                 }
-                if (requiredType == null) {
-                    if (!otherIsOpen || !system.satisfies(c1.type(), otherSpreadType)) return false;
-                } else {
+                
+                // c1 must satisfy the intersection of all overlapping constraints in 'other'
+                if (!overlappingConstraints.isEmpty()) {
+                    TypeDef requiredType = overlappingConstraints.size() == 1 ? overlappingConstraints.get(0) : system.intersectDef(overlappingConstraints.toArray(new TypeDef[0]));
                     if (!system.satisfies(c1.type(), requiredType)) return false;
                 }
+                
+                // If c1 matched no constraints in 'other', it must satisfy other's spread
+                // NOTE: We don't check against other's Named properties here because 
+                // Loop 2 handles ensuring those specific keys are strict enough.
+                if (overlappingConstraints.isEmpty()) {
+                    if (!otherIsOpen || !system.satisfies(c1.type(), otherSpreadType)) return false;
+                }
             } else if (tp1 instanceof TypeDefParam.Spread s1) {
-                // Source spread: properties not explicitly defined in 'this' but allowed by spread
-                // must be allowed by 'other'
+                // Subtype spread must satisfy supertype spread
                 if (!otherIsOpen || !system.satisfies(s1.type(), otherSpreadType)) return false;
                 
-                // ALSO, any property in 'other' NOT explicitly in 'this' must be satisfied by this spread
+                // ALSO, any property allowed by supertype but not explicitly in subtype 
+                // must be allowed by subtype spread (unless it matches a dynamic constraint).
                 for (TypeDefParam tp2 : other.parameters) {
-                    if (tp2 instanceof TypeDefParam.Named n2) {
-                        if (findNamed(n2.name()) == null) {
+                    if (tp2 instanceof TypeDefParam.Named n2 && findNamed(n2.name()) == null) {
+                        boolean governedByConstraint = false;
+                        for (TypeDefParam subTp : this.parameters) {
+                            if (subTp instanceof TypeDefParam.Constrained c && TypeSystemUtils.matches(c, n2.name())) {
+                                governedByConstraint = true;
+                                break;
+                            }
+                        }
+                        if (!governedByConstraint) {
                             if (!system.satisfies(s1.type(), n2.type())) return false;
                         }
-                    } else if (tp2 instanceof TypeDefParam.Constrained c2) {
-                        if (findConstrained(c2.keyword(), c2.value()) == null) {
-                            if (!system.satisfies(s1.type(), c2.type())) return false;
-                        }
+                    } else if (tp2 instanceof TypeDefParam.Constrained c2 && findConstrained(c2.keyword(), c2.value()) == null) {
+                        if (!system.satisfies(s1.type(), c2.type())) return false;
                     }
                 }
             }
@@ -211,24 +211,12 @@ public record GenericTypeDef(
         // 2. Every REQUIRED property that 'other' MUST have must be present in 'this'
         for (TypeDefParam tp2 : other.parameters) {
             if (tp2 instanceof TypeDefParam.Named n2 && !n2.optional()) {
-                if (findNamed(n2.name()) == null) {
-                    boolean matchedByDynamic = false;
-                    for (TypeDefParam thisTp : this.parameters) {
-                        if (thisTp instanceof TypeDefParam.Constrained c1 && TypeSystemUtils.matches(c1, n2.name())) {
-                            if (system.satisfies(c1.type(), n2.type())) {
-                                matchedByDynamic = true;
-                                break;
-                            }
-                        }
-                    }
-
-                    if (!matchedByDynamic) {
-                        if (!thisOpen || !system.satisfies(thisSpreadType, n2.type())) {
-                            TypeDef nullType = system.nilDef();
-                            if (nullType == null || !system.satisfies(nullType, n2.type())) {
-                                return false;
-                            }
-                        }
+                TypeDef thisType = TypeSystemUtils.termAt(system, this, n2.name());
+                // A forbidden property (bottom) cannot satisfy a required property (unless it's also bottom).
+                if ((system.wrap(thisType).isBottom() && !system.wrap(n2.type()).isBottom()) || !system.satisfies(thisType, n2.type())) {
+                    TypeDef nullType = system.nilDef();
+                    if (nullType == null || !system.satisfies(nullType, n2.type())) {
+                        return false;
                     }
                 }
             }
@@ -315,7 +303,7 @@ public record GenericTypeDef(
                         if (tp2 instanceof TypeDefParam.Named n2) {
                             TypeDef t2 = n2.type();
                             TypeDef intersected = system.intersectDef(t1, t2);
-                            if (intersected instanceof BottomType) return Set.of();
+                            if (intersected instanceof BottomType || intersected.equals(system.bottomDef())) return Set.of();
                             mergedParams.add(new TypeDefParam.Named(
                                     intersected,
                                     n1.name(),
@@ -330,8 +318,8 @@ public record GenericTypeDef(
                             }
                             TypeDef t2 = constraintType != null ? constraintType : t2Spread;
                             TypeDef intersected = system.intersectDef(t1, t2);
-                            if (intersected instanceof BottomType && !n1.optional()) return Set.of();
-                            if (!(intersected instanceof BottomType)) {
+                            if ((intersected instanceof BottomType || intersected.equals(system.bottomDef())) && !n1.optional()) return Set.of();
+                            if (!(intersected instanceof BottomType || intersected.equals(system.bottomDef()))) {
                                 mergedParams.add(new TypeDefParam.Named(intersected, n1.name(), n1.optional()));
                             }
                         }
@@ -343,7 +331,7 @@ public record GenericTypeDef(
                         if (tp2 instanceof TypeDefParam.Constrained c2) {
                             TypeDef t2 = c2.type();
                             TypeDef intersected = system.intersectDef(t1, t2);
-                            if (intersected instanceof BottomType) return Set.of();
+                            if (intersected instanceof BottomType || intersected.equals(system.bottomDef())) return Set.of();
                             mergedParams.add(new TypeDefParam.Constrained(
                                     intersected,
                                     c1.keyword(),
@@ -351,8 +339,8 @@ public record GenericTypeDef(
                                     c1.optional() && c2.optional()));
                         } else {
                             TypeDef intersected = system.intersectDef(t1, t2Spread);
-                            if (intersected instanceof BottomType && !c1.optional()) return Set.of();
-                            if (!(intersected instanceof BottomType)) {
+                            if ((intersected instanceof BottomType || intersected.equals(system.bottomDef())) && !c1.optional()) return Set.of();
+                            if (!(intersected instanceof BottomType || intersected.equals(system.bottomDef()))) {
                                 mergedParams.add(new TypeDefParam.Constrained(
                                         intersected, c1.keyword(), c1.value(), c1.optional()));
                             }
@@ -374,8 +362,9 @@ public record GenericTypeDef(
                         }
                         TypeDef t1 = constraintType != null ? constraintType : t1Spread;
                         TypeDef intersected = system.intersectDef(t2, t1);
-                        if (intersected instanceof BottomType && !n2.optional()) return Set.of();
-                        if (!(intersected instanceof BottomType)) {
+                        if (n2.name().equals("b")) throw new RuntimeException("Intersecting b: " + t2.repr() + " with " + t1.repr() + " result: " + intersected.repr() + " bottomDef: " + system.bottomDef().repr());
+                        if ((intersected instanceof BottomType || intersected.equals(system.bottomDef())) && !n2.optional()) return Set.of();
+                        if (!(intersected instanceof BottomType || intersected.equals(system.bottomDef()))) {
                             mergedParams.add(new TypeDefParam.Named(intersected, n2.name(), n2.optional()));
                         }
                     } else if (tp2 instanceof TypeDefParam.Constrained c2) {
@@ -383,8 +372,8 @@ public record GenericTypeDef(
                         if (processedConstrained.contains(key)) continue;
                         TypeDef t2 = c2.type();
                         TypeDef intersected = system.intersectDef(t2, t1Spread);
-                        if (intersected instanceof BottomType && !c2.optional()) return Set.of();
-                        if (!(intersected instanceof BottomType)) {
+                        if ((intersected instanceof BottomType || intersected.equals(system.bottomDef())) && !c2.optional()) return Set.of();
+                        if (!(intersected instanceof BottomType || intersected.equals(system.bottomDef()))) {
                             mergedParams.add(new TypeDefParam.Constrained(
                                     intersected, c2.keyword(), c2.value(), c2.optional()));
                         }
@@ -393,7 +382,7 @@ public record GenericTypeDef(
 
                 if (thisOpen && otherOpen) {
                     TypeDef intersected = system.intersectDef(t1Spread, t2Spread);
-                    if (!(intersected instanceof BottomType)) {
+                    if (!(intersected instanceof BottomType || intersected.equals(system.bottomDef()))) {
                         mergedParams.add(new TypeDefParam.Spread(intersected));
                     }
                 }

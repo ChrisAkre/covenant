@@ -69,9 +69,6 @@ public class JoltIntegrationTest {
         JoltCovenantChecker checker = new JoltCovenantChecker(JsonTypeSystem.INSTANCE);
         Type inferred = checker.infer(inputSchema, specNode);
         boolean result = expectedSchema.isAssignableFrom(inferred);
-        if (!result) {
-            LOGGER.warn("Failed: " + path);
-        }
-//        assertTrue(result, "Jolt verification failed for: " + path + "\nExpected: " + expectedSchema.repr() + "\nInferred: " + inferred.repr());
+        assertTrue(result, "Jolt verification failed for: " + path + "\nExpected: " + expectedSchema.repr() + "\nInferred: " + inferred.repr());
     }
 }
