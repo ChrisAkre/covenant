@@ -128,12 +128,17 @@ public class NormalizerUtils {
     // Renamed to reflect AST node flattening
     public static BiFunction<TypeDef, TypeDef, Collection<TypeDef>> flattenIntersections(
             AbstractTypeSystem system, BiFunction<TypeDef, TypeDef, Collection<TypeDef>> operator) {
-        return (self, other) -> self instanceof UnionType && other instanceof UnionType
-                ? null
-                : self instanceof IntersectionType(Set<TypeDef> members)
-                                && other instanceof IntersectionType(Set<TypeDef> otherMembers)
-                        ? TypeSystemUtils.concat(members, otherMembers)
-                        : operator.apply(self, other);
+        return (self, other) -> {
+            if (self instanceof UnionType || other instanceof UnionType) {
+                return null;
+            }
+            if (self instanceof IntersectionType(Set<TypeDef> members)) {
+                if (other instanceof IntersectionType(Set<TypeDef> otherMembers)) {
+                    return TypeSystemUtils.concat(members, otherMembers);
+                }
+            }
+            return operator.apply(self, other);
+        };
     }
 
     static class Rewriter {

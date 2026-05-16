@@ -125,11 +125,24 @@ public record Bindings(AbstractTypeSystem system, Map<String, TypeDef> values) {
                             case "neq" -> ValueConstraint.Operator.NEQ;
                             case "matches" -> ValueConstraint.Operator.MATCHES;
                             case "nmatches" -> ValueConstraint.Operator.NOT_MATCHES;
+                            case "length", "minlength", "maxlength" -> null;
                             default ->
                                 throw new UnsupportedOperationException("Unknown constraint keyword: " + c.keyword());
                         };
 
                 String val = c.value();
+                if (op == null) {
+                    int len = Integer.parseInt(val);
+                    if (c.keyword().equals("length")) {
+                        yield new LengthConstraint(len, len);
+                    } else if (c.keyword().equals("minlength")) {
+                        yield new LengthConstraint(len, null);
+                    } else if (c.keyword().equals("maxlength")) {
+                        yield new LengthConstraint(0, len);
+                    }
+                    throw new IllegalStateException("Unreachable");
+                }
+
                 if (val.equals("true") || val.equals("false")) {
                     yield new BooleanConstraint(op, Boolean.parseBoolean(val));
                 }

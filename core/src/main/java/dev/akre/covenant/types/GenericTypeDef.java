@@ -277,10 +277,37 @@ public record GenericTypeDef(
 
     @Override
     public Collection<TypeDef> prune(AbstractTypeSystem system, TypeDef other) {
+        if (other instanceof LengthConstraint lc && lc.isDisjoint(this)) {
+            return Set.of();
+        }
+        if (other instanceof IntersectionType intersection) {
+            for (TypeDef member : intersection.members()) {
+                if (member instanceof LengthConstraint lc && lc.isDisjoint(this)) {
+                    return Set.of();
+                }
+                // If it's a GenericTypeDef in the intersection and disjoint, also prune it out
+                if (member instanceof GenericTypeDef g && this.prune(system, g) != null && this.prune(system, g).isEmpty()) {
+                    return Set.of();
+                }
+            }
+        }
         if (this.satisfiesOther(system, other)) {
-            return Set.of(this);
+            if (!(other instanceof LengthConstraint)) {
+                return Set.of(this);
+            }
         } else if (other.satisfiesOther(system, this)) {
-            return Set.of(other);
+            if (!(other instanceof LengthConstraint)) {
+                return Set.of(other);
+            }
+        }
+
+        if (other instanceof IntersectionType intersection) {
+            // Re-evaluate disjointness against members of intersection
+            for (TypeDef member : intersection.members()) {
+                if (this.prune(system, member) != null && this.prune(system, member).isEmpty()) {
+                    return Set.of();
+                }
+            }
         }
 
         // Disjoint templates

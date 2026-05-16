@@ -11,6 +11,14 @@ public class TypeUtilitiesTest {
     private static final TestTypeSystem SYSTEM = TestTypeSystem.of(JsonTypeSystem.INSTANCE);
 
     @Test
+    public void testAt() {
+        Type.GenericType arrayType = (Type.GenericType) SYSTEM.expression("Array<Int, String> & maxlength 1");
+
+        SYSTEM.assertThat(TypeUtilities.at(arrayType, 0)).satisfies("Int");
+        SYSTEM.assertThat(TypeUtilities.at(arrayType, 1)).isBottom();
+    }
+
+    @Test
     public void testConcatIncompatibleTypes() {
         Type.GenericType arrayType = (Type.GenericType) SYSTEM.expression("Array<Int>");
         Type.GenericType objectType = (Type.GenericType) SYSTEM.expression("Object<a: Int>");

@@ -24,8 +24,15 @@ public sealed interface ContainerDef extends TypeDef permits IntersectionType, U
 
     @Override
     default boolean satisfiesOther(AbstractTypeSystem system, TypeDef other) {
-        //        throw new NoSuchMethodError("handled by the type system (%s, %s)".formatted(this, other));
         // returning false here to support early subsumption check
+        if (this instanceof IntersectionType intersection) {
+            // An intersection type satisfies 'other' if ANY of its members satisfies 'other'
+            return intersection.members().stream().anyMatch(m -> system.satisfies(m, other));
+        }
+        if (this instanceof UnionType union) {
+            // A union type satisfies 'other' if ALL of its members satisfy 'other'
+            return union.members().stream().allMatch(m -> system.satisfies(m, other));
+        }
         return false;
     }
 }

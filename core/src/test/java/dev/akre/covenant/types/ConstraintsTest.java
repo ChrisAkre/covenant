@@ -56,6 +56,21 @@ public class ConstraintsTest {
     }
 
     @Test
+    public void testLengthConstraints() {
+        TestTypeSystem system = new TestTypeSystemBuilder(JsonTypeSystem.INSTANCE).build();
+
+        system.assertThat("Array<Int, Int>").notSatisfies("Array<Int...> & length 3");
+        system.assertThat("Array<Int, Int>").satisfies("Array<Int...> & length 2");
+        system.assertThat("Array<Int, Int, Int>").notSatisfies("Array<Int...> & maxlength 2");
+        system.assertThat("Array<Int, Int>").satisfies("Array<Int...> & maxlength 2");
+        system.assertThat("Array<Int...> & maxlength 2 & Array<Any, Any, Any, Any...>").isBottom();
+
+        // Check index evaluation bounds
+        system.assertThat("Array<Int...> & maxlength 2").term(1).satisfies("Int?");
+        system.assertThat("Array<Int...> & maxlength 2").term(2).satisfies("bottom");
+    }
+
+    @Test
     public void testBooleanConstraints() {
         TestTypeSystem system = new TestTypeSystemBuilder(JsonTypeSystem.INSTANCE).build();
 

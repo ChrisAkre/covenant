@@ -187,4 +187,8 @@ public class TypeUtilities {
         }
         return null;
     }
+
+    public static Type at(Type.GenericType array, int idx) {
+        return array.termAt(String.valueOf(idx));
+    }
 }

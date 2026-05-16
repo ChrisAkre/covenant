@@ -9,7 +9,7 @@ import java.util.Set;
 
 public final class TypeParser {
     private final List<Parser<TypeExpr>> customConstraints;
-    private static final Set<String> KEYWORDS = Set.of("gt", "lt", "gte", "lte", "eq", "neq", "matches", "nmatches");
+    private static final Set<String> KEYWORDS = Set.of("gt", "lt", "gte", "lte", "eq", "neq", "matches", "nmatches", "length", "minlength", "maxlength");
 
     public TypeParser(List<Parser<TypeExpr>> customConstraints) {
         this.customConstraints = List.copyOf(customConstraints);

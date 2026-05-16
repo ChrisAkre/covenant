@@ -31,8 +31,15 @@ public class JsonSchemaParser {
             if (typeNode.isString()) {
                 String typeName = typeNode.asString();
                 return switch (typeName) {
-                    case "string" ->
-                        system.type("String");
+                    case "string" -> {
+                        Type stringType = system.type("String");
+                        if (schema.has("minLength") || schema.has("maxLength")) {
+                            Integer min = schema.has("minLength") ? schema.get("minLength").asInt() : null;
+                            Integer max = schema.has("maxLength") ? schema.get("maxLength").asInt() : null;
+                            yield system.intersect(stringType, system.wrap(new LengthConstraint(min, max)));
+                        }
+                        yield stringType;
+                    }
                     case "number" ->
                         system.type("Number");
                     case "integer" ->
@@ -90,7 +97,15 @@ public class JsonSchemaParser {
 
     private Type parseArray(JsonNode schema) {
         Type itemsType = schema.has("items") ? parse(schema.get("items")) : system.top();
-        return system.template("Array").construct(List.of(new TypeParameter.Positional(itemsType, 0, true)));
+        Type arrayType = system.template("Array").construct(List.of(new TypeParameter.Positional(itemsType, 0, true)));
+
+        if (schema.has("minItems") || schema.has("maxItems")) {
+            Integer min = schema.has("minItems") ? schema.get("minItems").asInt() : null;
+            Integer max = schema.has("maxItems") ? schema.get("maxItems").asInt() : null;
+            arrayType = system.intersect(arrayType, system.wrap(new LengthConstraint(min, max)));
+        }
+
+        return arrayType;
     }
 
     private Type parseObject(JsonNode schema) {
