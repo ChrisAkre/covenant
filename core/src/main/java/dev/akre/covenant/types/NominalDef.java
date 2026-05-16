@@ -30,7 +30,7 @@ public sealed interface NominalDef extends TypeDef permits AtomType, TopType, Bo
         } else if (other.satisfiesOther(system, this)) {
             return Set.of(other);
         } else if (other instanceof NominalDef) {
-            return Set.of();
+            return Set.of(system.unionDef(NormalizerUtils.greatestLowerBounds(system, this, other).toArray(new TypeDef[0])));
         }
         return null;
     }

@@ -13,6 +13,8 @@ public class ObjectsTypeTest {
         SYSTEM.assertThat("Object").satisfies("Object");
         SYSTEM.assertThat("Object<id: String>").satisfies("Object");
         SYSTEM.assertThat("Object").notSatisfies("Object<id: String>");
+        SYSTEM.assertThat("Object<'id': String>").isEquivalentTo("Object<id: String>");
+
     }
 
     @Test

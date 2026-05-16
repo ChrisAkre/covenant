@@ -26,7 +26,7 @@ public class NormalizerUtils {
     private static Function<LinkedHashSet<TypeDef>, TypeDef> checkBoundedExhaustion(
             AbstractTypeSystem system, Function<Collection<TypeDef>, TypeDef> wrap) {
         // TODO this needs to handle bounded universes like `Bool & true & false` and `Number & ~Int & ~Float` and
-        // enums.
+        //  enums.
         Set<TypeDef> invertedNominalUniverse = system.typesDef().values().stream()
                 .filter(NominalDef.class::isInstance)
                 .map(NominalDef.class::cast)
@@ -89,6 +89,16 @@ public class NormalizerUtils {
 
     public static boolean isSatisfiedByOther(AbstractTypeSystem system, TypeDef self, TypeDef other) {
         return other.satisfiesOther(system, self);
+    }
+
+    public static Set<TypeDef> greatestLowerBounds(AbstractTypeSystem system, TypeDef self, TypeDef other) {
+        return TypeSystemUtils.unionStream(system.typesDef().values().stream()
+                        .filter(t -> t.satisfiesOther(system, self) &&
+                                t.satisfiesOther(system, other) &&
+                                !system.satisfies(t, system.bottomDef()))
+                        .flatMap(TypeSystemUtils::unionStream)
+                        .collect(unionCollector(system)))
+                .collect(Collectors.toSet());
     }
 
     public static BiFunction<TypeDef, TypeDef, Collection<TypeDef>> resolveBounds(

@@ -3,6 +3,8 @@ package dev.akre.covenant.types;
 import dev.akre.covenant.api.TypeAttribute;
 import dev.akre.covenant.types.FunctionType.Signature;
 import dev.akre.covenant.types.ValueConstraint.Operator;
+import dk.brics.automaton.Automaton;
+import dk.brics.automaton.RegExp;
 import org.jspecify.annotations.Nullable;
 
 import java.util.*;
@@ -56,10 +58,14 @@ public class TypeSystemUtils {
                         return named.type();
                     }
                     // Check dynamic constraints
+                    List<TypeDef> matchingConstraints = new java.util.ArrayList<>();
                     for (TypeDefParam tp : g.parameters()) {
                         if (tp instanceof TypeDefParam.Constrained c && matches(c, resolvedSegment)) {
-                            return tp.type(); // Simplification: return first match
+                            matchingConstraints.add(tp.type());
                         }
+                    }
+                    if (!matchingConstraints.isEmpty()) {
+                        return matchingConstraints.size() == 1 ? matchingConstraints.get(0) : system.intersectDef(matchingConstraints.toArray(new TypeDef[0]));
                     }
                     // Check if open
                     for (TypeDefParam tp : g.parameters()) {
@@ -120,10 +126,12 @@ public class TypeSystemUtils {
         return resolvedSegment;
     }
 
-    private static boolean matches(TypeDefParam.Constrained c, String name) {
+    public static boolean matches(TypeDefParam.Constrained c, String name) {
         if (!c.keyword().equals("matches")) return false;
         String regex = c.value();
         if (regex.startsWith("\"") && regex.endsWith("\"")) {
+            regex = regex.substring(1, regex.length() - 1);
+        } else if (regex.startsWith("/") && regex.endsWith("/")) {
             regex = regex.substring(1, regex.length() - 1);
         }
         try {
@@ -131,6 +139,79 @@ public class TypeSystemUtils {
         } catch (Exception e) {
             return false;
         }
+    }
+
+    public static boolean isRegexSubset(String sub, String sup) {
+        if (sub.equals(sup)) return true;
+        try {
+            Automaton subA = toAutomaton(sub);
+            Automaton supA = toAutomaton(sup);
+            return subA.subsetOf(supA);
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    public static boolean isRegexSubset(TypeDefParam.Constrained sub, TypeDefParam.Constrained sup) {
+        if (sub.value().equals(sup.value())) return true;
+        try {
+            return sub.automaton().subsetOf(sup.automaton());
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    public static boolean doRegexesOverlap(String r1, String r2) {
+        if (r1.equals(r2)) return true;
+        try {
+            Automaton a1 = toAutomaton(r1);
+            Automaton a2 = toAutomaton(r2);
+            return !a1.intersection(a2).isEmpty();
+        } catch (Exception e) {
+            return true;
+        }
+    }
+
+    public static boolean doRegexesOverlap(TypeDefParam.Constrained c1, TypeDefParam.Constrained c2) {
+        if (c1.value().equals(c2.value())) return true;
+        try {
+            return !c1.automaton().intersection(c2.automaton()).isEmpty();
+        } catch (Exception e) {
+            return true;
+        }
+    }
+
+    public static Automaton toAutomaton(String regex) {
+        return new RegExp(translateRegex(stripRegex(regex))).toAutomaton();
+    }
+
+    private static String translateRegex(String regex) {
+        String translated = regex;
+        boolean anchoredStart = translated.startsWith("^");
+        if (anchoredStart) {
+            translated = translated.substring(1);
+        }
+        boolean anchoredEnd = translated.endsWith("$");
+        if (anchoredEnd) {
+            translated = translated.substring(0, translated.length() - 1);
+        }
+
+        if (!anchoredStart) {
+            translated = ".*" + translated;
+        }
+        if (!anchoredEnd) {
+            translated = translated + ".*";
+        }
+        return translated;
+    }
+
+    private static String stripRegex(String regex) {
+        if (regex.startsWith("\"") && regex.endsWith("\"")) {
+            return regex.substring(1, regex.length() - 1);
+        } else if (regex.startsWith("/") && regex.endsWith("/")) {
+            return regex.substring(1, regex.length() - 1);
+        }
+        return regex;
     }
 
     private static TypeDefParam.Named findNamed(GenericTypeDef g, String name) {

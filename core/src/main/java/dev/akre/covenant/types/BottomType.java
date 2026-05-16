@@ -29,7 +29,7 @@ public record BottomType(String name) implements NominalDef {
 
     @Override
     public EnumSet<TypeAttribute> attributes() {
-        return EnumSet.of(ABSTRACT);
+        return EnumSet.of(ABSTRACT, BOTTOM_SEMANTICS);
     }
 
     @Override

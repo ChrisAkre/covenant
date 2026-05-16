@@ -63,6 +63,12 @@ public interface AbstractTypeSystem extends TypeSystem {
                 typesDef().entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, e -> wrap(e.getValue()))));
     }
 
+    @Override
+    default java.util.Set<Type> commonSubtypes(Type self, Type other) {
+        return NormalizerUtils.greatestLowerBounds(this, unwrap(self), unwrap(other))
+                .stream().map(this::wrap).collect(Collectors.toUnmodifiableSet());
+    }
+
     /**
      * Returns the universal top type.
      */

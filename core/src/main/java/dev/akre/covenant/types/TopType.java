@@ -33,7 +33,7 @@ public record TopType(String name) implements NominalDef {
 
     @Override
     public EnumSet<dev.akre.covenant.api.TypeAttribute> attributes() {
-        return EnumSet.of(dev.akre.covenant.api.TypeAttribute.ABSTRACT);
+        return EnumSet.of(dev.akre.covenant.api.TypeAttribute.ABSTRACT, dev.akre.covenant.api.TypeAttribute.TOP_SEMANTICS);
     }
 
     @Override

@@ -41,6 +41,13 @@
             <scope>test</scope>
         </dependency>
 
+        <dependency>
+            <groupId>dk.brics</groupId>
+            <artifactId>automaton</artifactId>
+            <version>1.12-4</version>
+            <scope>compile</scope>
+        </dependency>
+
     </dependencies>
 
     <build>
