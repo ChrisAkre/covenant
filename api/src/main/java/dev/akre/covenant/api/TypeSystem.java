@@ -27,5 +27,7 @@ public interface TypeSystem {
 
     Type.TemplateType template(String object);
 
+    java.util.Set<Type> commonSubtypes(Type self, Type other);
+
     Map<String, Type> types();
 }

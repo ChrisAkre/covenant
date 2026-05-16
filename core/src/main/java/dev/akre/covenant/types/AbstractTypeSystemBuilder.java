@@ -363,6 +363,16 @@ public abstract class AbstractTypeSystemBuilder<B extends AbstractTypeSystemBuil
             }
             TemplateType template = Objects.requireNonNull(origin);
 
+            // SOUNDNESS: If any required parameter is bottom, the entire object/array is bottom.
+            for (TypeDefParam p : parameters) {
+                if (p instanceof TypeDefParam.Named n && !n.optional() && system.wrap(n.type()).isBottom()) {
+                    return system.bottomDef();
+                }
+                if (p instanceof TypeDefParam.Positional pos && !pos.variadic() && system.wrap(pos.type()).isBottom()) {
+                    return system.bottomDef();
+                }
+            }
+
             return new GenericTypeDef(template, pattern, parameters);
         }
     }

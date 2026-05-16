@@ -11,7 +11,7 @@ public class RegexOverlapIntersectionTest {
         // Properties matching both /^a/ and /b$/ (e.g. "ab") 
         // must satisfy both Int and String -> Bottom.
         SYSTEM.assertThat("Object<[matches /^a/]: Int, ...> & Object<[matches /b$/]: String, ...>")
-                .satisfies("Object<'ab': bottom, ...>");
+                .term("ab").isBottom();
     }
 
     @Test
@@ -19,8 +19,9 @@ public class RegexOverlapIntersectionTest {
         // [ab]+ and [bc]+ overlap on "b", "bb", etc.
         // If one requires Int and other requires String, "b" must be bottom.
         SYSTEM.assertThat("Object<[matches /^[ab]+$/]: Int, ...> & Object<[matches /^[bc]+$/]: String, ...>")
-                .satisfies("Object<'b': bottom, ...>")
-                .satisfies("Object<'bb': bottom, ...>");
+                .term("b").isBottom();
+        SYSTEM.assertThat("Object<[matches /^[ab]+$/]: Int, ...> & Object<[matches /^[bc]+$/]: String, ...>")
+                .term("bb").isBottom();
         
         // Non-overlapping keys should still be fine
         SYSTEM.assertThat("Object<[matches /^[ab]+$/]: Int, ...> & Object<[matches /^[bc]+$/]: String, ...>")

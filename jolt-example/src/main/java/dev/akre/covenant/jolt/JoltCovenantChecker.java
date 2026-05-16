@@ -44,10 +44,30 @@ public class JoltCovenantChecker {
         }
         
         try {
-            return typeSystem.intersect(finalPlacements.toArray(new Type[0]));
+            Type result = typeSystem.intersect(finalPlacements.toArray(new Type[0]));
+            return close(result);
         } catch (Exception e) {
             return typeSystem.bottom();
         }
+    }
+
+    private Type close(Type type) {
+        TypeDef def = typeSystem.unwrap(type);
+        if (def instanceof GenericTypeDef g && g.pattern() == AbstractTypeSystemBuilder.PatternConstructor.Pattern.OBJECT) {
+            List<TypeDefParam> params = new ArrayList<>();
+            for (TypeDefParam tp : g.parameters()) {
+                if (tp instanceof TypeDefParam.Spread) continue;
+                if (tp instanceof TypeDefParam.Named n) {
+                    params.add(new TypeDefParam.Named(typeSystem.unwrap(close(typeSystem.wrap(n.type()))), n.name(), n.optional()));
+                } else if (tp instanceof TypeDefParam.Constrained c) {
+                    params.add(new TypeDefParam.Constrained(typeSystem.unwrap(close(typeSystem.wrap(c.type()))), c.keyword(), c.value(), c.optional()));
+                }
+            }
+            return typeSystem.wrap(new GenericTypeDef(g.template(), g.pattern(), params));
+        } else if (def instanceof UnionType u) {
+            return typeSystem.union(u.members().stream().map(m -> close(typeSystem.wrap(m))).toArray(Type[]::new));
+        }
+        return type;
     }
 
     private Type buildArrayOf(List<Type> types) {
@@ -67,20 +87,10 @@ public class JoltCovenantChecker {
             for (String p : targetPaths) {
                 String trimmed = p.trim();
                 Type sourceValue = currentType;
-                
-                if (trimmed.startsWith("#")) {
-                    String constant = trimmed.substring(1);
-                    sourceValue = typeSystem.expression("'" + constant.replace("'", "''") + "'");
-                } else if (trimmed.startsWith("@") && !trimmed.contains(".") && !trimmed.contains("[")) {
+                if (trimmed.startsWith("@") && !trimmed.contains(".") && !trimmed.contains("[") && !trimmed.contains("(")) {
                      sourceValue = lookupTranspose(trimmed, typeStack, matchedGroups);
                 }
-                
                 String path = substitute(trimmed, matchedGroups, typeStack);
-                // In shiftr, if RHS starts with #, it might be a literal if escaped, or a constant.
-                // But shiftr doesn't usually use # for constants on RHS of a mapping?
-                // Actually, Jolt 'default' uses #. Shiftr might not.
-                // Let's keep it as is for now but avoid stripping it from the path if it matched literal.
-                
                 pathPlacements.computeIfAbsent(path, k -> new ArrayList<>()).add(sourceValue);
             }
         } else if (specNode.isArray()) {
@@ -101,11 +111,11 @@ public class JoltCovenantChecker {
             for (Map.Entry<String, JsonNode> entry : specNode.properties()) {
                 String k = entry.getKey();
                 if (k.equals("@")) continue;
-                if (k.startsWith("@") && !k.contains("*") && !k.contains("|") && !k.contains("&")) {
+                if (k.startsWith("@") && !k.contains("*") && !k.contains("|") && !k.contains("&") && !k.contains("$")) {
                     transposes.add(entry);
                 } else if (k.equals("*")) {
                     wildcards.add(entry);
-                } else if (k.startsWith("$")) {
+                } else if (k.startsWith("$") && !k.contains("(")) {
                     special.add(entry);
                 } else if (k.contains("*") && !isEscaped(k, k.indexOf("*"))) {
                     globs.add(entry);
@@ -184,18 +194,7 @@ public class JoltCovenantChecker {
 
             for (Map.Entry<String, JsonNode> entry : special) {
                 String k = entry.getKey();
-                int level = 0;
-                if (k.length() > 1 && Character.isDigit(k.charAt(1))) {
-                     level = Integer.parseInt(k.substring(1));
-                }
-                
-                String val;
-                if (k.contains("(")) {
-                     val = substitute(k, matchedGroups, typeStack);
-                } else {
-                     int index = matchedGroups.size() - 1 - level;
-                     val = (index >= 0 && index < matchedGroups.size()) ? matchedGroups.get(index)[0] : "root";
-                }
+                String val = substitute(k, matchedGroups, typeStack);
                 
                 List<String[]> nextGroups = new ArrayList<>(matchedGroups);
                 nextGroups.add(new String[]{val});
@@ -257,6 +256,7 @@ public class JoltCovenantChecker {
         Type root = typeStack.get(stackIndex);
         if (path.isEmpty()) return root;
         
+        // Path itself might contain & substitutions
         path = substitute(path, matchedGroups, typeStack);
         
         Type current = root;
@@ -280,11 +280,18 @@ public class JoltCovenantChecker {
     }
 
     private String substitute(String path, List<String[]> matchedGroups, List<Type> typeStack) {
+        if (path.startsWith("#")) return unescape(path.substring(1));
+        
         StringBuilder sb = new StringBuilder();
         for (int i = 0; i < path.length(); i++) {
             char c = path.charAt(i);
             if (c == '\\' && i + 1 < path.length()) {
-                sb.append(path.charAt(i + 1));
+                char next = path.charAt(i + 1);
+                if (next == '&' || next == '$' || next == '@' || next == '.' || next == '[' || next == ']') {
+                    sb.append('\\').append(next);
+                } else {
+                    sb.append(next);
+                }
                 i++;
             } else if (c == '&' || c == '$') {
                 int start = i + 1;
@@ -319,6 +326,8 @@ public class JoltCovenantChecker {
                     if (groupIndex >= 0 && groupIndex < groups.length) {
                         sb.append(groups[groupIndex]);
                     }
+                } else if (c == '$' && level == matchedGroups.size()) {
+                    sb.append("root");
                 }
             } else if (c == '@') {
                 int end = i + 1;
@@ -326,7 +335,9 @@ public class JoltCovenantChecker {
                     int close = path.indexOf(')', end);
                     if (close != -1) {
                         Type val = lookupTranspose(path.substring(i, close + 1), typeStack, matchedGroups);
-                        sb.append(getRepresentativeValue(val));
+                        String repr = getRepresentativeValue(val);
+                        // If repr is dynamic, keep the braces for splitting later
+                        sb.append(repr);
                         i = close;
                     } else {
                         sb.append(c);
@@ -388,6 +399,7 @@ public class JoltCovenantChecker {
     private Type term(Type type, String key) {
         if (type.isBottom()) return type;
         TypeDef subject = typeSystem.unwrap(type);
+        // Handle dots in key by escaping for symbol literal
         TypeDef segment = typeSystem.unwrap((dev.akre.covenant.api.Type) typeSystem.expression("'" + key.replace("'", "''") + "'"));
         TypeDef result = TypeSystemUtils.termAt(typeSystem, subject, segment);
         return typeSystem.wrap(result);
