@@ -3,6 +3,7 @@ package dev.akre.covenant.jolt;
 import dev.akre.covenant.api.Type;
 import dev.akre.covenant.api.TypeParameter;
 import dev.akre.covenant.types.*;
+import dev.akre.covenant.types.TypeDefParam.*;
 import tools.jackson.databind.JsonNode;
 
 import java.util.*;
@@ -34,7 +35,7 @@ public class JoltCovenantChecker {
             List<Type> types = entry.getValue();
             
             Type combinedType = typeSystem.union(types.toArray(new Type[0]));
-            if (types.size() > 1 && !path.contains("[]")) {
+            if (types.size() > 1 && !path.contains("[]") && !path.contains("{{")) {
                 combinedType = buildArrayOf(Collections.singletonList(combinedType));
             }
             
@@ -51,19 +52,23 @@ public class JoltCovenantChecker {
 
     private Type close(Type type) {
         TypeDef def = typeSystem.unwrap(type);
-        if (def instanceof GenericTypeDef g && g.pattern() == AbstractTypeSystemBuilder.PatternConstructor.Pattern.OBJECT) {
-            List<TypeDefParam> params = new ArrayList<>();
-            for (TypeDefParam tp : g.parameters()) {
-                if (tp instanceof TypeDefParam.Spread) continue;
-                if (tp instanceof TypeDefParam.Named n) {
-                    params.add(new TypeDefParam.Named(typeSystem.unwrap(close(typeSystem.wrap(n.type()))), n.name(), n.optional()));
-                } else if (tp instanceof TypeDefParam.Constrained c) {
-                    params.add(new TypeDefParam.Constrained(typeSystem.unwrap(close(typeSystem.wrap(c.type()))), c.keyword(), c.value(), c.optional()));
+        try {
+            if (def instanceof GenericTypeDef g && g.pattern() == AbstractTypeSystemBuilder.PatternConstructor.Pattern.OBJECT) {
+                List<dev.akre.covenant.api.TypeParameter> params = new ArrayList<>();
+                for (TypeDefParam tp : g.parameters()) {
+                    if (tp instanceof Spread) continue;
+                    if (tp instanceof Named n) {
+                        params.add(new dev.akre.covenant.api.TypeParameter.Named(close(typeSystem.wrap(n.type())), n.name(), n.optional()));
+                    } else if (tp instanceof Constrained c) {
+                        params.add(new dev.akre.covenant.api.TypeParameter.Constrained(close(typeSystem.wrap(c.type())), c.keyword(), c.value(), c.optional()));
+                    }
                 }
+                return typeSystem.template(g.template().name()).construct(params);
+            } else if (def instanceof UnionType u) {
+                return typeSystem.union(u.members().stream().map(m -> close(typeSystem.wrap(m))).toArray(Type[]::new));
             }
-            return typeSystem.wrap(new GenericTypeDef(g.template(), g.pattern(), params));
-        } else if (def instanceof UnionType u) {
-            return typeSystem.union(u.members().stream().map(m -> close(typeSystem.wrap(m))).toArray(Type[]::new));
+        } catch (Exception e) {
+            // Silently fail close for complex intersections
         }
         return type;
     }
@@ -105,6 +110,7 @@ public class JoltCovenantChecker {
             List<Map.Entry<String, JsonNode>> special = new ArrayList<>();
             List<Map.Entry<String, JsonNode>> transposes = new ArrayList<>();
             List<Map.Entry<String, JsonNode>> globs = new ArrayList<>();
+            List<Map.Entry<String, JsonNode>> literals = new ArrayList<>();
 
             for (Map.Entry<String, JsonNode> entry : specNode.properties()) {
                 String k = entry.getKey();
@@ -115,6 +121,8 @@ public class JoltCovenantChecker {
                     wildcards.add(entry);
                 } else if (k.startsWith("$")) {
                     special.add(entry);
+                } else if (k.startsWith("#")) {
+                    literals.add(entry);
                 } else if (k.contains("*") && !isEscaped(k, k.indexOf("*"))) {
                     globs.add(entry);
                 } else if (k.contains("|") && !isEscaped(k, k.indexOf("|"))) {
@@ -133,7 +141,13 @@ public class JoltCovenantChecker {
             for (Map.Entry<String, JsonNode> entry : transposes) {
                 Type lookupValue = lookupTranspose(entry.getKey(), typeStack, matchedGroups);
                 String valStr = getRepresentativeValue(lookupValue);
-                processMatch(lookupValue, entry.getValue(), valStr, new String[]{valStr}, matchedGroups, typeStack, pathPlacements, false);
+                processMatch(lookupValue, entry.getValue(), valStr, new String[]{valStr}, matchedGroups, typeStack, pathPlacements, true);
+            }
+
+            for (Map.Entry<String, JsonNode> entry : literals) {
+                String literalValue = unescape(entry.getKey().substring(1));
+                Type literalType = (dev.akre.covenant.api.Type) typeSystem.expression("'" + literalValue.replace("'", "''") + "'");
+                processMatch(literalType, entry.getValue(), literalValue, new String[]{literalValue}, matchedGroups, typeStack, pathPlacements, true);
             }
 
             for (Map.Entry<String, JsonNode> entry : explicit.entrySet()) {
@@ -258,7 +272,29 @@ public class JoltCovenantChecker {
             return repr.substring(1, repr.length() - 1);
         }
         if (repr.matches("-?\\d+(\\.\\d+)?")) return repr;
+
+        TypeDef def = typeSystem.unwrap(type);
+        String regex = extractRegex(def);
+        if (regex != null) {
+            return "{{REGEX:" + regex + "}}";
+        }
+
         return "{{ " + repr + " }}";
+    }
+
+    private String extractRegex(TypeDef def) {
+        if (def instanceof StringConstraint(ValueConstraint.Operator op, String val) && op == ValueConstraint.Operator.MATCHES) {
+            if (val.startsWith("'") && val.endsWith("'")) return val.substring(1, val.length() - 1);
+            if (val.startsWith("\"") && val.endsWith("\"")) return val.substring(1, val.length() - 1);
+            return val;
+        }
+        if (def instanceof IntersectionType i) {
+            for (TypeDef member : i.members()) {
+                String r = extractRegex(member);
+                if (r != null) return r;
+            }
+        }
+        return null;
     }
 
     private Type lookupTranspose(String op, List<Type> typeStack, List<String[]> matchedGroups) {
@@ -398,6 +434,7 @@ public class JoltCovenantChecker {
                         sb.append(c);
                     }
                 } else {
+                    int startOfAt = i;
                     while (end < path.length() && (Character.isLetterOrDigit(path.charAt(end)) || path.charAt(end) == '_' || path.charAt(end) == '.')) {
                         end++;
                     }
@@ -451,6 +488,12 @@ public class JoltCovenantChecker {
                 
                 if (sub.startsWith("[") && sub.endsWith("]")) {
                     current = typeSystem.template("Array").construct(List.of(new TypeParameter.Positional(current, 0, true)));
+                } else if (sub.startsWith("{{REGEX:") && sub.endsWith("}}")) {
+                    String regex = sub.substring(8, sub.length() - 2);
+                    current = typeSystem.template("Object").construct(List.of(
+                        new TypeParameter.Constrained(current, "matches", "\"" + regex + "\"", false),
+                        new TypeParameter.Spread(typeSystem.top())
+                    ));
                 } else if (sub.startsWith("{{") && sub.endsWith("}}")) {
                     current = typeSystem.template("Object").construct(List.of(
                         new TypeParameter.Constrained(current, "matches", ".*", false),
@@ -513,6 +556,27 @@ public class JoltCovenantChecker {
     private Type term(Type type, String key) {
         if (type.isBottom()) return type;
         TypeDef subject = typeSystem.unwrap(type);
+
+        if (key.equals("*")) {
+            if (subject instanceof GenericTypeDef g) {
+                List<TypeDef> types = new ArrayList<>();
+                for (TypeDefParam tp : g.parameters()) {
+                    if (tp instanceof TypeDefParam.Constrained) {
+                        types.add(tp.type());
+                    }
+                }
+                if (!types.isEmpty()) {
+                    return typeSystem.wrap(typeSystem.unionDef(types.toArray(new TypeDef[0])));
+                }
+            }
+            return typeSystem.wrap(TypeSystemUtils.valueTypeOf(typeSystem, subject));
+        }
+
+        if (subject instanceof NominalDef n && !n.name().equals("bottom")) {
+             if (n.name().equals("top") || n.name().equals("Any") || (!key.equals("*") && !subject.attributes().contains(dev.akre.covenant.api.TypeAttribute.OBJECT) && !subject.attributes().contains(dev.akre.covenant.api.TypeAttribute.ARRAY))) {
+                  return type;
+             }
+        }
         
         if (TypeSystemUtils.isPrimitive(subject)) {
             if (key.matches("-?\\d+(\\.\\d+)?")) {
@@ -543,10 +607,16 @@ public class JoltCovenantChecker {
             }
         } else if (def instanceof GenericTypeDef g) {
             if (g.pattern() == AbstractTypeSystemBuilder.PatternConstructor.Pattern.OBJECT) {
+                boolean hasWildcard = false;
                 for (TypeDefParam tp : g.parameters()) {
                     if (tp instanceof TypeDefParam.Named n) {
                         keys.add(n.name());
+                    } else {
+                        hasWildcard = true;
                     }
+                }
+                if (hasWildcard) {
+                    keys.add("*");
                 }
             } else if (g.pattern() == AbstractTypeSystemBuilder.PatternConstructor.Pattern.ARRAY) {
                 keys.add("0");

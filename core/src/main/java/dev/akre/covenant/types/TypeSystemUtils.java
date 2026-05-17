@@ -36,19 +36,28 @@ public class TypeSystemUtils {
                     .map(m -> valueTypeOf(system, m))
                     .toArray(TypeDef[]::new));
             case GenericTypeDef g -> {
-                List<TypeDef> valueTypes = new ArrayList<>();
+                List<TypeDef> specificValueTypes = new ArrayList<>();
+                TypeDef spreadType = null;
                 for (TypeDefParam tp : g.parameters()) {
                     if (tp instanceof TypeDefParam.Named n) {
-                        valueTypes.add(n.type());
+                        specificValueTypes.add(n.type());
                     } else if (tp instanceof TypeDefParam.Positional pos) {
-                        valueTypes.add(pos.type());
+                        specificValueTypes.add(pos.type());
                     } else if (tp instanceof TypeDefParam.Constrained c) {
-                        valueTypes.add(c.type());
-                    } else if (tp instanceof TypeDefParam.Spread spread) {
-                        valueTypes.add(spread.type());
+                        specificValueTypes.add(c.type());
+                    } else if (tp instanceof TypeDefParam.Spread s) {
+                        spreadType = s.type();
                     }
                 }
-                yield system.unionDef(valueTypes.toArray(new TypeDef[0]));
+                TypeDef result;
+                if (!specificValueTypes.isEmpty()) {
+                    result = system.unionDef(specificValueTypes.toArray(new TypeDef[0]));
+                } else if (spreadType != null) {
+                    result = spreadType;
+                } else {
+                    result = system.bottomDef();
+                }
+                yield result;
             }
             case NominalDef n when n.attributes().contains(dev.akre.covenant.api.TypeAttribute.ARRAY) ||
                     n.attributes().contains(dev.akre.covenant.api.TypeAttribute.OBJECT) -> system.topDef();
@@ -153,19 +162,23 @@ public class TypeSystemUtils {
     }
 
     private static @Nullable String getResolvedSegment(TypeDef segment) {
-        String resolvedSegment = null;
         if (segment instanceof SymbolType(String value)) {
-            resolvedSegment = value;
+            return value;
         } else if (segment instanceof StringConstraint(
                 Operator operator, String value
         ) && operator == Operator.EQ) {
-            resolvedSegment = value;
+            return value;
         } else if (segment instanceof NumberConstraint(
                 Operator operator, java.math.BigDecimal value
         ) && operator == Operator.EQ) {
-            resolvedSegment = value.toPlainString();
+            return value.toPlainString();
+        } else if (segment instanceof IntersectionType i) {
+            for (TypeDef member : i.members()) {
+                String resolved = getResolvedSegment(member);
+                if (resolved != null) return resolved;
+            }
         }
-        return resolvedSegment;
+        return null;
     }
 
     public static boolean matches(TypeDefParam.Constrained c, String name) {

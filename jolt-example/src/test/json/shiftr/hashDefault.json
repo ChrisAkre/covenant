@@ -1,89 +1,66 @@
 {
   "inputSchema": {
-  "$schema": "http://json-schema.org/schema#",
-  "type": "object",
-  "properties": {
-    "data": {
-      "type": "object",
-      "properties": {
-        "1234": {
-          "type": "object",
-          "properties": {
-            "clientId": {
-              "type": "string"
+    "$schema": "http://json-schema.org/schema#",
+    "type": "object",
+    "properties": {
+      "data": {
+        "type": "object",
+        "patternProperties": {
+          "^[0-9]+$": {
+            "type": "object",
+            "properties": {
+              "clientId": {
+                "type": "string",
+                "pattern": "^[0-9]+$"
+              },
+              "hidden": {
+                "type": "boolean"
+              }
             },
-            "hidden": {
-              "type": "boolean"
-            }
-          },
-          "required": [
-            "clientId",
-            "hidden"
-          ]
-        },
-        "1235": {
-          "type": "object",
-          "properties": {
-            "clientId": {
-              "type": "string"
-            },
-            "hidden": {
-              "type": "boolean"
-            }
-          },
-          "required": [
-            "clientId",
-            "hidden"
-          ]
+            "required": [
+              "clientId",
+              "hidden"
+            ]
+          }
         }
-      },
-      "required": [
-        "1234",
-        "1235"
-      ]
-    }
-  },
-  "required": [
-    "data"
-  ]
-},
-  "spec": {
-        "data" : {
-            "*" : {
-                "hidden" : {
-                    "true" : { // if hidden is true, then write the value disabled to the RHS output path
-                               // Also @(3,clientId) means go up 3 levels, to the "1234" or "1235" level, then lookup / down the tree for the value of "clientId"
-                        "#disabled" : "clients.@(3,clientId)"
-                    },
-                    "false" : {
-                        "#enabled" : "clients.@(3,clientId)"
-                    }
-                }
-            }
-        }
+      }
     },
-  "expectedSchema": {
-  "$schema": "http://json-schema.org/schema#",
-  "type": "object",
-  "properties": {
-    "clients": {
-      "type": "object",
-      "properties": {
-        "12": {
-          "type": "string"
-        },
-        "35": {
-          "type": "string"
+    "required": [
+      "data"
+    ]
+  },
+  "spec": {
+    "data": {
+      "*": {
+        "hidden": {
+          "true": {
+            "#disabled": "clients.@(3,clientId)"
+          },
+          "false": {
+            "#enabled": "clients.@(3,clientId)"
+          }
         }
-      },
-      "required": [
-        "12",
-        "35"
-      ]
+      }
     }
   },
-  "required": [
-    "clients"
-  ]
-}
+  "expectedSchema": {
+    "$schema": "http://json-schema.org/schema#",
+    "type": "object",
+    "properties": {
+      "clients": {
+        "type": "object",
+        "patternProperties": {
+          "^[0-9]+$": {
+            "enum": [
+              "disabled",
+              "enabled"
+            ]
+          }
+        }
+      }
+    },
+    "required": [
+      "clients"
+    ]
+  }
 }

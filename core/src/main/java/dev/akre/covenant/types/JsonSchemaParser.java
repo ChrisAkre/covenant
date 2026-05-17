@@ -31,8 +31,12 @@ public class JsonSchemaParser {
             if (typeNode.isString()) {
                 String typeName = typeNode.asString();
                 return switch (typeName) {
-                    case "string" ->
-                        system.type("String");
+                    case "string" -> {
+                        if (schema.has("pattern")) {
+                            yield system.intersect(system.type("String"), system.expression("matches \"" + schema.get("pattern").asString() + "\""));
+                        }
+                        yield system.type("String");
+                    }
                     case "number" ->
                         system.type("Number");
                     case "integer" ->
@@ -55,7 +59,7 @@ public class JsonSchemaParser {
                 if (member.isString()) {
                     members.add(system.intersect(
                             system.type("String"),
-                            system.expression("eq " + member.asString())));
+                            system.expression("eq '" + member.asString().replace("'", "''") + "'")));
                 } else if (member.isNumber()) {
                     members.add(system.intersect(
                             system.type("Number"),

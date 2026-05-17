@@ -1,5 +1,7 @@
 package dev.akre.covenant.types;
 
+import org.jspecify.annotations.NonNull;
+
 import java.util.Collection;
 import java.util.Set;
 
@@ -11,18 +13,15 @@ public record BooleanConstraint(Operator operator, boolean value) implements Val
             return null;
         } else if (this.equals(other)) {
             return Set.of(this);
-        }
-
-        if (this.satisfiesOther(system, other)) {
+        } else if (this.satisfiesOther(system, other)) {
             return Set.of(this);
         } else if (other.satisfiesOther(system, this)) {
             return Set.of(other);
-        }
-
-        if (this.operator.isDisjoint(other.operator, this.value, other.value)) {
+        } else if (this.operator.isDisjoint(other.operator, this.value, other.value)) {
             return Set.of();
+        } else {
+            return null;
         }
-        return null;
     }
 
     @Override
@@ -31,12 +30,13 @@ public record BooleanConstraint(Operator operator, boolean value) implements Val
             return null;
         } else if (this.equals(other)) {
             return Set.of(this);
+        } else  if (this.satisfiesOther(system, other)) {
+            return Set.of(other);
+        } else if (other.satisfiesOther(system, this)) {
+            return Set.of(this);
+        } else {
+            return null;
         }
-
-        if (this.satisfiesOther(system, other)) return Set.of(other);
-        if (other.satisfiesOther(system, this)) return Set.of(this);
-
-        return null;
     }
 
     @Override
@@ -68,7 +68,7 @@ public record BooleanConstraint(Operator operator, boolean value) implements Val
     }
 
     @Override
-    public String toString() {
+    public  @NonNull String toString() {
         return repr();
     }
 }
