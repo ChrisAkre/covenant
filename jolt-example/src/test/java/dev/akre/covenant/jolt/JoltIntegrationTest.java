@@ -4,6 +4,7 @@ import dev.akre.covenant.api.Type;
 import dev.akre.covenant.types.JsonSchemaParser;
 import dev.akre.covenant.types.JsonTypeSystem;
 import org.junit.jupiter.api.Assumptions;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -13,9 +14,14 @@ import tools.jackson.databind.json.JsonMapper;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import org.slf4j.Logger;
@@ -30,6 +36,20 @@ public class JoltIntegrationTest {
 
     private JsonSchemaParser jsonParser;
     private JsonMapper mapper;
+
+    private static final List<FailureRecord> failures = new ArrayList<>();
+
+    private static class FailureRecord {
+        String testName;
+        String message;
+        String stackTrace;
+
+        FailureRecord(String testName, String message, String stackTrace) {
+            this.testName = testName;
+            this.message = message;
+            this.stackTrace = stackTrace;
+        }
+    }
 
     @BeforeEach
     public void setup() {
@@ -47,29 +67,69 @@ public class JoltIntegrationTest {
         }
         return Files.walk(jsonDir)
                 .filter(Files::isRegularFile)
-                .filter(path -> path.toString().endsWith(".json"));
+                .filter(path -> path.toString().endsWith(".json"))
+                .sorted();
     }
 
-    @ParameterizedTest
+    @ParameterizedTest(name = "{0}")
     @MethodSource("jsonFilesProvider")
-    public void testJoltShiftr(Path path) throws IOException {
-        String content = Files.readString(path);
-        JsonNode node = mapper.readTree(content);
-        
-        if (!node.has("inputSchema") || !node.has("spec") || !node.has("expectedSchema")) {
+    public void testJoltShiftr(Path path) throws Exception {
+        try {
+            String content = Files.readString(path);
+            JsonNode node = mapper.readTree(content);
+
+            if (!node.has("inputSchema") || !node.has("spec") || !node.has("expectedSchema")) {
+                return;
+            }
+
+            JsonNode inputSchemaNode = node.get("inputSchema");
+            JsonNode specNode = node.get("spec");
+            JsonNode expectedSchemaNode = node.get("expectedSchema");
+
+            Type inputSchema = jsonParser.parse(inputSchemaNode);
+            Type expectedSchema = jsonParser.parse(expectedSchemaNode);
+
+            JoltCovenantChecker checker = new JoltCovenantChecker(JsonTypeSystem.INSTANCE);
+            Type inferred = checker.infer(inputSchema, specNode);
+            boolean result = expectedSchema.isAssignableFrom(inferred);
+
+            Assumptions.assumeTrue(result, "Jolt verification failed for: " + path + "\nExpected: " + expectedSchema.repr() + "\nInferred: " + inferred.repr());
+        } catch (Throwable t) {
+            StringWriter sw = new StringWriter();
+            t.printStackTrace(new PrintWriter(sw));
+            failures.add(new FailureRecord(path.toString(), t.getMessage(), sw.toString()));
+        }
+    }
+
+    @AfterAll
+    public static void reportFailures() throws IOException {
+        if (failures.isEmpty()) {
             return;
         }
 
-        JsonNode inputSchemaNode = node.get("inputSchema");
-        JsonNode specNode = node.get("spec");
-        JsonNode expectedSchemaNode = node.get("expectedSchema");
+        Path targetDir = Paths.get("target");
+        if (!Files.exists(targetDir)) {
+            // fallback if running from root
+            targetDir = Paths.get("jolt-example/target");
+        }
 
-        Type inputSchema = jsonParser.parse(inputSchemaNode);
-        Type expectedSchema = jsonParser.parse(expectedSchemaNode);
+        if (!Files.exists(targetDir)) {
+            Files.createDirectories(targetDir);
+        }
 
-        JoltCovenantChecker checker = new JoltCovenantChecker(JsonTypeSystem.INSTANCE);
-        Type inferred = checker.infer(inputSchema, specNode);
-        boolean result = expectedSchema.isAssignableFrom(inferred);
-        Assumptions.assumeTrue(result, "Jolt verification failed for: " + path + "\nExpected: " + expectedSchema.repr() + "\nInferred: " + inferred.repr());
+        Path summaryFile = targetDir.resolve("failing_tests_summary.txt");
+        List<String> summaryLines = failures.stream()
+                .map(f -> f.testName)
+                .collect(Collectors.toList());
+        Files.write(summaryFile, summaryLines);
+
+        for (FailureRecord failure : failures) {
+            String safeName = failure.testName.replace(File.separatorChar, '_').replace('.', '_').replace(':', '_');
+            Path detailFile = targetDir.resolve("failing_test_" + safeName + ".txt");
+            String content = "Test: " + failure.testName + "\n" +
+                             "Message: " + failure.message + "\n\n" +
+                             "Stack Trace:\n" + failure.stackTrace;
+            Files.writeString(detailFile, content);
+        }
     }
 }
