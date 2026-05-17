@@ -34,7 +34,7 @@ public class JoltCovenantChecker {
             List<Type> types = entry.getValue();
             
             Type combinedType = typeSystem.union(types.toArray(new Type[0]));
-            if (types.size() > 1 && !path.contains("[]") && !path.contains("{{")) {
+            if (types.size() > 1 && !path.contains("[]") && !path.contains("{{") && !path.contains("[#")) {
                 combinedType = buildArrayOf(Collections.singletonList(combinedType));
             }
             
