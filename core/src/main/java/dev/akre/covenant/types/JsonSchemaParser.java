@@ -93,8 +93,33 @@ public class JsonSchemaParser {
     }
 
     private Type parseArray(JsonNode schema) {
-        Type itemsType = schema.has("items") ? parse(schema.get("items")) : system.top();
-        return system.template("Array").construct(List.of(new TypeParameter.Positional(itemsType, 0, true)));
+        List<dev.akre.covenant.api.TypeParameter> params = new ArrayList<>();
+        JsonNode items = schema.get("items");
+        JsonNode prefixItems = schema.get("prefixItems");
+        
+        if (prefixItems != null && prefixItems.isArray()) {
+            int i = 0;
+            for (JsonNode item : prefixItems) {
+                params.add(new dev.akre.covenant.api.TypeParameter.Positional(parse(item), i++, false));
+            }
+            if (items != null) {
+                params.add(new dev.akre.covenant.api.TypeParameter.Positional(parse(items), i, true));
+            }
+        } else if (items != null && items.isArray()) {
+            int i = 0;
+            for (JsonNode item : items) {
+                params.add(new dev.akre.covenant.api.TypeParameter.Positional(parse(item), i++, false));
+            }
+            JsonNode additionalItems = schema.get("additionalItems");
+            if (additionalItems != null) {
+                params.add(new dev.akre.covenant.api.TypeParameter.Positional(parse(additionalItems), i, true));
+            }
+        } else {
+            Type itemsType = items != null ? parse(items) : system.top();
+            params.add(new dev.akre.covenant.api.TypeParameter.Positional(itemsType, 0, true));
+        }
+
+        return system.template("Array").construct(params);
     }
 
     private Type parseObject(JsonNode schema) {

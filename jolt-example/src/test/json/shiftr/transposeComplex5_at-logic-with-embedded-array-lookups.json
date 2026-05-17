@@ -8,15 +8,17 @@
       "properties": {
         "captions": {
           "type": "array",
-          "items": {
-            "type": "string"
-          }
+          "items": [
+            { "enum": ["Caption 1"] },
+            { "enum": ["Caption 2"] }
+          ]
         },
         "fileNames": {
           "type": "array",
-          "items": {
-            "type": "string"
-          }
+          "items": [
+            { "enum": ["Hi!"] },
+            { "enum": ["Sunny"] }
+          ]
         }
       },
       "required": [

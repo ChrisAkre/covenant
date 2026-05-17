@@ -3,7 +3,6 @@ package dev.akre.covenant.jolt;
 import dev.akre.covenant.api.Type;
 import dev.akre.covenant.api.TypeParameter;
 import dev.akre.covenant.types.*;
-import dev.akre.covenant.types.TypeDefParam.*;
 import tools.jackson.databind.JsonNode;
 
 import java.util.*;
@@ -56,10 +55,10 @@ public class JoltCovenantChecker {
             if (def instanceof GenericTypeDef g && g.pattern() == AbstractTypeSystemBuilder.PatternConstructor.Pattern.OBJECT) {
                 List<dev.akre.covenant.api.TypeParameter> params = new ArrayList<>();
                 for (TypeDefParam tp : g.parameters()) {
-                    if (tp instanceof Spread) continue;
-                    if (tp instanceof Named n) {
+                    if (tp instanceof TypeDefParam.Spread) continue;
+                    if (tp instanceof TypeDefParam.Named n) {
                         params.add(new dev.akre.covenant.api.TypeParameter.Named(close(typeSystem.wrap(n.type())), n.name(), n.optional()));
-                    } else if (tp instanceof Constrained c) {
+                    } else if (tp instanceof TypeDefParam.Constrained c) {
                         params.add(new dev.akre.covenant.api.TypeParameter.Constrained(close(typeSystem.wrap(c.type())), c.keyword(), c.value(), c.optional()));
                     }
                 }
@@ -192,7 +191,7 @@ public class JoltCovenantChecker {
             for (Map.Entry<String, JsonNode> entry : wildcards) {
                 boolean matchedAny = false;
                 TypeDef currentDef = typeSystem.unwrap(currentType);
-                if (currentDef instanceof dev.akre.covenant.types.NominalDef n && n.attributes().contains(dev.akre.covenant.api.TypeAttribute.ARRAY)) {
+                if (currentDef instanceof NominalDef n && n.attributes().contains(dev.akre.covenant.api.TypeAttribute.ARRAY)) {
                     Type valueType = typeSystem.wrap(TypeSystemUtils.valueTypeOf(typeSystem, currentDef));
                     if (!valueType.isBottom()) {
                         matchedAny = true;
@@ -283,13 +282,19 @@ public class JoltCovenantChecker {
     }
 
     private String extractRegex(TypeDef def) {
-        if (def instanceof StringConstraint(ValueConstraint.Operator op, String val) && op == ValueConstraint.Operator.MATCHES) {
+        if (def instanceof dev.akre.covenant.types.StringConstraint(dev.akre.covenant.types.ValueConstraint.Operator op, String val) && op == dev.akre.covenant.types.ValueConstraint.Operator.MATCHES) {
             if (val.startsWith("'") && val.endsWith("'")) return val.substring(1, val.length() - 1);
             if (val.startsWith("\"") && val.endsWith("\"")) return val.substring(1, val.length() - 1);
             return val;
         }
         if (def instanceof IntersectionType i) {
             for (TypeDef member : i.members()) {
+                String r = extractRegex(member);
+                if (r != null) return r;
+            }
+        }
+        if (def instanceof UnionType u) {
+            for (TypeDef member : u.members()) {
                 String r = extractRegex(member);
                 if (r != null) return r;
             }
@@ -491,12 +496,12 @@ public class JoltCovenantChecker {
                 } else if (sub.startsWith("{{REGEX:") && sub.endsWith("}}")) {
                     String regex = sub.substring(8, sub.length() - 2);
                     current = typeSystem.template("Object").construct(List.of(
-                        new TypeParameter.Constrained(current, "matches", "\"" + regex + "\"", false),
+                        new TypeParameter.Constrained(current, "matches", "\"" + regex + "\"", true),
                         new TypeParameter.Spread(typeSystem.top())
                     ));
                 } else if (sub.startsWith("{{") && sub.endsWith("}}")) {
                     current = typeSystem.template("Object").construct(List.of(
-                        new TypeParameter.Constrained(current, "matches", ".*", false),
+                        new TypeParameter.Constrained(current, "matches", ".*", true),
                         new TypeParameter.Spread(typeSystem.top())
                     ));
                 } else if (!sub.isEmpty()) {
