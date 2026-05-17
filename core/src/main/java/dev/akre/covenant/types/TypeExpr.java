@@ -4,6 +4,9 @@ import org.jspecify.annotations.NonNull;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Objects;
+import java.util.stream.Collectors;
+
 import dk.brics.automaton.Automaton;
 
 /**
@@ -34,14 +37,14 @@ public sealed interface TypeExpr
     record TupleExpr(List<TypeExpr> members) implements TypeExpr {
         @Override
         public @NonNull String toString() {
-            return "(" + members.stream().map(Object::toString).collect(java.util.stream.Collectors.joining(", ")) + ")";
+            return "(" + members.stream().map(Object::toString).collect(Collectors.joining(", ")) + ")";
         }
     }
 
     final class ConstraintExpr implements TypeExpr {
         private final String keyword;
         private final String value;
-        private volatile dk.brics.automaton.Automaton automaton;
+        private volatile Automaton automaton;
 
         public ConstraintExpr(String keyword, String value) {
             this.keyword = keyword;
@@ -56,7 +59,7 @@ public sealed interface TypeExpr
             return value;
         }
 
-        public dk.brics.automaton.Automaton automaton() {
+        public Automaton automaton() {
             if (automaton == null) {
                 synchronized (this) {
                     if (automaton == null) {
@@ -76,26 +79,26 @@ public sealed interface TypeExpr
         public boolean equals(Object o) {
             if (this == o) return true;
             if (!(o instanceof ConstraintExpr that)) return false;
-            return java.util.Objects.equals(keyword, that.keyword) && java.util.Objects.equals(value, that.value);
+            return Objects.equals(keyword, that.keyword) && Objects.equals(value, that.value);
         }
 
         @Override
         public int hashCode() {
-            return java.util.Objects.hash(keyword, value);
+            return Objects.hash(keyword, value);
         }
     }
 
     record UnionExpr(List<TypeExpr> members) implements TypeExpr {
         @Override
         public @NonNull String toString() {
-            return members.stream().map(Object::toString).collect(java.util.stream.Collectors.joining(" | "));
+            return members.stream().map(Object::toString).collect(Collectors.joining(" | "));
         }
     }
 
     record IntersectionExpr(List<TypeExpr> members) implements TypeExpr {
         @Override
         public @NonNull String toString() {
-            return members.stream().map(Object::toString).collect(java.util.stream.Collectors.joining(" & "));
+            return members.stream().map(Object::toString).collect(Collectors.joining(" & "));
         }
     }
 
@@ -188,10 +191,10 @@ public sealed interface TypeExpr
             private final String keyword;
             private final String value;
             private final boolean optional;
-            private volatile dk.brics.automaton.Automaton automaton;
+            private volatile Automaton automaton;
 
             public Constrained(TypeExpr type, String keyword, String value, boolean optional) {
-                this.type = java.util.Objects.requireNonNull(type);
+                this.type = Objects.requireNonNull(type);
                 this.keyword = keyword;
                 this.value = value;
                 this.optional = optional;
@@ -214,7 +217,7 @@ public sealed interface TypeExpr
                 return optional;
             }
 
-            public dk.brics.automaton.Automaton automaton() {
+            public Automaton automaton() {
                 if (automaton == null) {
                     synchronized (this) {
                         if (automaton == null) {
@@ -234,12 +237,12 @@ public sealed interface TypeExpr
             public boolean equals(Object o) {
                 if (this == o) return true;
                 if (!(o instanceof Constrained that)) return false;
-                return optional == that.optional && java.util.Objects.equals(type, that.type) && java.util.Objects.equals(keyword, that.keyword) && java.util.Objects.equals(value, that.value);
+                return optional == that.optional && Objects.equals(type, that.type) && Objects.equals(keyword, that.keyword) && Objects.equals(value, that.value);
             }
 
             @Override
             public int hashCode() {
-                return java.util.Objects.hash(type, keyword, value, optional);
+                return Objects.hash(type, keyword, value, optional);
             }
         }
 
@@ -255,7 +258,7 @@ public sealed interface TypeExpr
         @Override
         public @NonNull String toString() {
             return target + "<"
-                    + arguments.stream().map(Object::toString).collect(java.util.stream.Collectors.joining(", ")) + ">";
+                    + arguments.stream().map(Object::toString).collect(Collectors.joining(", ")) + ">";
         }
     }
 
@@ -275,11 +278,11 @@ public sealed interface TypeExpr
                 sb.append("<")
                         .append(typeVars.stream()
                                 .map(Object::toString)
-                                .collect(java.util.stream.Collectors.joining(", ")))
+                                .collect(Collectors.joining(", ")))
                         .append(">");
             }
             sb.append("(");
-            sb.append(typeParams.stream().map(Object::toString).collect(java.util.stream.Collectors.joining(", ")));
+            sb.append(typeParams.stream().map(Object::toString).collect(Collectors.joining(", ")));
             sb.append(") -> ");
             sb.append(returnType);
             return sb.toString();
