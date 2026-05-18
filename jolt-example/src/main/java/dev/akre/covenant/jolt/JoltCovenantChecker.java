@@ -148,7 +148,7 @@ public class JoltCovenantChecker {
         
 
         if (pathPlacements.isEmpty()) {
-            return typeSystem.bottom();
+            return typeSystem.nil();
         }
 
         List<Type> finalPlacements = new ArrayList<>();
@@ -166,11 +166,11 @@ public class JoltCovenantChecker {
         
         try {
             if (finalPlacements.isEmpty()) {
-                return typeSystem.bottom();
+                return typeSystem.nil();
             }
             return typeSystem.intersect(finalPlacements.toArray(new Type[0]));
         } catch (Exception e) {
-            return typeSystem.bottom();
+            return typeSystem.nil();
         }
     }
 
@@ -310,6 +310,9 @@ public class JoltCovenantChecker {
             try {
                 if (expression instanceof EvaluatablePathElement evaluatable) {
                     segment = evaluatable.evaluate(walkedPath);
+                    if (segment == null && expression instanceof ArrayPathElement) {
+                        segment = "*";
+                    }
                     if (segment != null) {
                         if (expression instanceof ArrayPathElement) {
                             if (expression.getRawKey().contains("#")) segment = "[]";
@@ -342,7 +345,7 @@ public class JoltCovenantChecker {
 
     private void processLiteralMatch(Type currentType, LiteralPathElement literal, JsonNode subSpec, List<EvaluationFrame> frameStack, Map<String, List<Type>> pathPlacements) {
         String key = literal.getRawKey();
-        Type childType = term(currentType, key);
+        Type childType = narrowNonNull(term(currentType, key));
         if (childType != null && !childType.isBottom()) {
             List<EvaluationFrame> nextStack = new ArrayList<>(frameStack);
             nextStack.add(new EvaluationFrame(childType, new String[]{key}));
@@ -358,7 +361,7 @@ public class JoltCovenantChecker {
         for (String key : allInputKeys) {
             MatchedElement match = star.match(key, walkedPath);
             if (match != null) {
-                Type childType = term(currentType, key);
+                Type childType = narrowNonNull(term(currentType, key));
                 if (childType != null && !childType.isBottom()) {
                     matchedAny = true;
                     List<EvaluationFrame> nextStack = new ArrayList<>(frameStack);
@@ -403,7 +406,7 @@ public class JoltCovenantChecker {
         } catch (Exception e) {}
         
         if (key != null) {
-            Type childType = term(currentType, key);
+            Type childType = narrowNonNull(term(currentType, key));
             if (childType != null && !childType.isBottom()) {
                 List<EvaluationFrame> nextStack = new ArrayList<>(frameStack);
                 nextStack.add(new EvaluationFrame(childType, new String[]{key}));
@@ -533,12 +536,12 @@ public class JoltCovenantChecker {
             List<TypeDef> nonNullMembers = u.members().stream()
                     .filter(m -> !m.equals(nilDef))
                     .toList();
-            if (nonNullMembers.isEmpty()) return typeSystem.bottom();
+            if (nonNullMembers.isEmpty()) return type;
             if (nonNullMembers.size() < u.members().size()) {
                 return typeSystem.wrap(typeSystem.unionDef(nonNullMembers.toArray(new TypeDef[0])));
             }
         } else if (def.equals(nilDef)) {
-            return typeSystem.bottom();
+            return type;
         }
         return type;
     }
@@ -559,7 +562,7 @@ public class JoltCovenantChecker {
 
         if (def instanceof NominalDef n) {
             String name = n.name();
-            if (name.equals("String") || name.equals("Number") || name.equals("Boolean") || name.equals("Null") || name.equals("Any") || name.equals("top")) {
+            if (name.equals("String") || name.equals("Number") || name.equals("Bool") || name.equals("Int") || name.equals("Float") || name.equals("Null") || name.equals("Any") || name.equals("top")) {
                 return "{{TYPE:" + name + "}}";
             }
         }
@@ -599,8 +602,16 @@ public class JoltCovenantChecker {
                     ));
                 } else if (sub.startsWith("{{TYPE:")) {
                     String name = sub.substring(7, sub.length() - 2);
+                    String pattern;
+                    if (name.equals("String") || name.equals("Any") || name.equals("top")) {
+                        pattern = "/.*/";
+                    } else if (name.equals("Number") || name.equals("Int") || name.equals("Float")) {
+                        pattern = "/^[0-9]+(\\.[0-9]+)?$/";
+                    } else {
+                        pattern = "'" + name.replace("'", "''") + "'";
+                    }
                     current = typeSystem.template("Object").construct(List.of(
-                        new TypeParameter.Constrained(current, "matches", name.equals("String") ? "/.*/" : "'"+name+"'", true),
+                        new TypeParameter.Constrained(current, "matches", pattern, true),
                         new TypeParameter.Spread(typeSystem.top())
                     ));
                 } else if (sub.startsWith("{{REGEX:")) {
@@ -687,6 +698,7 @@ public class JoltCovenantChecker {
                 }
             } else if (g.pattern() == AbstractTypeSystemBuilder.PatternConstructor.Pattern.ARRAY) {
                 keys.add("0");
+                keys.add("*");
             }
         }
     }
