@@ -45,8 +45,8 @@ public class TypeSystemUtils {
                         specificValueTypes.add(pos.type());
                     } else if (tp instanceof TypeDefParam.Constrained c) {
                         specificValueTypes.add(c.type());
-                    } else if (tp instanceof TypeDefParam.Spread s) {
-                        spreadType = s.type();
+                    } else if (tp instanceof TypeDefParam.Spread(TypeDef type)) {
+                        spreadType = type;
                     }
                 }
                 TypeDef result;
@@ -81,32 +81,44 @@ public class TypeSystemUtils {
         if (subject == null || segment == null) {
             return null;
         }
-        switch (subject) {
-            case UnionType u -> {
-                return system.unionDef(u.members().stream()
-                        .map(m -> termAt(system, m, segment))
-                        .toArray(TypeDef[]::new));
+        return switch (subject) {
+            case UnionType u -> system.unionDef(u.members().stream()
+                    .map(m -> termAt(system, m, segment))
+                    .toArray(TypeDef[]::new));
+            case IntersectionType i -> system.intersectDef(i.members().stream()
+                    .map(m -> termAt(system, m, segment))
+                    .toArray(TypeDef[]::new));
+            case NegationType n -> system.negateDef(termAt(system, n.inner(), segment));
+            case LengthConstraint lc -> {
+                String resolvedSegment = getResolvedSegment(segment);
+                if (resolvedSegment != null) {
+                    try {
+                        int index = Integer.parseInt(resolvedSegment);
+                        if (index < lc.min()) {
+                            TypeDef nilDef = system.nilDef();
+                            if (nilDef != null) {
+                                yield system.negateDef(nilDef);
+                            }
+                        }
+                    } catch (NumberFormatException e) {
+                        // Not a numeric index
+                    }
+                }
+                yield system.topDef();
             }
-            case IntersectionType i -> {
-                return system.intersectDef(i.members().stream()
-                        .map(m -> termAt(system, m, segment))
-                        .toArray(TypeDef[]::new));
-            }
-            case NegationType n -> {
-                return system.negateDef(termAt(system, n.inner(), segment));
-            }
+            case ValueConstraint ignored -> system.topDef();
             case GenericTypeDef g -> {
                 String resolvedSegment = getResolvedSegment(segment);
 
                 if (resolvedSegment == null) {
-                    return system.bottomDef();
+                    yield system.bottomDef();
                 } else if (g.pattern() == AbstractTypeSystemBuilder.PatternConstructor.Pattern.OBJECT) {
                     TypeDefParam.Named named = findNamed(g, resolvedSegment);
                     if (named == null && (resolvedSegment.startsWith("'") && resolvedSegment.endsWith("'"))) {
                         named = findNamed(g, resolvedSegment.substring(1, resolvedSegment.length() - 1));
                     }
                     if (named != null) {
-                        return named.type();
+                        yield named.type();
                     }
                     // Check dynamic constraints
                     List<TypeDef> matchingConstraints = new java.util.ArrayList<>();
@@ -116,15 +128,15 @@ public class TypeSystemUtils {
                         }
                     }
                     if (!matchingConstraints.isEmpty()) {
-                        return matchingConstraints.size() == 1 ? matchingConstraints.get(0) : system.intersectDef(matchingConstraints.toArray(new TypeDef[0]));
+                        yield matchingConstraints.size() == 1 ? matchingConstraints.get(0) : system.intersectDef(matchingConstraints.toArray(new TypeDef[0]));
                     }
                     // Check if open
                     for (TypeDefParam tp : g.parameters()) {
                         if (tp instanceof TypeDefParam.Spread) {
-                            return tp.type();
+                            yield tp.type();
                         }
                     }
-                    return system.bottomDef();
+                    yield system.bottomDef();
                 } else {
                     // Positional/Array
                     try {
@@ -137,13 +149,13 @@ public class TypeSystemUtils {
                                     if (index >= current) {
                                         TypeDef nullType = system.nilDef();
                                         if (nullType != null) {
-                                            return system.unionDef(type, nullType);
+                                            yield system.unionDef(type, nullType);
                                         }
-                                        return type; // Fallback if Null not defined
+                                        yield type; // Fallback if Null not defined
                                     }
                                 } else {
                                     if (index == current) {
-                                        return type;
+                                        yield type;
                                     }
                                     current++;
                                 }
@@ -152,13 +164,14 @@ public class TypeSystemUtils {
                     } catch (NumberFormatException e) {
                         // Not an index
                     }
-                    return system.bottomDef();
+                    yield system.bottomDef();
                 }
             }
-            default -> {
-            }
-        }
-        return system.bottomDef();
+            case NominalDef n when n.attributes().contains(dev.akre.covenant.api.TypeAttribute.ARRAY) ||
+                    n.attributes().contains(dev.akre.covenant.api.TypeAttribute.OBJECT) ||
+                    n.name().equals("top") || n.name().equals("Any") -> system.topDef();
+            default -> system.bottomDef();
+        };
     }
 
     private static @Nullable String getResolvedSegment(TypeDef segment) {
@@ -172,8 +185,8 @@ public class TypeSystemUtils {
                 Operator operator, java.math.BigDecimal value
         ) && operator == Operator.EQ) {
             return value.toPlainString();
-        } else if (segment instanceof IntersectionType i) {
-            for (TypeDef member : i.members()) {
+        } else if (segment instanceof IntersectionType(Set<TypeDef> members)) {
+            for (TypeDef member : members) {
                 String resolved = getResolvedSegment(member);
                 if (resolved != null) return resolved;
             }
@@ -185,8 +198,8 @@ public class TypeSystemUtils {
         if (c.constraint() instanceof RegexConstraint rc && rc.operator() == Operator.MATCHES) {
             return matches(rc, name);
         }
-        if (c.constraint() instanceof StringConstraint sc && sc.operator() == Operator.MATCHES) {
-            return matches(sc.value(), name);
+        if (c.constraint() instanceof StringConstraint(Operator operator, String value) && operator == Operator.MATCHES) {
+            return matches(value, name);
         }
         return false;
     }

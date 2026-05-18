@@ -10,6 +10,7 @@ import com.bazaarvoice.jolt.common.pathelement.*;
 import com.bazaarvoice.jolt.common.tree.*;
 
 import java.util.*;
+import java.util.stream.*;
 
 public class JoltCovenantChecker {
 
@@ -116,7 +117,7 @@ public class JoltCovenantChecker {
         if (pathPlacements.isEmpty()) {
             return typeSystem.bottom();
         }
-        
+
         List<Type> finalPlacements = new ArrayList<>();
         for (Map.Entry<String, List<Type>> entry : pathPlacements.entrySet()) {
             String path = entry.getKey();
@@ -228,7 +229,14 @@ public class JoltCovenantChecker {
                             }
                         }
                     } else {
-                        segment = expression.getCanonicalForm();
+                        String raw = expression.getRawKey();
+                        if (expression instanceof ArrayPathElement) {
+                            if (raw.contains("#")) segment = "[]";
+                            else if (!raw.startsWith("[")) segment = "[" + raw + "]";
+                            else segment = raw;
+                        } else {
+                            segment = raw.replace("\\", "\\\\").replace(".", "\\.");
+                        }
                     }
                 } catch (Exception e) {
                     segment = null;
@@ -465,13 +473,13 @@ public class JoltCovenantChecker {
 
     private Type buildNestedObjectFromPath(String path, Type leafType) {
         Type current = leafType;
-        List<PathElement> pathElements = PathElementBuilder.parseDotNotationRHS(path);
-        for (int i = pathElements.size() - 1; i >= 0; i--) {
-            PathElement pe = pathElements.get(i);
-            if (pe instanceof ArrayPathElement) {
+        List<String> segments = splitLiteralPath(path);
+        for (int i = segments.size() - 1; i >= 0; i--) {
+            String seg = segments.get(i);
+            if (seg.equals("[]") || (seg.startsWith("[") && seg.endsWith("]"))) {
                 current = typeSystem.template("Array").construct(List.of(new TypeParameter.Positional(current, 0, true)));
             } else {
-                String sub = pe.getRawKey();
+                String sub = unescape(seg);
                 if (sub.equals("*") || sub.equals("{{TYPE:Any}}") || sub.equals("{{TYPE:top}}")) {
                     current = typeSystem.template("Object").construct(List.of(
                         new TypeParameter.Constrained(current, "matches", "/.*/", true),
@@ -480,13 +488,13 @@ public class JoltCovenantChecker {
                 } else if (sub.startsWith("{{TYPE:")) {
                     String name = sub.substring(7, sub.length() - 2);
                     current = typeSystem.template("Object").construct(List.of(
-                        new TypeParameter.Constrained(current, "matches", name.equals("String") ? ".*" : name, true),
+                        new TypeParameter.Constrained(current, "matches", name.equals("String") ? "/.*/" : "'"+name+"'", true),
                         new TypeParameter.Spread(typeSystem.top())
                     ));
                 } else if (sub.startsWith("{{REGEX:")) {
                     String regex = sub.substring(8, sub.length() - 2);
                     current = typeSystem.template("Object").construct(List.of(
-                        new TypeParameter.Constrained(current, "matches", "\"" + regex + "\"", true),
+                        new TypeParameter.Constrained(current, "matches", "/" + regex + "/", true),
                         new TypeParameter.Spread(typeSystem.top())
                     ));
                 } else {
@@ -569,5 +577,31 @@ public class JoltCovenantChecker {
                 keys.add("0");
             }
         }
+    }
+
+    private List<String> splitLiteralPath(String path) {
+        if (path.isEmpty()) return List.of();
+        List<String> segments = new ArrayList<>();
+        StringBuilder current = new StringBuilder();
+        boolean escaped = false;
+        for (int i = 0; i < path.length(); i++) {
+            char c = path.charAt(i);
+            if (c == '\\' && !escaped) {
+                escaped = true;
+                current.append(c);
+            } else if (c == '.' && !escaped) {
+                segments.add(current.toString());
+                current.setLength(0);
+            } else {
+                current.append(c);
+                escaped = false;
+            }
+        }
+        segments.add(current.toString());
+        return segments;
+    }
+
+    private String unescape(String s) {
+        return s.replace("\\.", ".").replace("\\\\", "\\");
     }
 }

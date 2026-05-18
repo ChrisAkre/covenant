@@ -29,12 +29,15 @@ public record RegexConstraint(Operator operator, String value) implements ValueC
                 Operator op = Operator.fromSymbol(input.head().value());
                 if (op == Operator.MATCHES || op == Operator.NOT_MATCHES) {
                     Parser.InputState tail = input.tail();
-                    if (tail.head().type() == Parser.TokenType.STRING_LITERAL || tail.head().type() == Parser.TokenType.REGEX_LITERAL) {
-                        String val = tail.head().value();
-                        if (tail.head().type() == Parser.TokenType.STRING_LITERAL) {
+                    if (!tail.isEndOfInput()) {
+                        Parser.Token valToken = tail.head();
+                        String val = valToken.value();
+                        if (valToken.type() == Parser.TokenType.STRING_LITERAL) {
                             val = stripQuotes(val, "\"");
-                        } else if (tail.head().type() == Parser.TokenType.REGEX_LITERAL) {
+                        } else if (valToken.type() == Parser.TokenType.REGEX_LITERAL) {
                             val = stripQuotes(val, "/");
+                        } else if (valToken.type() == Parser.TokenType.SYMBOL_LITERAL) {
+                            val = stripQuotes(val, "'");
                         }
                         return new Parser.Success<>(new TypeExpr.ConstraintExpr(new RegexConstraint(op, val)), tail.tail());
                     }
