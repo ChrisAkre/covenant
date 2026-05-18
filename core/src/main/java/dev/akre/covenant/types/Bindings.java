@@ -65,7 +65,7 @@ public record Bindings(AbstractTypeSystem system, Map<String, TypeDef> values) {
                             case TypeExpr.ParamExpr.Named n ->
                                     new TypeDefParam.Named(resolve(n.type()), n.name(), n.optional());
                             case TypeExpr.ParamExpr.Constrained c ->
-                                    new TypeDefParam.Constrained(resolve(c.type()), c.keyword(), c.value(), c.optional());
+                                    new TypeDefParam.Constrained(resolve(c.type()), c.constraint(), c.optional());
                             case TypeExpr.ParamExpr.Spread s ->
                                     new TypeDefParam.Spread(resolve(s.type()));
                         })
@@ -114,32 +114,7 @@ public record Bindings(AbstractTypeSystem system, Map<String, TypeDef> values) {
                 yield new FunctionType.Signature(sig, values);
             }
             case TypeExpr.ParamExpr a -> resolve(a.type());
-            case TypeExpr.ConstraintExpr c -> {
-                ValueConstraint.Operator op =
-                        switch (c.keyword()) {
-                            case "gt" -> ValueConstraint.Operator.GT;
-                            case "gte" -> ValueConstraint.Operator.GTE;
-                            case "lt" -> ValueConstraint.Operator.LT;
-                            case "lte" -> ValueConstraint.Operator.LTE;
-                            case "eq" -> ValueConstraint.Operator.EQ;
-                            case "neq" -> ValueConstraint.Operator.NEQ;
-                            case "matches" -> ValueConstraint.Operator.MATCHES;
-                            case "nmatches" -> ValueConstraint.Operator.NOT_MATCHES;
-                            default ->
-                                throw new UnsupportedOperationException("Unknown constraint keyword: " + c.keyword());
-                        };
-
-                String val = c.value();
-                if (val.equals("true") || val.equals("false")) {
-                    yield new BooleanConstraint(op, Boolean.parseBoolean(val));
-                }
-
-                try {
-                    yield new NumberConstraint(op, new BigDecimal(val));
-                } catch (NumberFormatException e) {
-                    yield new StringConstraint(op, val);
-                }
-            }
+            case TypeExpr.ConstraintExpr c -> c.constraint();
             case TypeExpr.NullExpr __ -> system.nilDef();
             case TypeExpr.SpreadExpr __ -> system.topDef();
             case TypeExpr.TupleExpr t ->

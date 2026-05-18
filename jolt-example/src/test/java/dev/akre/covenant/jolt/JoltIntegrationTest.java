@@ -11,6 +11,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 import tools.jackson.core.json.JsonReadFeature;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
+import org.opentest4j.TestAbortedException;
 
 import java.io.File;
 import java.io.IOException;
@@ -98,6 +99,11 @@ public class JoltIntegrationTest {
             StringWriter sw = new StringWriter();
             t.printStackTrace(new PrintWriter(sw));
             failures.add(new FailureRecord(path.toString(), t.getMessage(), sw.toString()));
+            if (t instanceof TestAbortedException a) {
+                throw a;
+            } else {
+                throw new TestAbortedException(t.getMessage(), t);
+            }
         }
     }
 

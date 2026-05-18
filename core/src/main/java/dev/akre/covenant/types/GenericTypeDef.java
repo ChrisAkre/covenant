@@ -37,11 +37,10 @@ public record GenericTypeDef(
         return null;
     }
 
-    public TypeDefParam findConstrained(String k, String v) {
+    public TypeDefParam findConstrained(ValueConstraint constraint) {
         for (TypeDefParam tp : parameters) {
             if (tp instanceof TypeDefParam.Constrained c
-                    && c.keyword().equals(k)
-                    && c.value().equals(v)) {
+                    && c.constraint().equals(constraint)) {
                 return tp;
             }
         }
@@ -58,6 +57,10 @@ public record GenericTypeDef(
 
     @Override
     public boolean satisfiesOther(AbstractTypeSystem system, TypeDef other) {
+        if (other instanceof LengthConstraint lc) {
+            return lc.isSatisfiedBy(this);
+        }
+
         if (other instanceof NominalDef n && n.name().equals(template.name())) {
             return true;
         }

@@ -148,7 +148,7 @@ public class JoltCovenantChecker {
                     if (tp instanceof TypeDefParam.Named n) {
                         params.add(new TypeParameter.Named(close(typeSystem.wrap(n.type())), n.name(), n.optional()));
                     } else if (tp instanceof TypeDefParam.Constrained c) {
-                        params.add(new TypeParameter.Constrained(close(typeSystem.wrap(c.type())), c.keyword(), c.value(), c.optional()));
+                        params.add(new TypeParameter.Constrained(close(typeSystem.wrap(c.type())), c.constraint().keywordString(), c.constraint().valueString(), c.optional()));
                     }
                 }
                 return typeSystem.template(g.template().name()).construct(params);
@@ -448,10 +448,11 @@ public class JoltCovenantChecker {
     }
 
     private String extractRegex(TypeDef def) {
-        if (def instanceof dev.akre.covenant.types.StringConstraint(dev.akre.covenant.types.ValueConstraint.Operator op, String val) && op == dev.akre.covenant.types.ValueConstraint.Operator.MATCHES) {
-            if (val.startsWith("'") && val.endsWith("'")) return val.substring(1, val.length() - 1);
-            if (val.startsWith("\"") && val.endsWith("\"")) return val.substring(1, val.length() - 1);
-            return val;
+        if (def instanceof RegexConstraint rc && rc.operator() == ValueConstraint.Operator.MATCHES) {
+            return rc.value();
+        }
+        if (def instanceof StringConstraint sc && sc.operator() == ValueConstraint.Operator.MATCHES) {
+            return sc.value();
         }
         if (def instanceof IntersectionType i) {
             for (TypeDef member : i.members()) {
@@ -473,7 +474,7 @@ public class JoltCovenantChecker {
                 String sub = pe.getRawKey();
                 if (sub.equals("*") || sub.equals("{{TYPE:Any}}") || sub.equals("{{TYPE:top}}")) {
                     current = typeSystem.template("Object").construct(List.of(
-                        new TypeParameter.Constrained(current, "matches", ".*", true),
+                        new TypeParameter.Constrained(current, "matches", "/.*/", true),
                         new TypeParameter.Spread(typeSystem.top())
                     ));
                 } else if (sub.startsWith("{{TYPE:")) {

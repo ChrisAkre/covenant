@@ -75,6 +75,11 @@ public final class Lexer {
             public Parser.InputState tail() {
                 return inputState(tokens, index+1);
             }
+
+            @Override
+            public boolean isEndOfInput() {
+                return head().type() == Parser.TokenType.EOF;
+            }
         };
     }
 }

@@ -128,7 +128,7 @@ public record OwnedTypeDef(AbstractTypeSystem system, TypeDef def)
                             case TypeDefParam.Named n ->
                                     new TypeParameter.Named(type, n.name(), n.optional());
                             case TypeDefParam.Constrained c ->
-                                    new TypeParameter.Constrained(type, c.keyword(), c.value(), c.optional());
+                                    new TypeParameter.Constrained(type, c.constraint().keywordString(), c.constraint().valueString(), c.optional());
                             case TypeDefParam.Spread s ->
                                     new TypeParameter.Spread(type);
                         };

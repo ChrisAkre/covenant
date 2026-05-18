@@ -11,6 +11,10 @@ public record SymbolType(String value) implements TypeDef {
 
     @Override
     public boolean satisfiesOther(AbstractTypeSystem system, TypeDef other) {
+        if (other instanceof LengthConstraint lc) {
+            int len = value.length();
+            return len >= lc.min() && (lc.max() == null || len <= lc.max());
+        }
         return other instanceof SymbolType s && this.value.equals(s.value());
     }
 

@@ -9,7 +9,7 @@ import java.util.Map;
 public class TypeSystemBuilderImpl extends AbstractTypeSystemBuilder<TypeSystemBuilderImpl, AbstractTypeSystem> {
 
     public TypeSystemBuilderImpl() {
-        super(Map.of(), List.of(), TypeSystemImpl::new);
+        super(Map.of(), List.of(RegexConstraint.parser(), LengthConstraint.parser(), BooleanConstraint.parser(), NumberConstraint.parser(), StringConstraint.parser()), TypeSystemImpl::new);
     }
 
     public TypeSystemBuilderImpl(AbstractTypeSystem base) {

@@ -32,15 +32,12 @@ public sealed interface TypeDefParam {
 
     final class Constrained implements TypeDefParam {
         private final TypeDef type;
-        private final String keyword;
-        private final String value;
+        private final ValueConstraint constraint;
         private final boolean optional;
-        private volatile dk.brics.automaton.Automaton automaton;
 
-        public Constrained(TypeDef type, String keyword, String value, boolean optional) {
+        public Constrained(TypeDef type, ValueConstraint constraint, boolean optional) {
             this.type = Objects.requireNonNull(type);
-            this.keyword = keyword;
-            this.value = value;
+            this.constraint = Objects.requireNonNull(constraint);
             this.optional = optional;
         }
 
@@ -51,51 +48,32 @@ public sealed interface TypeDefParam {
 
         @Override
         public String repr() {
-            String qValue = value;
-            if (qValue.contains(" ") || com.google.re2j.Pattern.matches("\\d+", qValue)) {
-                qValue = "'" + qValue.replace("'", "''") + "'";
-            }
-            return "[" + keyword + " " + qValue + "]" + (optional ? "?: " : ": ") + type.repr();
+            return "[" + constraint.repr() + "]" + (optional ? "?: " : ": ") + type.repr();
         }
 
-        public String keyword() {
-            return keyword;
-        }
-
-        public String value() {
-            return value;
+        public ValueConstraint constraint() {
+            return constraint;
         }
 
         public boolean optional() {
             return optional;
         }
 
-        public dk.brics.automaton.Automaton automaton() {
-            if (automaton == null) {
-                synchronized (this) {
-                    if (automaton == null) {
-                        automaton = TypeSystemUtils.toAutomaton(value);
-                    }
-                }
-            }
-            return automaton;
-        }
-
         @Override
         public boolean equals(Object o) {
             if (this == o) return true;
             if (!(o instanceof Constrained that)) return false;
-            return optional == that.optional && Objects.equals(type, that.type) && Objects.equals(keyword, that.keyword) && Objects.equals(value, that.value);
+            return optional == that.optional && Objects.equals(type, that.type) && Objects.equals(constraint, that.constraint);
         }
 
         @Override
         public int hashCode() {
-            return Objects.hash(type, keyword, value, optional);
+            return Objects.hash(type, constraint, optional);
         }
 
         @Override
         public String toString() {
-            return "[" + keyword + " " + value + "]" + (optional ? "?: " : ": ") + type;
+            return "[" + constraint + "]" + (optional ? "?: " : ": ") + type;
         }
     }
 

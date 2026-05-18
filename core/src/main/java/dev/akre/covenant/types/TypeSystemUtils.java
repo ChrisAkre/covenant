@@ -182,13 +182,21 @@ public class TypeSystemUtils {
     }
 
     public static boolean matches(TypeDefParam.Constrained c, String name) {
-        if (!c.keyword().equals("matches")) return false;
-        String regex = c.value();
-        if (regex.startsWith("\"") && regex.endsWith("\"")) {
-            regex = regex.substring(1, regex.length() - 1);
-        } else if (regex.startsWith("/") && regex.endsWith("/")) {
-            regex = regex.substring(1, regex.length() - 1);
+        if (c.constraint() instanceof RegexConstraint rc && rc.operator() == Operator.MATCHES) {
+            return matches(rc, name);
         }
+        if (c.constraint() instanceof StringConstraint sc && sc.operator() == Operator.MATCHES) {
+            return matches(sc.value(), name);
+        }
+        return false;
+    }
+
+    public static boolean matches(RegexConstraint rc, String name) {
+        if (rc.operator() != Operator.MATCHES) return false;
+        return matches(rc.value(), name);
+    }
+
+    private static boolean matches(String regex, String name) {
         try {
             return com.google.re2j.Pattern.compile(regex).matcher(name).find();
         } catch (Exception e) {
@@ -208,9 +216,29 @@ public class TypeSystemUtils {
     }
 
     public static boolean isRegexSubset(TypeDefParam.Constrained sub, TypeDefParam.Constrained sup) {
-        if (sub.value().equals(sup.value())) return true;
+        String subVal = null, supVal = null;
+        Automaton subA = null, supA = null;
+
+        if (sub.constraint() instanceof RegexConstraint rbc) {
+            subVal = rbc.value();
+            subA = rbc.automaton();
+        } else if (sub.constraint() instanceof StringConstraint sbc) {
+            subVal = sbc.value();
+            subA = toAutomaton(subVal);
+        }
+
+        if (sup.constraint() instanceof RegexConstraint rpc) {
+            supVal = rpc.value();
+            supA = rpc.automaton();
+        } else if (sup.constraint() instanceof StringConstraint spc) {
+            supVal = spc.value();
+            supA = toAutomaton(supVal);
+        }
+
+        if (subVal == null || supVal == null) return false;
+        if (subVal.equals(supVal)) return true;
         try {
-            return sub.automaton().subsetOf(sup.automaton());
+            return subA.subsetOf(supA);
         } catch (Exception e) {
             return false;
         }
@@ -228,9 +256,29 @@ public class TypeSystemUtils {
     }
 
     public static boolean doRegexesOverlap(TypeDefParam.Constrained c1, TypeDefParam.Constrained c2) {
-        if (c1.value().equals(c2.value())) return true;
+        String v1 = null, v2 = null;
+        Automaton a1 = null, a2 = null;
+
+        if (c1.constraint() instanceof RegexConstraint rc1) {
+            v1 = rc1.value();
+            a1 = rc1.automaton();
+        } else if (c1.constraint() instanceof StringConstraint sc1) {
+            v1 = sc1.value();
+            a1 = toAutomaton(v1);
+        }
+
+        if (c2.constraint() instanceof RegexConstraint rc2) {
+            v2 = rc2.value();
+            a2 = rc2.automaton();
+        } else if (c2.constraint() instanceof StringConstraint sc2) {
+            v2 = sc2.value();
+            a2 = toAutomaton(v2);
+        }
+
+        if (v1 == null || v2 == null) return false;
+        if (v1.equals(v2)) return true;
         try {
-            return !c1.automaton().intersection(c2.automaton()).isEmpty();
+            return !a1.intersection(a2).isEmpty();
         } catch (Exception e) {
             return true;
         }

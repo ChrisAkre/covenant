@@ -1,11 +1,40 @@
 package dev.akre.covenant.types;
 
+import dev.akre.covenant.types.parser.Parser;
 import org.jspecify.annotations.NonNull;
 
 import java.util.Collection;
 import java.util.Set;
 
 public record BooleanConstraint(Operator operator, boolean value) implements ValueConstraint {
+
+    @Override
+    public String keywordString() {
+        return operator.symbol;
+    }
+
+    @Override
+    public String valueString() {
+        return String.valueOf(value);
+    }
+
+    public static Parser<TypeExpr> parser() {
+        return input -> {
+            if (input.head().type() == Parser.TokenType.IDENTIFIER) {
+                Operator op = Operator.fromSymbol(input.head().value());
+                if (op == Operator.EQ || op == Operator.NEQ) {
+                    Parser.InputState tail = input.tail();
+                    if (tail.head().type() == Parser.TokenType.IDENTIFIER) {
+                        String val = tail.head().value();
+                        if (val.equals("true") || val.equals("false")) {
+                            return new Parser.Success<>(new TypeExpr.ConstraintExpr(new BooleanConstraint(op, Boolean.parseBoolean(val))), tail.tail());
+                        }
+                    }
+                }
+            }
+            return new Parser.Failure<>("Not a boolean constraint", input);
+        };
+    }
 
     @Override
     public Collection<TypeDef> prune(AbstractTypeSystem system, TypeDef def) {
@@ -15,8 +44,6 @@ public record BooleanConstraint(Operator operator, boolean value) implements Val
             return Set.of(this);
         } else if (this.satisfiesOther(system, other)) {
             return Set.of(this);
-        } else if (other.satisfiesOther(system, this)) {
-            return Set.of(other);
         } else if (this.operator.isDisjoint(other.operator, this.value, other.value)) {
             return Set.of();
         } else {
@@ -32,8 +59,6 @@ public record BooleanConstraint(Operator operator, boolean value) implements Val
             return Set.of(this);
         } else  if (this.satisfiesOther(system, other)) {
             return Set.of(other);
-        } else if (other.satisfiesOther(system, this)) {
-            return Set.of(this);
         } else {
             return null;
         }

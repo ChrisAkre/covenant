@@ -131,8 +131,13 @@ public interface AbstractTypeSystem extends TypeSystem {
                             new TypeDefParam.Positional(unwrap(pos.type()), pos.index(), pos.variadic());
                     case TypeParameter.Named n ->
                             new TypeDefParam.Named(unwrap(n.type()), n.name(), n.optional());
-                    case TypeParameter.Constrained c ->
-                            new TypeDefParam.Constrained(unwrap(c.type()), c.keyword(), c.value(), c.optional());
+                    case TypeParameter.Constrained c -> {
+                        TypeExpr expr = parser().parse(c.keyword() + " " + c.value());
+                        if (expr instanceof TypeExpr.ConstraintExpr ce) {
+                            yield new TypeDefParam.Constrained(unwrap(c.type()), ce.constraint(), c.optional());
+                        }
+                        throw new IllegalArgumentException("Invalid constraint: " + c.keyword() + " " + c.value());
+                    }
                     case TypeParameter.Spread s ->
                             new TypeDefParam.Spread(unwrap(s.type()));
                 })

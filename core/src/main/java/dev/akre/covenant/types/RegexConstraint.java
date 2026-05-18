@@ -1,12 +1,13 @@
 package dev.akre.covenant.types;
 
 import dev.akre.covenant.types.parser.Parser;
-
 import java.util.Collection;
 import java.util.Map;
 import java.util.Set;
 
-public record StringConstraint(Operator operator, String value) implements ValueConstraint {
+public record RegexConstraint(Operator operator, String value) implements ValueConstraint {
+
+    private static final Map<String, dk.brics.automaton.Automaton> automatonCache = new java.util.concurrent.ConcurrentHashMap<>();
 
     @Override
     public String keywordString() {
@@ -18,8 +19,6 @@ public record StringConstraint(Operator operator, String value) implements Value
         return value;
     }
 
-    private static final Map<String, dk.brics.automaton.Automaton> automatonCache = new java.util.concurrent.ConcurrentHashMap<>();
-
     public dk.brics.automaton.Automaton automaton() {
         return automatonCache.computeIfAbsent(value, TypeSystemUtils::toAutomaton);
     }
@@ -28,22 +27,20 @@ public record StringConstraint(Operator operator, String value) implements Value
         return input -> {
             if (input.head().type() == Parser.TokenType.IDENTIFIER) {
                 Operator op = Operator.fromSymbol(input.head().value());
-                if (op != null) {
+                if (op == Operator.MATCHES || op == Operator.NOT_MATCHES) {
                     Parser.InputState tail = input.tail();
-                    if (tail.head().type() == Parser.TokenType.STRING_LITERAL || tail.head().type() == Parser.TokenType.SYMBOL_LITERAL || tail.head().type() == Parser.TokenType.IDENTIFIER || tail.head().type() == Parser.TokenType.REGEX_LITERAL) {
+                    if (tail.head().type() == Parser.TokenType.STRING_LITERAL || tail.head().type() == Parser.TokenType.REGEX_LITERAL) {
                         String val = tail.head().value();
                         if (tail.head().type() == Parser.TokenType.STRING_LITERAL) {
                             val = stripQuotes(val, "\"");
-                        } else if (tail.head().type() == Parser.TokenType.SYMBOL_LITERAL) {
-                            val = stripQuotes(val, "'");
                         } else if (tail.head().type() == Parser.TokenType.REGEX_LITERAL) {
                             val = stripQuotes(val, "/");
                         }
-                        return new Parser.Success<>(new TypeExpr.ConstraintExpr(new StringConstraint(op, val)), tail.tail());
+                        return new Parser.Success<>(new TypeExpr.ConstraintExpr(new RegexConstraint(op, val)), tail.tail());
                     }
                 }
             }
-            return new Parser.Failure<>("Not a string constraint", input);
+            return new Parser.Failure<>("Not a regex constraint", input);
         };
     }
 
@@ -57,7 +54,25 @@ public record StringConstraint(Operator operator, String value) implements Value
 
     @Override
     public Collection<TypeDef> prune(AbstractTypeSystem system, TypeDef def) {
-        if (!(def instanceof StringConstraint other)) return null;
+        if (def instanceof SymbolType s) {
+            boolean ok = TypeSystemUtils.matches(this, s.value());
+            if (operator == Operator.NOT_MATCHES) {
+                // TypeSystemUtils.matches(RegexConstraint) only returns true for MATCHES op and match.
+                // We need more precise logic here.
+                boolean matches = TypeSystemUtils.toAutomaton(value).run(s.value());
+                ok = !matches;
+            }
+            return ok ? Set.of(s) : Set.of();
+        }
+        if (def instanceof StringConstraint s) {
+            boolean ok = TypeSystemUtils.matches(this, s.value());
+            if (operator == Operator.NOT_MATCHES) {
+                boolean matches = TypeSystemUtils.toAutomaton(value).run(s.value());
+                ok = !matches;
+            }
+            return ok ? Set.of(s) : Set.of();
+        }
+        if (!(def instanceof RegexConstraint other)) return null;
         if (this.equals(other)) return Set.of(this);
 
         if (this.satisfiesOther(system, other)) return Set.of(this);
@@ -70,7 +85,7 @@ public record StringConstraint(Operator operator, String value) implements Value
 
     @Override
     public Collection<TypeDef> graft(AbstractTypeSystem system, TypeDef def) {
-        if (!(def instanceof StringConstraint other)) return null;
+        if (!(def instanceof RegexConstraint other)) return null;
         if (this.equals(other)) return Set.of(this);
 
         if (this.satisfiesOther(system, other)) return Set.of(other);
@@ -80,22 +95,13 @@ public record StringConstraint(Operator operator, String value) implements Value
 
     @Override
     public Collection<TypeDef> invert(AbstractTypeSystem system) {
-        Operator invOp =
-                switch (operator) {
-                    case EQ -> Operator.NEQ;
-                    case NEQ -> Operator.EQ;
-                    case GT -> Operator.LTE;
-                    case GTE -> Operator.LT;
-                    case LT -> Operator.GTE;
-                    case LTE -> Operator.GT;
-                    default -> throw new UnsupportedOperationException();
-                };
-        return Set.of(new StringConstraint(invOp, value));
+        Operator invOp = (operator == Operator.MATCHES) ? Operator.NOT_MATCHES : Operator.MATCHES;
+        return Set.of(new RegexConstraint(invOp, value));
     }
 
     @Override
     public boolean satisfiesOther(AbstractTypeSystem system, TypeDef other) {
-        if (!(other instanceof StringConstraint(Operator otherOperator, String otherValue))) {
+        if (!(other instanceof RegexConstraint(Operator otherOperator, String otherValue))) {
             return system.find("String")
                     .map(base -> system.satisfies(((OwnedTypeDef) base).def(), other))
                     .orElse(false);
@@ -105,9 +111,9 @@ public record StringConstraint(Operator operator, String value) implements Value
 
     @Override
     public String repr() {
-        String quoted = "\"" + value.replace("\"", "\"\"") + "\"";
-        if (operator == Operator.EQ) {
-            return quoted;
+        String quoted = "/" + value.replace("/", "//") + "/";
+        if (operator == Operator.MATCHES) {
+            return "matches " + quoted;
         }
         return operator.symbol + " " + quoted;
     }

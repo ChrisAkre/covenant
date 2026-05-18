@@ -92,7 +92,7 @@ public final class StructuralTypeUtils {
             } else if (tp1 instanceof TypeDefParam.Constrained c1) {
                 List<TypeDef> overlappingConstraints = new java.util.ArrayList<>();
                 for (TypeDefParam tp2 : other.parameters()) {
-                    if (tp2 instanceof TypeDefParam.Constrained c2 && c1.keyword().equals(c2.keyword())) {
+                    if (tp2 instanceof TypeDefParam.Constrained c2 && c1.constraint().getClass() == c2.constraint().getClass()) {
                         if (TypeSystemUtils.doRegexesOverlap(c1, c2)) {
                             overlappingConstraints.add(c2.type());
                         }
@@ -121,7 +121,7 @@ public final class StructuralTypeUtils {
                         if (!governedByConstraint) {
                             if (!system.satisfies(s1.type(), n2.type())) return false;
                         }
-                    } else if (tp2 instanceof TypeDefParam.Constrained c2 && self.findConstrained(c2.keyword(), c2.value()) == null) {
+                    } else if (tp2 instanceof TypeDefParam.Constrained c2 && self.findConstrained(c2.constraint()) == null) {
                         if (!system.satisfies(s1.type(), c2.type())) return false;
                     }
                 }
@@ -198,7 +198,7 @@ public final class StructuralTypeUtils {
         boolean otherOpen = !(t2Spread instanceof BottomType);
 
         java.util.Set<String> processedNamed = new java.util.HashSet<>();
-        java.util.Set<String> processedConstrained = new java.util.HashSet<>();
+        java.util.Set<ValueConstraint> processedConstrained = new java.util.HashSet<>();
 
         for (TypeDefParam tp1 : self.parameters()) {
             if (tp1 instanceof TypeDefParam.Named n1) {
@@ -227,25 +227,23 @@ public final class StructuralTypeUtils {
                 }
                 processedNamed.add(n1.name());
             } else if (tp1 instanceof TypeDefParam.Constrained c1) {
-                TypeDefParam tp2 = other.findConstrained(c1.keyword(), c1.value());
+                TypeDefParam tp2 = other.findConstrained(c1.constraint());
                 TypeDef t1 = c1.type();
-                String key = c1.keyword() + ":" + c1.value();
                 if (tp2 instanceof TypeDefParam.Constrained c2) {
                     TypeDef t2 = c2.type();
                     TypeDef intersected = system.intersectDef(t1, t2);
                     if (system.wrap(intersected).isBottom()) return Set.of();
                     mergedParams.add(new TypeDefParam.Constrained(
                             intersected,
-                            c1.keyword(),
-                            c1.value(),
+                            c1.constraint(),
                             c1.optional() && c2.optional()));
                 } else {
                     TypeDef intersected = system.intersectDef(t1, t2Spread);
                     if (system.wrap(intersected).isBottom()) return Set.of();
                     mergedParams.add(new TypeDefParam.Constrained(
-                            intersected, c1.keyword(), c1.value(), c1.optional()));
+                            intersected, c1.constraint(), c1.optional()));
                 }
-                processedConstrained.add(key);
+                processedConstrained.add(c1.constraint());
             }
         }
 
@@ -265,13 +263,12 @@ public final class StructuralTypeUtils {
                 if (system.wrap(intersected).isBottom()) return Set.of();
                 mergedParams.add(new TypeDefParam.Named(intersected, n2.name(), n2.optional()));
             } else if (tp2 instanceof TypeDefParam.Constrained c2) {
-                String key = c2.keyword() + ":" + c2.value();
-                if (processedConstrained.contains(key)) continue;
+                if (processedConstrained.contains(c2.constraint())) continue;
                 TypeDef t2 = c2.type();
                 TypeDef intersected = system.intersectDef(t2, t1Spread);
                 if (system.wrap(intersected).isBottom()) return Set.of();
                 mergedParams.add(new TypeDefParam.Constrained(
-                            intersected, c2.keyword(), c2.value(), c2.optional()));
+                            intersected, c2.constraint(), c2.optional()));
             }
         }
 
@@ -342,7 +339,7 @@ public final class StructuralTypeUtils {
                             break;
                         }
                     } else if (tp1 instanceof TypeDefParam.Constrained c1) {
-                        TypeDefParam tp2 = other.findConstrained(c1.keyword(), c1.value());
+                        TypeDefParam tp2 = other.findConstrained(c1.constraint());
                         if (!(tp2 instanceof TypeDefParam.Constrained c2) || c1.optional() != c2.optional()) {
                             canMerge = false;
                             break;
@@ -360,10 +357,10 @@ public final class StructuralTypeUtils {
                                 system.unionDef(n1.type(), n2.type()),
                                 n1.name(), n1.optional()));
                     } else if (tp1 instanceof TypeDefParam.Constrained c1) {
-                        TypeDefParam.Constrained c2 = (TypeDefParam.Constrained) other.findConstrained(c1.keyword(), c1.value());
+                        TypeDefParam.Constrained c2 = (TypeDefParam.Constrained) other.findConstrained(c1.constraint());
                         mergedParams.add(new TypeDefParam.Constrained(
                                 system.unionDef(c1.type(), c2.type()),
-                                c1.keyword(), c1.value(), c1.optional()));
+                                c1.constraint(), c1.optional()));
                     } else if (tp1 instanceof TypeDefParam.Spread s1) {
                         TypeDefParam tp2Spread = other.parameters().stream()
                                 .filter(tp -> tp instanceof TypeDefParam.Spread)

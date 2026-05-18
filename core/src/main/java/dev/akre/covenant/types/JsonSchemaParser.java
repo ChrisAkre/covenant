@@ -32,10 +32,17 @@ public class JsonSchemaParser {
                 String typeName = typeNode.asString();
                 return switch (typeName) {
                     case "string" -> {
+                        Type type = system.type("String");
                         if (schema.has("pattern")) {
-                            yield system.intersect(system.type("String"), system.expression("matches \"" + schema.get("pattern").asString() + "\""));
+                            type = system.intersect(type, system.expression("matches \"" + schema.get("pattern").asString() + "\""));
                         }
-                        yield system.type("String");
+                        if (schema.has("minLength")) {
+                            type = system.intersect(type, system.expression("minlength " + schema.get("minLength").asInt()));
+                        }
+                        if (schema.has("maxLength")) {
+                            type = system.intersect(type, system.expression("maxlength " + schema.get("maxLength").asInt()));
+                        }
+                        yield type;
                     }
                     case "number" ->
                         system.type("Number");
@@ -119,7 +126,15 @@ public class JsonSchemaParser {
             params.add(new dev.akre.covenant.api.TypeParameter.Positional(itemsType, 0, true));
         }
 
-        return system.template("Array").construct(params);
+        Type arrayType = system.template("Array").construct(params);
+        if (schema.has("minItems")) {
+            arrayType = system.intersect(arrayType, system.expression("minitems " + schema.get("minItems").asInt()));
+        }
+        if (schema.has("maxItems")) {
+            arrayType = system.intersect(arrayType, system.expression("maxitems " + schema.get("maxItems").asInt()));
+        }
+
+        return arrayType;
     }
 
     private Type parseObject(JsonNode schema) {

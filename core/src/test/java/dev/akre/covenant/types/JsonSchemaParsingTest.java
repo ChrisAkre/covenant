@@ -109,24 +109,63 @@ public class JsonSchemaParsingTest {
     }
 
     @Test
-    public void testPatternPropertiesParsing() throws Exception {
+    public void testLengthConstraints() throws Exception {
+        // String length
+        String stringJson = """
+            {
+              "type": "string",
+              "minLength": 5,
+              "maxLength": 10
+            }
+            """;
+        Type stringType = parser.parse(mapper.readTree(stringJson));
+        system.assertThat(stringType).isEquivalentTo("String & minlength 5 & maxlength 10");
+
+        // Array items length
+        String arrayJson = """
+            {
+              "type": "array",
+              "items": { "type": "integer" },
+              "minItems": 2,
+              "maxItems": 4
+            }
+            """;
+        Type arrayType = parser.parse(mapper.readTree(arrayJson));
+        system.assertThat(arrayType).isEquivalentTo("Array<Int...> & minitems 2 & maxitems 4");
+    }
+
+    @Test
+    public void testNestedLengthConstraints() throws Exception {
         String json = """
             {
               "type": "object",
-              "patternProperties": {
-                "^ext_": { "type": "integer" }
+              "properties": {
+                "tags": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 3
+                  },
+                  "minItems": 1
+                }
               }
             }
             """;
-        JsonNode schema = mapper.readTree(json);
-        Type type = parser.parse(schema);
+        Type type = parser.parse(mapper.readTree(json));
+        
+        // Verify satisfy - tags is optional because it's not in 'required'
+        system.assertThat(type).isEquivalentTo("Object<tags?: Array<minlength 3...> & minlength 1, ...>");
+        
+        // Verify satisfy
+        system.assertThat("Object<tags: Array<'foo'>>").satisfies(type.repr());
+        system.assertThat("Object<tags: Array<'a'>>").notSatisfies(type.repr());
+        system.assertThat("Object<tags: Array<()>>").notSatisfies(type.repr());
+    }
 
-        // Covenant repr for constrained params uses [keyword value]: Type
-        // patternProperties are effectively optional
-        system.assertThat(type).printsLike("Object<[matches \"^ext_\"]?: Int, ...>");
-
-        // Verify subtyping
-        system.assertThat("Object<ext_field: Int>").satisfies(type.repr());
-        system.assertThat("Object<ext_field: String>").notSatisfies(type.repr());
+    @Test
+    public void testPatternParsing() throws Exception {
+        String json = "{\"type\": \"string\", \"pattern\": \"^a.*\"}";
+        Type type = parser.parse(mapper.readTree(json));
+        system.assertThat(type).isEquivalentTo("String & matches \"^a.*\"");
     }
 }

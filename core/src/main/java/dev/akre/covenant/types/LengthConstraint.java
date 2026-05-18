@@ -7,6 +7,22 @@ import java.util.Set;
 
 public record LengthConstraint(Integer min, Integer max) implements ValueConstraint {
 
+    @Override
+    public String keywordString() {
+        if (min.equals(max)) return "length";
+        if (min == 0) return "maxlength";
+        if (max == null) return "minlength";
+        return "minlength"; // Default to min for ranges
+    }
+
+    @Override
+    public String valueString() {
+        if (min.equals(max)) return String.valueOf(min);
+        if (min == 0) return String.valueOf(max);
+        if (max == null) return String.valueOf(min);
+        return String.valueOf(min); // Default to min for ranges
+    }
+
     public LengthConstraint {
         if (min == null) min = 0;
         if (min < 0) min = 0;
@@ -17,8 +33,18 @@ public record LengthConstraint(Integer min, Integer max) implements ValueConstra
 
     @Override
     public Collection<TypeDef> prune(AbstractTypeSystem system, TypeDef def) {
-        if (def instanceof GenericTypeDef g && this.isDisjoint(g)) {
-            return Set.of();
+        if (def instanceof GenericTypeDef g) {
+            if (this.isDisjoint(g)) return Set.of();
+            if (this.isSatisfiedBy(g)) return Set.of(g);
+        }
+        if (def instanceof SymbolType s) {
+            int len = s.value().length();
+            boolean ok = len >= min && (max == null || len <= max);
+            return ok ? Set.of(s) : Set.of();
+        }
+        if (def instanceof StringConstraint s) {
+            boolean ok = this.isSatisfiedBy(s);
+            return ok ? Set.of(s) : Set.of();
         }
         if (def instanceof IntersectionType intersection) {
             for (TypeDef member : intersection.members()) {
@@ -31,7 +57,6 @@ public record LengthConstraint(Integer min, Integer max) implements ValueConstra
         if (this.equals(other)) return Set.of(this);
 
         if (this.satisfiesOther(system, other)) return Set.of(this);
-        if (other.satisfiesOther(system, this)) return Set.of(other);
 
         if (this.isDisjoint(other)) {
             return Set.of();
@@ -45,7 +70,6 @@ public record LengthConstraint(Integer min, Integer max) implements ValueConstra
         if (this.equals(other)) return Set.of(this);
 
         if (this.satisfiesOther(system, other)) return Set.of(other);
-        if (other.satisfiesOther(system, this)) return Set.of(this);
 
         return null;
     }
@@ -66,17 +90,22 @@ public record LengthConstraint(Integer min, Integer max) implements ValueConstra
         return input -> {
             if (input.head().type() == Parser.TokenType.IDENTIFIER) {
                 String keyword = input.head().value();
-                if (keyword.equals("length") || keyword.equals("minlength") || keyword.equals("maxlength")) {
+                if (keyword.equals("length") || keyword.equals("minlength") || keyword.equals("maxlength") || keyword.equals("minitems") || keyword.equals("maxitems")) {
                     Parser.InputState tail = input.tail();
                     if (tail.head().type() == Parser.TokenType.INT_LITERAL) {
                         int val = Integer.parseInt(tail.head().value());
-                        TypeExpr expr = new TypeExpr.ConstraintExpr(keyword, String.valueOf(val));
-                        return new Parser.Success<>(expr, tail.tail());
+                        LengthConstraint constraint = switch (keyword) {
+                            case "length" -> new LengthConstraint(val, val);
+                            case "minlength", "minitems" -> new LengthConstraint(val, null);
+                            case "maxlength", "maxitems" -> new LengthConstraint(0, val);
+                            default -> throw new IllegalStateException();
+                        };
+                        return new Parser.Success<>(new TypeExpr.ConstraintExpr(constraint), tail.tail());
                     }
-                    return new Parser.Failure<>("Expected integer after " + keyword);
+                    return new Parser.Failure<>("Expected integer after " + keyword, tail);
                 }
             }
-            return new Parser.Failure<>("Not a length constraint");
+            return new Parser.Failure<>("Not a length constraint", input);
         };
     }
 
@@ -86,14 +115,40 @@ public record LengthConstraint(Integer min, Integer max) implements ValueConstra
             return this.min >= lc.min && (lc.max == null || (this.max != null && this.max <= lc.max));
         }
 
-        // Generic arrays or string strings
-        if (other instanceof GenericTypeDef g && g.pattern() == AbstractTypeSystemBuilder.PatternConstructor.Pattern.ARRAY) {
-            // A length constraint itself does NOT satisfy a specific Array type.
-            // (e.g. `minlength 3` does not satisfy `Array<Int...>`).
-            return false;
+        if (other instanceof NominalDef n) {
+            if (n.name().equals("String")) return true; // length constraints are subtypes of String or Array
+            if (n.name().equals("Array")) return true;
         }
 
         return false;
+    }
+
+    public boolean isSatisfiedBy(GenericTypeDef arrayType) {
+        if (arrayType.pattern() != AbstractTypeSystemBuilder.PatternConstructor.Pattern.ARRAY) {
+            return false;
+        }
+        int arrayMin = 0;
+        Integer arrayMax = 0;
+
+        for (TypeDefParam p : arrayType.parameters()) {
+            if (p instanceof TypeDefParam.Positional pos) {
+                if (pos.variadic()) {
+                    arrayMax = null;
+                } else {
+                    arrayMin++;
+                    if (arrayMax != null) arrayMax++;
+                }
+            } else if (p instanceof TypeDefParam.Spread) {
+                arrayMax = null;
+            }
+        }
+
+        return arrayMin >= this.min && (this.max == null || (arrayMax != null && arrayMax <= this.max));
+    }
+
+    public boolean isSatisfiedBy(StringConstraint s) {
+        int len = s.value().length();
+        return len >= this.min && (this.max == null || len <= this.max);
     }
 
     public boolean isDisjoint(LengthConstraint other) {

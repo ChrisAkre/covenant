@@ -42,49 +42,31 @@ public sealed interface TypeExpr
     }
 
     final class ConstraintExpr implements TypeExpr {
-        private final String keyword;
-        private final String value;
-        private volatile Automaton automaton;
+        private final ValueConstraint constraint;
 
-        public ConstraintExpr(String keyword, String value) {
-            this.keyword = keyword;
-            this.value = value;
+        public ConstraintExpr(ValueConstraint constraint) {
+            this.constraint = Objects.requireNonNull(constraint);
         }
 
-        public String keyword() {
-            return keyword;
-        }
-
-        public String value() {
-            return value;
-        }
-
-        public Automaton automaton() {
-            if (automaton == null) {
-                synchronized (this) {
-                    if (automaton == null) {
-                        automaton = TypeSystemUtils.toAutomaton(value);
-                    }
-                }
-            }
-            return automaton;
+        public ValueConstraint constraint() {
+            return constraint;
         }
 
         @Override
         public @NonNull String toString() {
-            return keyword + " " + value;
+            return constraint.repr();
         }
 
         @Override
         public boolean equals(Object o) {
             if (this == o) return true;
             if (!(o instanceof ConstraintExpr that)) return false;
-            return Objects.equals(keyword, that.keyword) && Objects.equals(value, that.value);
+            return Objects.equals(constraint, that.constraint);
         }
 
         @Override
         public int hashCode() {
-            return Objects.hash(keyword, value);
+            return Objects.hash(constraint);
         }
     }
 
@@ -188,15 +170,12 @@ public sealed interface TypeExpr
 
         final class Constrained implements ParamExpr {
             private final TypeExpr type;
-            private final String keyword;
-            private final String value;
+            private final ValueConstraint constraint;
             private final boolean optional;
-            private volatile Automaton automaton;
 
-            public Constrained(TypeExpr type, String keyword, String value, boolean optional) {
+            public Constrained(TypeExpr type, ValueConstraint constraint, boolean optional) {
                 this.type = Objects.requireNonNull(type);
-                this.keyword = keyword;
-                this.value = value;
+                this.constraint = Objects.requireNonNull(constraint);
                 this.optional = optional;
             }
 
@@ -205,44 +184,29 @@ public sealed interface TypeExpr
                 return type;
             }
 
-            public String keyword() {
-                return keyword;
-            }
-
-            public String value() {
-                return value;
+            public ValueConstraint constraint() {
+                return constraint;
             }
 
             public boolean optional() {
                 return optional;
             }
 
-            public Automaton automaton() {
-                if (automaton == null) {
-                    synchronized (this) {
-                        if (automaton == null) {
-                            automaton = TypeSystemUtils.toAutomaton(value);
-                        }
-                    }
-                }
-                return automaton;
-            }
-
             @Override
             public @NonNull String toString() {
-                return "[" + keyword + " " + value + "]" + (optional ? "?: " : ": ") + type;
+                return "[" + constraint.repr() + "]" + (optional ? "?: " : ": ") + type;
             }
 
             @Override
             public boolean equals(Object o) {
                 if (this == o) return true;
                 if (!(o instanceof Constrained that)) return false;
-                return optional == that.optional && Objects.equals(type, that.type) && Objects.equals(keyword, that.keyword) && Objects.equals(value, that.value);
+                return optional == that.optional && Objects.equals(type, that.type) && Objects.equals(constraint, that.constraint);
             }
 
             @Override
             public int hashCode() {
-                return Objects.hash(type, keyword, value, optional);
+                return Objects.hash(type, constraint, optional);
             }
         }
 
