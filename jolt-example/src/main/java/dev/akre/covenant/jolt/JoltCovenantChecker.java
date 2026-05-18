@@ -157,20 +157,18 @@ public class JoltCovenantChecker {
             List<Type> types = entry.getValue();
             
             Type combinedType = typeSystem.union(types.toArray(new Type[0]));
-            if (types.size() > 1 && !path.contains("[]") && !path.contains(".[]") && !path.contains("{{") && !path.contains("[#") && !path.contains("*")) {
+            if (types.size() > 1 && !path.contains("[]") && !path.contains(".[]") && isStaticPath(path) && !path.contains("[#")) {
                 path += ".[]";
             }
             
-            Type placement = buildNestedObjectFromPath(path, combinedType);
-            finalPlacements.add(placement);
+            finalPlacements.add(buildNestedObjectFromPath(path, combinedType));
         }
         
         try {
             if (finalPlacements.isEmpty()) {
                 return typeSystem.bottom();
             }
-            Type result = typeSystem.intersect(finalPlacements.toArray(new Type[0]));
-            return close(result);
+            return typeSystem.intersect(finalPlacements.toArray(new Type[0]));
         } catch (Exception e) {
             return typeSystem.bottom();
         }
@@ -243,6 +241,10 @@ public class JoltCovenantChecker {
         }
     }
 
+    private boolean isStaticPath(String path) {
+        return !path.contains("{{") && !path.contains("*");
+    }
+
     private void processLeafProjection(Type matchedType, String rhsString, List<EvaluationFrame> frameStack, Map<String, List<Type>> pathPlacements) {
         List<String> rhsParts = safeSplit(rhsString, ',');
         for (String rhs : rhsParts) {
@@ -274,14 +276,10 @@ public class JoltCovenantChecker {
                         break;
                     }
                 }
-                if (insideLoop && !finalPath.endsWith("[]") && !finalPath.contains(".[]")) {
+                // Only wrap if it's a static path. Pattern paths from loops usually mean branching to different keys.
+                if (insideLoop && !finalPath.endsWith("[]") && !finalPath.contains(".[]") && isStaticPath(finalPath)) {
                     finalPath += ".[]";
                 }
-            } else {
-                // Non-convergent multi-match means it could still hit same path if loop iterates
-                // but usually it means it maps to DIFFERENT paths in the same array
-                // e.g. books[0].title, books[1].title
-                // However, Jolt's runtime logic for "is an array" is based on hits to the SAME path.
             }
 
             pathPlacements.computeIfAbsent(finalPath, k -> new ArrayList<>()).add(matchedType);
