@@ -191,7 +191,7 @@ public class JoltCovenantChecker {
             } else if (def instanceof UnionType u) {
                 return typeSystem.union(u.members().stream().map(m -> close(typeSystem.wrap(m))).toArray(Type[]::new));
             }
-        } catch (Exception e) {}
+        } catch (Exception e) { /* ignoring exception to fallback to parentType */ }
         return type;
     }
 
@@ -343,12 +343,67 @@ public class JoltCovenantChecker {
         return evaluatedPathBuilder.toString();
     }
 
+
+    private List<EvaluationFrame> refineStack(List<EvaluationFrame> stack) {
+        List<EvaluationFrame> refined = new ArrayList<>(stack);
+        for (int i = refined.size() - 2; i >= 0; i--) {
+            EvaluationFrame parentFrame = refined.get(i);
+            EvaluationFrame childFrame = refined.get(i + 1);
+            String key = childFrame.getMatchGroups()[0];
+
+            Type childType = childFrame.getTypeContext();
+            Type parentType = parentFrame.getTypeContext();
+
+            Type refinedParentType = parentType;
+
+            try {
+                if (key.equals("*")) {
+                     TypeDef parentDef = typeSystem.unwrap(parentType);
+                     if (parentDef.attributes().contains(dev.akre.covenant.api.TypeAttribute.ARRAY)) {
+                          Type constraint = typeSystem.template("Array").construct(List.of(
+                               new dev.akre.covenant.api.TypeParameter.Positional(childType, 0, true)
+                          ));
+                          refinedParentType = typeSystem.intersect(parentType, constraint);
+                     }
+                } else if (key.matches("\\d+")) {
+                     TypeDef parentDef = typeSystem.unwrap(parentType);
+                     if (parentDef.attributes().contains(dev.akre.covenant.api.TypeAttribute.ARRAY)) {
+                          Type constraint = typeSystem.template("Array").construct(List.of(
+                               new dev.akre.covenant.api.TypeParameter.Positional(childType, Integer.parseInt(key), true),
+                               new dev.akre.covenant.api.TypeParameter.Spread(typeSystem.top())
+                          ));
+                          refinedParentType = typeSystem.intersect(parentType, constraint);
+                     } else {
+                          Type constraint = typeSystem.template("Object").construct(List.of(
+                              new dev.akre.covenant.api.TypeParameter.Named(childType, key, false),
+                              new dev.akre.covenant.api.TypeParameter.Spread(typeSystem.top())
+                          ));
+                          refinedParentType = typeSystem.intersect(parentType, constraint);
+                     }
+                } else {
+                     Type constraint = typeSystem.template("Object").construct(List.of(
+                         new dev.akre.covenant.api.TypeParameter.Named(childType, key, false),
+                         new dev.akre.covenant.api.TypeParameter.Spread(typeSystem.top())
+                     ));
+                     refinedParentType = typeSystem.intersect(parentType, constraint);
+                }
+            } catch (Exception e) { /* ignoring exception to fallback to parentType */ }
+
+            if (refinedParentType == null || refinedParentType.isBottom()) {
+                 refinedParentType = parentType;
+            }
+
+            refined.set(i, new EvaluationFrame(refinedParentType, parentFrame.getMatchGroups(), parentFrame.isMulti()));
+        }
+        return refined;
+    }
     private void processLiteralMatch(Type currentType, LiteralPathElement literal, JsonNode subSpec, List<EvaluationFrame> frameStack, Map<String, List<Type>> pathPlacements) {
         String key = literal.getRawKey();
         Type childType = narrowNonNull(term(currentType, key));
         if (childType != null && !childType.isBottom()) {
             List<EvaluationFrame> nextStack = new ArrayList<>(frameStack);
             nextStack.add(new EvaluationFrame(childType, new String[]{key}));
+                nextStack = refineStack(nextStack);
             traverse(childType, subSpec, nextStack, pathPlacements);
         }
     }
@@ -366,6 +421,7 @@ public class JoltCovenantChecker {
                     matchedAny = true;
                     List<EvaluationFrame> nextStack = new ArrayList<>(frameStack);
                     nextStack.add(new EvaluationFrame(childType, getGroups(match), true));
+                nextStack = refineStack(nextStack);
                     traverse(childType, subSpec, nextStack, pathPlacements);
                 }
             }
@@ -380,6 +436,7 @@ public class JoltCovenantChecker {
                        if (match != null) {
                             List<EvaluationFrame> nextStack = new ArrayList<>(frameStack);
                             nextStack.add(new EvaluationFrame(valueType, getGroups(match), true));
+                nextStack = refineStack(nextStack);
                             traverse(valueType, subSpec, nextStack, pathPlacements);
                        }
                   }
@@ -403,13 +460,14 @@ public class JoltCovenantChecker {
         String key = null;
         try {
             key = amp.evaluate(walkedPath);
-        } catch (Exception e) {}
+        } catch (Exception e) { /* ignoring exception to fallback to parentType */ }
         
         if (key != null) {
             Type childType = narrowNonNull(term(currentType, key));
             if (childType != null && !childType.isBottom()) {
                 List<EvaluationFrame> nextStack = new ArrayList<>(frameStack);
                 nextStack.add(new EvaluationFrame(childType, new String[]{key}));
+                nextStack = refineStack(nextStack);
                 traverse(childType, subSpec, nextStack, pathPlacements);
             }
         }
@@ -425,6 +483,7 @@ public class JoltCovenantChecker {
                 List<EvaluationFrame> nextStack = new ArrayList<>(frameStack);
                 String matchGroup = (val instanceof String s) ? s : getRepresentativeValue(lookupValue);
                 nextStack.add(new EvaluationFrame(currentType, new String[]{matchGroup}));
+                nextStack = refineStack(nextStack);
                 traverse(lookupValue, subSpec, nextStack, pathPlacements);
             }
         }
@@ -442,13 +501,14 @@ public class JoltCovenantChecker {
         MatchedElement match = null;
         try {
             match = dollar.match("", walkedPath);
-        } catch (Exception e) {}
+        } catch (Exception e) { /* ignoring exception to fallback to parentType */ }
         
         if (match != null) {
             Type keyType = typeSystem.type("String");
             List<EvaluationFrame> nextStack = new ArrayList<>(frameStack);
             // Dollar match should push the matched key value into the frame
             nextStack.add(new EvaluationFrame(currentType, getGroups(match)));
+                nextStack = refineStack(nextStack);
             traverse(keyType, subSpec, nextStack, pathPlacements);
         }
     }
@@ -458,7 +518,7 @@ public class JoltCovenantChecker {
         MatchedElement match = null;
         try {
             match = hash.match("", walkedPath);
-        } catch (Exception e) {}
+        } catch (Exception e) { /* ignoring exception to fallback to parentType */ }
         
         if (match != null) {
             String val = match.getRawKey();
@@ -466,6 +526,7 @@ public class JoltCovenantChecker {
             List<EvaluationFrame> nextStack = new ArrayList<>(frameStack);
             // Hash match should push the literal value into the frame
             nextStack.add(new EvaluationFrame(currentType, new String[]{val}));
+                nextStack = refineStack(nextStack);
             traverse(valType, subSpec, nextStack, pathPlacements);
         }
     }
@@ -486,7 +547,7 @@ public class JoltCovenantChecker {
         if (obj instanceof String s) {
              if (s.startsWith("{{TYPE:") && s.endsWith("}}")) {
                  String name = s.substring(7, s.length() - 2);
-                 try { return typeSystem.type(name); } catch (Exception e) {}
+                 try { return typeSystem.type(name); } catch (Exception e) { /* ignoring exception to fallback to parentType */ }
                  return typeSystem.top();
              }
              if (s.startsWith("{{REGEX:") && s.endsWith("}}")) {
