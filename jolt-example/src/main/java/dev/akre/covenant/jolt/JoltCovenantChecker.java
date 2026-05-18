@@ -158,7 +158,7 @@ public class JoltCovenantChecker {
             
             Type combinedType = typeSystem.union(types.toArray(new Type[0]));
             if (types.size() > 1 && !path.contains("[]") && !path.contains(".[]") && isStaticPath(path) && !path.contains("[#")) {
-                path += ".[]";
+                path = path.isEmpty() ? "[]" : path + ".[]";
             }
             
             finalPlacements.add(buildNestedObjectFromPath(path, combinedType));
@@ -278,7 +278,7 @@ public class JoltCovenantChecker {
                 }
                 // Only wrap if it's a static path. Pattern paths from loops usually mean branching to different keys.
                 if (insideLoop && !finalPath.endsWith("[]") && !finalPath.contains(".[]") && isStaticPath(finalPath)) {
-                    finalPath += ".[]";
+                    finalPath = finalPath.isEmpty() ? "[]" : finalPath + ".[]";
                 }
             }
 
@@ -416,9 +416,13 @@ public class JoltCovenantChecker {
         WalkedPath walkedPath = createWalkedPath(frameStack);
         com.bazaarvoice.jolt.common.Optional<Object> optional = transpose.objectEvaluate(walkedPath);
         if (optional.isPresent()) {
-            Type lookupValue = narrowNonNull(unwrapType(optional.get()));
+            Object val = optional.get();
+            Type lookupValue = narrowNonNull(unwrapType(val));
             if (lookupValue != null && !lookupValue.isBottom()) {
-                traverse(lookupValue, subSpec, frameStack, pathPlacements);
+                List<EvaluationFrame> nextStack = new ArrayList<>(frameStack);
+                String matchGroup = (val instanceof String s) ? s : getRepresentativeValue(lookupValue);
+                nextStack.add(new EvaluationFrame(currentType, new String[]{matchGroup}));
+                traverse(lookupValue, subSpec, nextStack, pathPlacements);
             }
         }
     }
