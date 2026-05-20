@@ -522,7 +522,10 @@ public class JoltCovenantChecker {
         
         if (match != null) {
             String val = match.getRawKey();
-            Type valType = (Type) typeSystem.expression("'" + val.replace("'", "''") + "'");
+            Type valType = typeSystem.intersect(
+                typeSystem.type("String"),
+                (Type) typeSystem.expression("\"" + val.replace("\"", "\"\"") + "\"")
+            );
             List<EvaluationFrame> nextStack = new ArrayList<>(frameStack);
             // Hash match should push the literal value into the frame
             nextStack.add(new EvaluationFrame(currentType, new String[]{val}));
@@ -557,7 +560,13 @@ public class JoltCovenantChecker {
              if (s.matches("-?\\d+(\\.\\d+)?") || s.equals("true") || s.equals("false")) {
                   return (Type) typeSystem.expression(s);
              }
-             return (Type) typeSystem.expression("'" + s.replace("'", "''") + "'");
+             return (Type) typeSystem.expression("\"" + s.replace("\"", "\"\"") + "\"");
+        }
+        if (obj instanceof Boolean b) {
+            return (Type) typeSystem.expression(b.toString());
+        }
+        if (obj instanceof Number n) {
+            return (Type) typeSystem.expression(n.toString());
         }
         return null;
     }
@@ -666,6 +675,8 @@ public class JoltCovenantChecker {
                     String pattern;
                     if (name.equals("String") || name.equals("Any") || name.equals("top")) {
                         pattern = "/.*/";
+                    } else if (name.equals("Bool")) {
+                        pattern = "/^(true|false)$/";
                     } else if (name.equals("Number") || name.equals("Int") || name.equals("Float")) {
                         pattern = "/^[0-9]+(\\.[0-9]+)?$/";
                     } else {
