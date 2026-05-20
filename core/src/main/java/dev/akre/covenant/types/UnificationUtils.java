@@ -282,16 +282,23 @@ public class UnificationUtils {
     }
 
     private static boolean containsTypeVars(TypeExpr expr, Set<String> typeVars) {
+        if (expr == null) return false;
         return switch (expr) {
             case TypeExpr.RefExpr ref -> typeVars.contains(ref.name());
-            case TypeExpr.UnionExpr u -> u.members().stream().anyMatch(m -> containsTypeVars(m, typeVars));
-            case TypeExpr.IntersectionExpr i -> i.members().stream().anyMatch(m -> containsTypeVars(m, typeVars));
-            case TypeExpr.ApplyExpr a -> a.arguments().stream().anyMatch(arg -> containsTypeVars(arg.type(), typeVars));
+            case TypeExpr.UnionExpr u -> containsTypeVars(u.members(), typeVars);
+            case TypeExpr.IntersectionExpr i -> containsTypeVars(i.members(), typeVars);
+            case TypeExpr.ApplyExpr a -> containsTypeVars(a.argTypes(), typeVars);
             case TypeExpr.SignatureExpr s ->
-                containsTypeVars(s.returnType(), typeVars)
-                        || s.typeParams().stream().anyMatch(p -> containsTypeVars(p, typeVars));
-            case null, default -> false;
+                containsTypeVars(s.returnType(), typeVars) || containsTypeVars(s.typeParams(), typeVars);
+            default -> false;
         };
+    }
+
+    private static boolean containsTypeVars(Iterable<? extends TypeExpr> exprs, Set<String> typeVars) {
+        for (TypeExpr expr : exprs) {
+            if (containsTypeVars(expr, typeVars)) return true;
+        }
+        return false;
     }
 
     /**
