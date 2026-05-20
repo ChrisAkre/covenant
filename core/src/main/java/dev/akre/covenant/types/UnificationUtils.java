@@ -287,12 +287,7 @@ public class UnificationUtils {
             case TypeExpr.RefExpr ref -> typeVars.contains(ref.name());
             case TypeExpr.UnionExpr u -> containsTypeVars(u.members(), typeVars);
             case TypeExpr.IntersectionExpr i -> containsTypeVars(i.members(), typeVars);
-            case TypeExpr.ApplyExpr a -> {
-                for (TypeExpr.ParamExpr arg : a.arguments()) {
-                    if (containsTypeVars(arg.type(), typeVars)) yield true;
-                }
-                yield false;
-            }
+            case TypeExpr.ApplyExpr a -> containsTypeVars(a.argTypes(), typeVars);
             case TypeExpr.SignatureExpr s ->
                 containsTypeVars(s.returnType(), typeVars) || containsTypeVars(s.typeParams(), typeVars);
             default -> false;

@@ -219,6 +219,10 @@ public sealed interface TypeExpr
     }
 
     record ApplyExpr(TypeExpr target, List<ParamExpr> arguments) implements TypeExpr {
+        public List<TypeExpr> argTypes() {
+            return arguments.stream().map(ParamExpr::type).toList();
+        }
+
         @Override
         public @NonNull String toString() {
             return target + "<"
