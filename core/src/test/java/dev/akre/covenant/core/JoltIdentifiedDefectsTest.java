@@ -2,6 +2,7 @@ package dev.akre.covenant.core;
 
 import dev.akre.covenant.api.Type;
 import dev.akre.covenant.types.JsonTypeSystem;
+import dev.akre.covenant.types.TestTypeSystem;
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -10,14 +11,17 @@ public class JoltIdentifiedDefectsTest {
 
     @Test
     public void testAtomVsStringConstraintAssignability() throws Exception {
-        Type atomType = JsonTypeSystem.INSTANCE.expression("'disabled'");
+        TestTypeSystem system = TestTypeSystem.of(JsonTypeSystem.INSTANCE);
+        system.assertThat("\"disabled\"").isEquivalentTo("String & eq 'disabled'");
+
+        Type atomType = JsonTypeSystem.INSTANCE.expression("\"disabled\"");
         Type stringConstraint = JsonTypeSystem.INSTANCE.intersect(
                 JsonTypeSystem.INSTANCE.type("String"),
                 JsonTypeSystem.INSTANCE.expression("eq 'disabled'")
         );
 
         // They represent the exact same set of values, so they MUST be mutually assignable.
-        assertTrue(atomType.isAssignableFrom(stringConstraint), "AtomType MUST be assignable from StringConstraint");
+        assertTrue(atomType.isAssignableFrom(stringConstraint), "string literal");
         assertTrue(stringConstraint.isAssignableFrom(atomType), "StringConstraint MUST be assignable from AtomType");
     }
 
