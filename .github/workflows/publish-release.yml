@@ -67,7 +67,7 @@ jobs:
             -DscmCommentPrefix="[skip ci] [maven-release-plugin] " \
             -Dgpg.passphrase="${GPG_PASSPHRASE}" || true
           
-          cd core/tmp-test-fixtures-deploy
+          cd target/checkout/core/tmp-test-fixtures-deploy
           mvn --batch-mode clean deploy \
             -DskipTests \
             -Dmaven.deploy.skip=true \
