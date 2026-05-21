@@ -64,7 +64,17 @@ public class JoltCovenantChecker {
         WalkedPath walkedPath = new WalkedPath();
         for (int i = 0; i < frameStack.size(); i++) {
             EvaluationFrame frame = frameStack.get(i);
-            String[] groups = (i == overrideFrameIndex) ? overrideGroups : frame.getMatchGroups();
+            String[] groups;
+            if (i == overrideFrameIndex) {
+                groups = overrideGroups;
+            } else if (overrideFrameIndex >= 0 && i > overrideFrameIndex) {
+                groups = frame.getMatchGroups().clone();
+                for (int j = 0; j < groups.length; j++) {
+                    groups[j] = groups[j] + "_derived_next";
+                }
+            } else {
+                groups = frame.getMatchGroups();
+            }
             List<String> subKeys = new ArrayList<>();
             for (int j = 1; j < groups.length; j++) {
                 subKeys.add(groups[j]);
@@ -305,12 +315,12 @@ public class JoltCovenantChecker {
         if (loopFrameIndexToOverride >= 0) {
             String[] currentGroups = frameStack.get(loopFrameIndexToOverride).getMatchGroups();
             String[] nextGroups = currentGroups.clone();
-            if (nextGroups.length > 0) {
+            for (int j = 0; j < nextGroups.length; j++) {
                 try {
-                    int idx = Integer.parseInt(nextGroups[0]);
-                    nextGroups[0] = String.valueOf(idx + 1);
+                    int idx = Integer.parseInt(nextGroups[j]);
+                    nextGroups[j] = String.valueOf(idx + 1);
                 } catch (NumberFormatException e) {
-                    nextGroups[0] = nextGroups[0] + "_next";
+                    nextGroups[j] = nextGroups[j] + "_next";
                 }
             }
             walkedPath = createWalkedPath(frameStack, loopFrameIndexToOverride, nextGroups);
@@ -546,7 +556,11 @@ public class JoltCovenantChecker {
         Type narrowed = narrowNonNull(currentType);
         if (narrowed != null && !narrowed.isBottom()) {
             List<EvaluationFrame> nextStack = new ArrayList<>(frameStack);
-            nextStack.add(new EvaluationFrame(narrowed, new String[]{at.getRawKey()}));
+            String[] parentGroups = frameStack.get(frameStack.size() - 1).getMatchGroups();
+            String[] groups = new String[parentGroups.length];
+            System.arraycopy(parentGroups, 0, groups, 0, parentGroups.length);
+            groups[0] = at.getRawKey();
+            nextStack.add(new EvaluationFrame(narrowed, groups));
             nextStack = refineStack(nextStack);
             traverse(narrowed, subSpec, nextStack, pathPlacements);
         }
