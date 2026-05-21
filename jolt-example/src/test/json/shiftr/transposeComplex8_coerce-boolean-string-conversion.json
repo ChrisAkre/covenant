@@ -1,0 +1,57 @@
+{
+  "inputSchema": {
+    "$schema": "http://json-schema.org/schema#",
+    "type": "object",
+    "properties": {
+      "clients": {
+        "type": "object",
+        "additionalProperties": {
+          "type": "object",
+          "properties": {
+            "clientId": {},
+            "enabled": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "clientId",
+            "enabled"
+          ]
+        }
+      }
+    },
+    "required": [
+      "clients"
+    ]
+  },
+  "spec": {
+    "clients": {
+      "*": {
+        // clientName
+        "clientId": "clientsById.@(1,enabled)[]" // coerce the boolean into the string "true" or "false"
+      }
+    }
+  },
+  "expectedSchema": {
+    "$schema": "http://json-schema.org/schema#",
+    "type": "object",
+    "properties": {
+      "clientsById": {
+        "type": "object",
+        "properties": {
+          "true": {
+            "type": "array",
+            "items": {}
+          },
+          "false": {
+            "type": "array",
+            "items": {}
+          }
+        }
+      }
+    },
+    "required": [
+      "clientsById"
+    ]
+  }
+}

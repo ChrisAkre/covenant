@@ -14,6 +14,7 @@ public final class Lexer {
         PATTERNS.put(Parser.TokenType.ARROW, Pattern.compile("^->"));
         PATTERNS.put(Parser.TokenType.ELLIPSIS, Pattern.compile("^\\.\\.\\."));
         PATTERNS.put(Parser.TokenType.FLOAT_LITERAL, Pattern.compile("^-?[0-9]+\\.[0-9]+"));
+        PATTERNS.put(Parser.TokenType.REGEX_LITERAL, Pattern.compile("^/([^/]|\\\\/)*/"));
         PATTERNS.put(Parser.TokenType.INT_LITERAL, Pattern.compile("^-?[0-9]+"));
         PATTERNS.put(Parser.TokenType.STRING_LITERAL, Pattern.compile("^\"([^\"]|\"\")*\""));
         PATTERNS.put(Parser.TokenType.SYMBOL_LITERAL, Pattern.compile("^'([^']|'')*'"));
@@ -28,6 +29,8 @@ public final class Lexer {
         PATTERNS.put(Parser.TokenType.R_PAREN, Pattern.compile("^\\)"));
         PATTERNS.put(Parser.TokenType.L_ANGLE, Pattern.compile("^<"));
         PATTERNS.put(Parser.TokenType.R_ANGLE, Pattern.compile("^>"));
+        PATTERNS.put(Parser.TokenType.L_BRACKET, Pattern.compile("^\\["));
+        PATTERNS.put(Parser.TokenType.R_BRACKET, Pattern.compile("^\\]"));
         PATTERNS.put(Parser.TokenType.COMMA, Pattern.compile("^,"));
         PATTERNS.put(Parser.TokenType.UNKNOWN, Pattern.compile("^[^\\s]+"));
     }
@@ -71,6 +74,11 @@ public final class Lexer {
             @Override
             public Parser.InputState tail() {
                 return inputState(tokens, index+1);
+            }
+
+            @Override
+            public boolean isEndOfInput() {
+                return head().type() == Parser.TokenType.EOF;
             }
         };
     }

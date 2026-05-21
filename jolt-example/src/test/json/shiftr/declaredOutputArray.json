@@ -1,0 +1,97 @@
+{
+  "inputSchema": {
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "properties": {
+    "tuna-a": {
+      "type": "string"
+    },
+    "tuna-b": {
+      "type": "string"
+    },
+    "foo-a": {
+      "type": "string"
+    },
+    "axis-x": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "axis-x",
+    "foo-a",
+    "tuna-a",
+    "tuna-b"
+  ]
+},
+  "spec": {
+        "foo-*": "listOfFooValues[]",
+
+        "tuna-*" : {
+            "@" : "listOfTunaValues[]",
+            "$(0,1)" : [ "listOfTunaIds[]", "sillyListOfTunaIds[].id" ]
+        },
+
+        "axis-*" : {
+            "@" : "listOfAxisValues[]",
+            "$(0,1)" : "listOfAxisIds[]"
+        }
+    },
+  "expectedSchema": {
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "properties": {
+    "listOfFooValues": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "listOfTunaValues": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "listOfTunaIds": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "sillyListOfTunaIds": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id"
+        ]
+      }
+    },
+    "listOfAxisValues": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "listOfAxisIds": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "required": [
+    "listOfAxisIds",
+    "listOfAxisValues",
+    "listOfFooValues",
+    "listOfTunaIds",
+    "listOfTunaValues",
+    "sillyListOfTunaIds"
+  ]
+}
+}

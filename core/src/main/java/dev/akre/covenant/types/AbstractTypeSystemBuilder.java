@@ -1,6 +1,5 @@
 package dev.akre.covenant.types;
 
-import dev.akre.covenant.api.Parameter;
 import dev.akre.covenant.api.TypeSystemBuilder;
 import dev.akre.covenant.types.AbstractTypeSystemBuilder.PatternConstructor.Pattern;
 import dev.akre.covenant.types.parser.Parser;
@@ -87,7 +86,7 @@ public abstract class AbstractTypeSystemBuilder<B extends AbstractTypeSystemBuil
     }
 
     private void validateName(String name) {
-        if (!name.matches("[a-zA-Z][a-zA-Z0-9_-]*")) {
+        if (!com.google.re2j.Pattern.matches("[a-zA-Z][a-zA-Z0-9_-]*", name)) {
             throw new IllegalArgumentException("Invalid atom name: " + name + ". Names must be identifiers.");
         }
     }
@@ -356,7 +355,7 @@ public abstract class AbstractTypeSystemBuilder<B extends AbstractTypeSystemBuil
 
         @Override
         public TypeDef construct(
-                AbstractTypeSystem system, TemplateType origin, List<TypeDef> members, List<Parameter> parameters) {
+                AbstractTypeSystem system, TemplateType origin, List<TypeDefParam> parameters) {
             if (parameters.size() < min || parameters.size() > max) {
                 throw new IllegalArgumentException(String.format(
                         "Invalid number of parameters for %s. Expected [%d, %d], found %d",
@@ -364,12 +363,17 @@ public abstract class AbstractTypeSystemBuilder<B extends AbstractTypeSystemBuil
             }
             TemplateType template = Objects.requireNonNull(origin);
 
-            List<TypeDefParam> params = new java.util.ArrayList<>();
-            for (dev.akre.covenant.api.Parameter p : parameters) {
-                params.add(new TypeDefParam(p.index() != null ? members.get(p.index()) : system.topDef(), p));
+            // SOUNDNESS: If any required parameter is bottom, the entire object/array is bottom.
+            for (TypeDefParam p : parameters) {
+                if (p instanceof TypeDefParam.Named n && !n.optional() && system.wrap(n.type()).isBottom()) {
+                    return system.bottomDef();
+                }
+                if (p instanceof TypeDefParam.Positional pos && !pos.variadic() && system.wrap(pos.type()).isBottom()) {
+                    return system.bottomDef();
+                }
             }
 
-            return new GenericTypeDef(template, pattern, params);
+            return new GenericTypeDef(template, pattern, parameters);
         }
     }
 

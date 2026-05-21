@@ -1,0 +1,94 @@
+{
+  "inputSchema": {
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "properties": {
+    "clone1_Physician": {
+      "type": "string"
+    },
+    "clone2_Physician": {
+      "type": "string"
+    },
+    "clone1_GCPerProIdenInfoPhyInfoStreet": {
+      "type": "string"
+    },
+    "clone1_GCPerProIdenInfoPhyInfoAddLin2": {
+      "type": "string"
+    },
+    "clone1_GCPerProIdenInfoPhyInfoAddLin3": {
+      "type": "string"
+    },
+    "clone2_GCPerProIdenInfoPhyInfoStreet": {
+      "type": "string"
+    },
+    "clone2_GCPerProIdenInfoPhyInfoAddLin2": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "clone1_GCPerProIdenInfoPhyInfoAddLin2",
+    "clone1_GCPerProIdenInfoPhyInfoAddLin3",
+    "clone1_GCPerProIdenInfoPhyInfoStreet",
+    "clone1_Physician",
+    "clone2_GCPerProIdenInfoPhyInfoAddLin2",
+    "clone2_GCPerProIdenInfoPhyInfoStreet",
+    "clone2_Physician"
+  ]
+},
+  "spec": {
+        // match clone1_Physician and clone2_Physician
+        "clone*_Physician" : {
+            // match the RHS of Physician_10000
+            "Physician_1000*" : {
+                // if we matched then grab the "number" of the physician and use that to process the address
+                "@(2,clone&(1,1)_GCPerProIdenInfoPhyInfoStreet)" : "Physician&(2,1).street",
+                "@(2,clone&(1,1)_GCPerProIdenInfoPhyInfoAddLin2)" : "Physician&(2,1).adderLin2",
+                "@(2,clone&(1,1)_GCPerProIdenInfoPhyInfoAddLin3)" : "Physician&(2,1).adderLin3"
+            }
+        }
+    },
+  "expectedSchema": {
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "properties": {
+    "Physician1": {
+      "type": "object",
+      "properties": {
+        "street": {
+          "type": "string"
+        },
+        "adderLin2": {
+          "type": "string"
+        },
+        "adderLin3": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "adderLin2",
+        "adderLin3",
+        "street"
+      ]
+    },
+    "Physician2": {
+      "type": "object",
+      "properties": {
+        "street": {
+          "type": "string"
+        },
+        "adderLin2": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "adderLin2",
+        "street"
+      ]
+    }
+  },
+  "required": [
+    "Physician1",
+    "Physician2"
+  ]
+}
+}

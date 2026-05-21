@@ -1,0 +1,198 @@
+{
+  "inputSchema": {
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "properties": {
+    "@context": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "ingredient": {
+          "type": "string"
+        },
+        "yield": {
+          "type": "string"
+        },
+        "instructions": {
+          "type": "string"
+        },
+        "step": {
+          "type": "object",
+          "properties": {
+            "@id": {
+              "type": "string"
+            },
+            "@type": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "@id",
+            "@type"
+          ]
+        },
+        "description": {
+          "type": "string"
+        },
+        "xsd": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "description",
+        "ingredient",
+        "instructions",
+        "name",
+        "step",
+        "xsd",
+        "yield"
+      ]
+    },
+    "name": {
+      "type": "string"
+    },
+    "ingredient": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "yield": {
+      "type": "string"
+    },
+    "instructions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "step": {
+            "type": "integer"
+          },
+          "description": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "description",
+          "step"
+        ]
+      }
+    }
+  },
+  "required": [
+    "@context",
+    "ingredient",
+    "instructions",
+    "name",
+    "yield"
+  ]
+},
+  "spec": {
+        // In this test / example, we want to change some of the LHS keys in this Json document.
+        // To accomplish this we escape the leading '@' chars both as spec matches (left hand side)
+        //  and as output paths (right hand side)
+        "\\@context": {
+            "name": "&1.Name",
+            "ingredient": "&1.Inputs",
+            "yield": "\\@context.Makes",
+            // pass the rest thru
+            "*" : "&1.&"
+        },
+        "name": "Name",
+        "ingredient": "Inputs",
+        "yield": "Makes",
+        "*" : "&"
+    },
+  "expectedSchema": {
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "properties": {
+    "@context": {
+      "type": "object",
+      "properties": {
+        "Name": {
+          "type": "string"
+        },
+        "Inputs": {
+          "type": "string"
+        },
+        "Makes": {
+          "type": "string"
+        },
+        "instructions": {
+          "type": "string"
+        },
+        "step": {
+          "type": "object",
+          "properties": {
+            "@id": {
+              "type": "string"
+            },
+            "@type": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "@id",
+            "@type"
+          ]
+        },
+        "description": {
+          "type": "string"
+        },
+        "xsd": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "Inputs",
+        "Makes",
+        "Name",
+        "description",
+        "instructions",
+        "step",
+        "xsd"
+      ]
+    },
+    "Name": {
+      "type": "string"
+    },
+    "Inputs": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "Makes": {
+      "type": "string"
+    },
+    "instructions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "step": {
+            "type": "integer"
+          },
+          "description": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "description",
+          "step"
+        ]
+      }
+    }
+  },
+  "required": [
+    "@context",
+    "Inputs",
+    "Makes",
+    "Name",
+    "instructions"
+  ]
+}
+}

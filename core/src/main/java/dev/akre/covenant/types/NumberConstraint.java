@@ -1,5 +1,7 @@
 package dev.akre.covenant.types;
 
+import dev.akre.covenant.types.parser.Parser;
+
 import java.math.BigDecimal;
 import java.util.Collection;
 import java.util.Objects;
@@ -8,12 +10,36 @@ import java.util.Set;
 public record NumberConstraint(Operator operator, BigDecimal value) implements ValueConstraint {
 
     @Override
+    public String keywordString() {
+        return operator.symbol;
+    }
+
+    @Override
+    public String valueString() {
+        return value.toPlainString();
+    }
+
+    public static Parser<TypeExpr> parser() {
+        return input -> {
+            if (input.head().type() == Parser.TokenType.IDENTIFIER) {
+                Operator op = Operator.fromSymbol(input.head().value());
+                if (op != null && op != Operator.MATCHES && op != Operator.NOT_MATCHES) {
+                    Parser.InputState tail = input.tail();
+                    if (tail.head().type() == Parser.TokenType.INT_LITERAL || tail.head().type() == Parser.TokenType.FLOAT_LITERAL) {
+                        return new Parser.Success<>(new TypeExpr.ConstraintExpr(new NumberConstraint(op, new BigDecimal(tail.head().value()))), tail.tail());
+                    }
+                }
+            }
+            return new Parser.Failure<>("Not a number constraint", input);
+        };
+    }
+
+    @Override
     public Collection<TypeDef> prune(AbstractTypeSystem system, TypeDef def) {
         if (!(def instanceof NumberConstraint other)) return null;
         if (this.equals(other)) return Set.of(this);
 
         if (this.satisfiesOther(system, other)) return Set.of(this);
-        if (other.satisfiesOther(system, this)) return Set.of(other);
 
         if (this.operator.isDisjoint(other.operator, this.value, other.value)) {
             return Set.of();
@@ -27,7 +53,6 @@ public record NumberConstraint(Operator operator, BigDecimal value) implements V
         if (this.equals(other)) return Set.of(this);
 
         if (this.satisfiesOther(system, other)) return Set.of(other);
-        if (other.satisfiesOther(system, this)) return Set.of(this);
 
         return null;
     }

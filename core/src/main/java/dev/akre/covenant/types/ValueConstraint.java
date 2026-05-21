@@ -1,9 +1,12 @@
 package dev.akre.covenant.types;
 
 import java.util.Objects;
-import java.util.regex.Pattern;
+import com.google.re2j.Pattern;
 
 public non-sealed interface ValueConstraint extends TypeDef {
+    String keywordString();
+    String valueString();
+
     enum Operator {
         EQ("eq"),
         NEQ("neq"),
@@ -18,6 +21,15 @@ public non-sealed interface ValueConstraint extends TypeDef {
 
         Operator(String symbol) {
             this.symbol = symbol;
+        }
+
+        public static Operator fromSymbol(String symbol) {
+            for (Operator op : values()) {
+                if (op.symbol.equals(symbol)) {
+                    return op;
+                }
+            }
+            return null;
         }
 
         /**

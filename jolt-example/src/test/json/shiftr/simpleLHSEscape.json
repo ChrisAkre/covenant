@@ -1,0 +1,105 @@
+{
+  "inputSchema": {
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "properties": {
+    "@rating": {
+      "type": "object",
+      "properties": {
+        "$primary": {
+          "type": "object",
+          "properties": {
+            "value": {
+              "type": "integer"
+            },
+            "max": {
+              "type": "integer"
+            }
+          },
+          "required": [
+            "max",
+            "value"
+          ]
+        },
+        "&quality": {
+          "type": "object",
+          "properties": {
+            "value": {
+              "type": "integer"
+            },
+            "max": {
+              "type": "integer"
+            }
+          },
+          "required": [
+            "max",
+            "value"
+          ]
+        },
+        "#sharpness": {
+          "type": "object",
+          "properties": {
+            "value": {
+              "type": "integer"
+            },
+            "max": {
+              "type": "integer"
+            }
+          },
+          "required": [
+            "max",
+            "value"
+          ]
+        }
+      },
+      "required": [
+        "#sharpness",
+        "$primary",
+        "&quality"
+      ]
+    }
+  },
+  "required": [
+    "@rating"
+  ]
+},
+  "spec": {
+        "\\@rating": {
+            "\\$primary": {
+                // escape the '.' so that an output key can have a dot in it
+                "value": "data.\\$rating"
+            },
+            "*": {
+                "value": "data.\\$rating-&1"
+            }
+        }
+    },
+  "expectedSchema": {
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "properties": {
+    "data": {
+      "type": "object",
+      "properties": {
+        "$rating": {
+          "type": "integer"
+        },
+        "$rating-&quality": {
+          "type": "integer"
+        },
+        "$rating-#sharpness": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "$rating",
+        "$rating-#sharpness",
+        "$rating-&quality"
+      ]
+    }
+  },
+  "required": [
+    "data"
+  ]
+}
+}

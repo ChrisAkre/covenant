@@ -1,8 +1,11 @@
 package dev.akre.covenant.types;
 
-import dev.akre.covenant.api.Parameter;
 import dev.akre.covenant.api.TypeAttribute;
 import dev.akre.covenant.types.FunctionType.Signature;
+import dev.akre.covenant.types.ValueConstraint.Operator;
+import dk.brics.automaton.Automaton;
+import dk.brics.automaton.RegExp;
+import org.jspecify.annotations.Nullable;
 
 import java.util.*;
 import java.util.function.BiFunction;
@@ -10,6 +13,57 @@ import java.util.function.Function;
 import java.util.stream.Stream;
 
 public class TypeSystemUtils {
+
+    public static boolean isPrimitive(TypeDef t) {
+        return switch (t) {
+            case UnionType u -> u.members().stream().allMatch(TypeSystemUtils::isPrimitive);
+            case IntersectionType i -> i.members().stream().anyMatch(TypeSystemUtils::isPrimitive);
+            case NominalDef n -> n.attributes().contains(dev.akre.covenant.api.TypeAttribute.STRING_SEMANTICS) ||
+                    n.attributes().contains(dev.akre.covenant.api.TypeAttribute.NUMERIC_SEMANTICS) ||
+                    n.attributes().contains(dev.akre.covenant.api.TypeAttribute.BOOLEAN_SEMANTICS) ||
+                    n.attributes().contains(dev.akre.covenant.api.TypeAttribute.NULL_SEMANTICS);
+            case GenericTypeDef g -> isPrimitive(g.template());
+            default -> false;
+        };
+    }
+
+    public static TypeDef valueTypeOf(AbstractTypeSystem system, TypeDef t) {
+        return switch (t) {
+            case UnionType u -> system.unionDef(u.members().stream()
+                    .map(m -> valueTypeOf(system, m))
+                    .toArray(TypeDef[]::new));
+            case IntersectionType i -> system.intersectDef(i.members().stream()
+                    .map(m -> valueTypeOf(system, m))
+                    .toArray(TypeDef[]::new));
+            case GenericTypeDef g -> {
+                List<TypeDef> specificValueTypes = new ArrayList<>();
+                TypeDef spreadType = null;
+                for (TypeDefParam tp : g.parameters()) {
+                    if (tp instanceof TypeDefParam.Named n) {
+                        specificValueTypes.add(n.type());
+                    } else if (tp instanceof TypeDefParam.Positional pos) {
+                        specificValueTypes.add(pos.type());
+                    } else if (tp instanceof TypeDefParam.Constrained c) {
+                        specificValueTypes.add(c.type());
+                    } else if (tp instanceof TypeDefParam.Spread(TypeDef type)) {
+                        spreadType = type;
+                    }
+                }
+                TypeDef result;
+                if (!specificValueTypes.isEmpty()) {
+                    result = system.unionDef(specificValueTypes.toArray(new TypeDef[0]));
+                } else if (spreadType != null) {
+                    result = spreadType;
+                } else {
+                    result = system.bottomDef();
+                }
+                yield result;
+            }
+            case NominalDef n when n.attributes().contains(dev.akre.covenant.api.TypeAttribute.ARRAY) ||
+                    n.attributes().contains(dev.akre.covenant.api.TypeAttribute.OBJECT) -> system.topDef();
+            default -> system.bottomDef();
+        };
+    }
 
     public static TypeDef termAt(AbstractTypeSystem system, TypeDef subject, String segment) {
         return termAt(system, subject, new SymbolType(segment));
@@ -28,52 +82,58 @@ public class TypeSystemUtils {
             return null;
         }
         return switch (subject) {
-            case ContainerDef c ->
-                switch (c) {
-                    case UnionType u ->
-                        system.unionDef(u.members().stream()
-                                .map(m -> termAt(system, m, segment))
-                                .toArray(TypeDef[]::new));
-                    case IntersectionType i ->
-                        system.intersectDef(i.members().stream()
-                                .map(m -> termAt(system, m, segment))
-                                .toArray(TypeDef[]::new));
-                    case NegationType n -> system.negateDef(termAt(system, n.inner(), segment));
-                };
-            case GenericTypeDef g -> {
-                String resolvedSegment = null;
-                switch (segment) {
-                    case SymbolType(String value) -> resolvedSegment = value;
-                    case StringConstraint s when s.operator() == ValueConstraint.Operator.EQ ->
-                            resolvedSegment = s.value();
-                    case NumberConstraint n when n.operator() == ValueConstraint.Operator.EQ ->
-                            resolvedSegment = n.value().toPlainString();
-                    default -> {
+            case UnionType u -> system.unionDef(u.members().stream()
+                    .map(m -> termAt(system, m, segment))
+                    .toArray(TypeDef[]::new));
+            case IntersectionType i -> system.intersectDef(i.members().stream()
+                    .map(m -> termAt(system, m, segment))
+                    .toArray(TypeDef[]::new));
+            case NegationType n -> system.negateDef(termAt(system, n.inner(), segment));
+            case LengthConstraint lc -> {
+                String resolvedSegment = getResolvedSegment(segment);
+                if (resolvedSegment != null) {
+                    try {
+                        int index = Integer.parseInt(resolvedSegment);
+                        if (index < lc.min()) {
+                            TypeDef nilDef = system.nilDef();
+                            if (nilDef != null) {
+                                yield system.negateDef(nilDef);
+                            }
+                        }
+                    } catch (NumberFormatException e) {
+                        // Not a numeric index
                     }
                 }
+                yield system.topDef();
+            }
+            case ValueConstraint ignored -> system.topDef();
+            case GenericTypeDef g -> {
+                String resolvedSegment = getResolvedSegment(segment);
 
-                if (resolvedSegment == null) yield system.bottomDef();
-
-                if (g.pattern() == AbstractTypeSystemBuilder.PatternConstructor.Pattern.OBJECT) {
-                    Parameter.Named named = findNamed(g, resolvedSegment);
+                if (resolvedSegment == null) {
+                    yield system.bottomDef();
+                } else if (g.pattern() == AbstractTypeSystemBuilder.PatternConstructor.Pattern.OBJECT) {
+                    TypeDefParam.Named named = findNamed(g, resolvedSegment);
                     if (named == null && (resolvedSegment.startsWith("'") && resolvedSegment.endsWith("'"))) {
                         named = findNamed(g, resolvedSegment.substring(1, resolvedSegment.length() - 1));
                     }
                     if (named != null) {
-                        Parameter.Named finalNamed = named;
-                        yield g.parameters().stream()
-                                .filter(tp -> tp.parameter().equals(finalNamed))
-                                .findFirst()
-                                .map(TypeDefParam::type)
-                                .orElse(system.bottomDef());
+                        yield named.type();
+                    }
+                    // Check dynamic constraints
+                    List<TypeDef> matchingConstraints = new java.util.ArrayList<>();
+                    for (TypeDefParam tp : g.parameters()) {
+                        if (tp instanceof TypeDefParam.Constrained c && matches(c, resolvedSegment)) {
+                            matchingConstraints.add(tp.type());
+                        }
+                    }
+                    if (!matchingConstraints.isEmpty()) {
+                        yield matchingConstraints.size() == 1 ? matchingConstraints.get(0) : system.intersectDef(matchingConstraints.toArray(new TypeDef[0]));
                     }
                     // Check if open
                     for (TypeDefParam tp : g.parameters()) {
-                        if (tp.parameter() instanceof Parameter.Spread(Integer index)) {
-                            if (index != null) {
-                                yield tp.type();
-                            }
-                            yield system.topDef(); // Any
+                        if (tp instanceof TypeDefParam.Spread) {
+                            yield tp.type();
                         }
                     }
                     yield system.bottomDef();
@@ -83,8 +143,7 @@ public class TypeSystemUtils {
                         int index = Integer.parseInt(resolvedSegment);
                         int current = 0;
                         for (TypeDefParam tp : g.parameters()) {
-                            Parameter p = tp.parameter();
-                            if (p instanceof Parameter.Positional pos) {
+                            if (tp instanceof TypeDefParam.Positional pos) {
                                 TypeDef type = tp.type();
                                 if (pos.variadic()) {
                                     if (index >= current) {
@@ -108,16 +167,172 @@ public class TypeSystemUtils {
                     yield system.bottomDef();
                 }
             }
-            case ApplicableDef ignored -> system.bottomDef();
-            case NominalDef ignored -> system.bottomDef();
-            case ValueConstraint ignored -> system.bottomDef();
-            case SymbolType ignored -> system.bottomDef();
+            case NominalDef n when n.attributes().contains(dev.akre.covenant.api.TypeAttribute.ARRAY) ||
+                    n.attributes().contains(dev.akre.covenant.api.TypeAttribute.OBJECT) ||
+                    n.name().equals("top") || n.name().equals("Any") -> system.topDef();
+            default -> system.bottomDef();
         };
     }
 
-    private static Parameter.Named findNamed(GenericTypeDef g, String name) {
+    private static @Nullable String getResolvedSegment(TypeDef segment) {
+        if (segment instanceof SymbolType(String value)) {
+            return value;
+        } else if (segment instanceof StringConstraint(
+                Operator operator, String value
+        ) && operator == Operator.EQ) {
+            return value;
+        } else if (segment instanceof NumberConstraint(
+                Operator operator, java.math.BigDecimal value
+        ) && operator == Operator.EQ) {
+            return value.toPlainString();
+        } else if (segment instanceof IntersectionType(Set<TypeDef> members)) {
+            for (TypeDef member : members) {
+                String resolved = getResolvedSegment(member);
+                if (resolved != null) return resolved;
+            }
+        }
+        return null;
+    }
+
+    public static boolean matches(TypeDefParam.Constrained c, String name) {
+        if (c.constraint() instanceof RegexConstraint rc && rc.operator() == Operator.MATCHES) {
+            return matches(rc, name);
+        }
+        if (c.constraint() instanceof StringConstraint(Operator operator, String value) && operator == Operator.MATCHES) {
+            return matches(value, name);
+        }
+        return false;
+    }
+
+    public static boolean matches(RegexConstraint rc, String name) {
+        if (rc.operator() != Operator.MATCHES) return false;
+        return matches(rc.value(), name);
+    }
+
+    private static boolean matches(String regex, String name) {
+        try {
+            return com.google.re2j.Pattern.compile(regex).matcher(name).find();
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    public static boolean isRegexSubset(String sub, String sup) {
+        if (sub.equals(sup)) return true;
+        try {
+            Automaton subA = toAutomaton(sub);
+            Automaton supA = toAutomaton(sup);
+            return subA.subsetOf(supA);
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    public static boolean isRegexSubset(TypeDefParam.Constrained sub, TypeDefParam.Constrained sup) {
+        String subVal = null, supVal = null;
+        Automaton subA = null, supA = null;
+
+        if (sub.constraint() instanceof RegexConstraint rbc) {
+            subVal = rbc.value();
+            subA = rbc.automaton();
+        } else if (sub.constraint() instanceof StringConstraint sbc) {
+            subVal = sbc.value();
+            subA = toAutomaton(subVal);
+        }
+
+        if (sup.constraint() instanceof RegexConstraint rpc) {
+            supVal = rpc.value();
+            supA = rpc.automaton();
+        } else if (sup.constraint() instanceof StringConstraint spc) {
+            supVal = spc.value();
+            supA = toAutomaton(supVal);
+        }
+
+        if (subVal == null || supVal == null) return false;
+        if (subVal.equals(supVal)) return true;
+        try {
+            return subA.subsetOf(supA);
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    public static boolean doRegexesOverlap(String r1, String r2) {
+        if (r1.equals(r2)) return true;
+        try {
+            Automaton a1 = toAutomaton(r1);
+            Automaton a2 = toAutomaton(r2);
+            return !a1.intersection(a2).isEmpty();
+        } catch (Exception e) {
+            return true;
+        }
+    }
+
+    public static boolean doRegexesOverlap(TypeDefParam.Constrained c1, TypeDefParam.Constrained c2) {
+        String v1 = null, v2 = null;
+        Automaton a1 = null, a2 = null;
+
+        if (c1.constraint() instanceof RegexConstraint rc1) {
+            v1 = rc1.value();
+            a1 = rc1.automaton();
+        } else if (c1.constraint() instanceof StringConstraint sc1) {
+            v1 = sc1.value();
+            a1 = toAutomaton(v1);
+        }
+
+        if (c2.constraint() instanceof RegexConstraint rc2) {
+            v2 = rc2.value();
+            a2 = rc2.automaton();
+        } else if (c2.constraint() instanceof StringConstraint sc2) {
+            v2 = sc2.value();
+            a2 = toAutomaton(v2);
+        }
+
+        if (v1 == null || v2 == null) return false;
+        if (v1.equals(v2)) return true;
+        try {
+            return !a1.intersection(a2).isEmpty();
+        } catch (Exception e) {
+            return true;
+        }
+    }
+
+    public static Automaton toAutomaton(String regex) {
+        return new RegExp(translateRegex(stripRegex(regex))).toAutomaton();
+    }
+
+    private static String translateRegex(String regex) {
+        String translated = regex;
+        boolean anchoredStart = translated.startsWith("^");
+        if (anchoredStart) {
+            translated = translated.substring(1);
+        }
+        boolean anchoredEnd = translated.endsWith("$");
+        if (anchoredEnd) {
+            translated = translated.substring(0, translated.length() - 1);
+        }
+
+        if (!anchoredStart) {
+            translated = ".*" + translated;
+        }
+        if (!anchoredEnd) {
+            translated = translated + ".*";
+        }
+        return translated;
+    }
+
+    private static String stripRegex(String regex) {
+        if (regex.startsWith("\"") && regex.endsWith("\"")) {
+            return regex.substring(1, regex.length() - 1);
+        } else if (regex.startsWith("/") && regex.endsWith("/")) {
+            return regex.substring(1, regex.length() - 1);
+        }
+        return regex;
+    }
+
+    private static TypeDefParam.Named findNamed(GenericTypeDef g, String name) {
         for (TypeDefParam tp : g.parameters()) {
-            if (tp.parameter() instanceof Parameter.Named n && n.name().equals(name)) {
+            if (tp instanceof TypeDefParam.Named n && n.name().equals(name)) {
                 return n;
             }
         }
@@ -196,8 +411,8 @@ public class TypeSystemUtils {
         EnumSet<TypeAttribute> newAttributes = append(type.attributes(), attribute);
         Set<String> newNames = concat(type.parentNames(), parentNames);
         return switch (type) {
-            case TopType ignored -> throw new IllegalArgumentException("cannot modify " + type.getClass());
-            case BottomType ignored -> throw new IllegalArgumentException("cannot modify " + type.getClass());
+            case TopType ignored -> throw new IllegalArgumentException("cannot modify top");
+            case BottomType ignored -> throw new IllegalArgumentException("cannot modify bottom");
             case AtomType a -> new AtomType(a.name(), newNames, newAttributes);
             case TemplateType t -> new TemplateType(t.name(), newNames, t.constructor(), newAttributes);
         };
@@ -221,13 +436,4 @@ public class TypeSystemUtils {
                 last.attributes());
     }
 
-    public static List<List<TypeDef>> permutateUnions(List<TypeDef> args) {
-        return args.stream()
-                .reduce(
-                        List.of(Collections.emptyList()),
-                        (permutations, arg) -> permutations.stream()
-                                .flatMap(prefix -> unionStream(arg).map(member -> append(prefix, member)))
-                                .toList(),
-                        TypeSystemUtils::concat);
-    }
 }

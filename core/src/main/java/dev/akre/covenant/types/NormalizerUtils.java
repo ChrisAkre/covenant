@@ -26,7 +26,7 @@ public class NormalizerUtils {
     private static Function<LinkedHashSet<TypeDef>, TypeDef> checkBoundedExhaustion(
             AbstractTypeSystem system, Function<Collection<TypeDef>, TypeDef> wrap) {
         // TODO this needs to handle bounded universes like `Bool & true & false` and `Number & ~Int & ~Float` and
-        // enums.
+        //  enums.
         Set<TypeDef> invertedNominalUniverse = system.typesDef().values().stream()
                 .filter(NominalDef.class::isInstance)
                 .map(NominalDef.class::cast)
@@ -91,6 +91,16 @@ public class NormalizerUtils {
         return other.satisfiesOther(system, self);
     }
 
+    public static Set<TypeDef> greatestLowerBounds(AbstractTypeSystem system, TypeDef self, TypeDef other) {
+        return TypeSystemUtils.unionStream(system.typesDef().values().stream()
+                        .filter(t -> t.satisfiesOther(system, self) &&
+                                t.satisfiesOther(system, other) &&
+                                !system.satisfies(t, system.bottomDef()))
+                        .flatMap(TypeSystemUtils::unionStream)
+                        .collect(unionCollector(system)))
+                .collect(Collectors.toSet());
+    }
+
     public static BiFunction<TypeDef, TypeDef, Collection<TypeDef>> resolveBounds(
             AbstractTypeSystem system,
             BiFunction<TypeDef, TypeDef, Collection<TypeDef>> operator,
@@ -121,19 +131,25 @@ public class NormalizerUtils {
             } else if (self instanceof IntersectionType || other instanceof IntersectionType) {
                 return null;
             }
-            return operator.apply(self, other);
+            Collection<TypeDef> res = operator.apply(self, other);
+            return res != null ? res : operator.apply(other, self);
         };
     }
 
     // Renamed to reflect AST node flattening
     public static BiFunction<TypeDef, TypeDef, Collection<TypeDef>> flattenIntersections(
             AbstractTypeSystem system, BiFunction<TypeDef, TypeDef, Collection<TypeDef>> operator) {
-        return (self, other) -> self instanceof UnionType && other instanceof UnionType
-                ? null
-                : self instanceof IntersectionType(Set<TypeDef> members)
-                                && other instanceof IntersectionType(Set<TypeDef> otherMembers)
-                        ? TypeSystemUtils.concat(members, otherMembers)
-                        : operator.apply(self, other);
+        return (self, other) -> {
+            if (self instanceof UnionType && other instanceof UnionType) {
+                return null;
+            }
+            if (self instanceof IntersectionType(Set<TypeDef> members)
+                    && other instanceof IntersectionType(Set<TypeDef> otherMembers)) {
+                return TypeSystemUtils.concat(members, otherMembers);
+            }
+            Collection<TypeDef> res = operator.apply(self, other);
+            return res != null ? res : operator.apply(other, self);
+        };
     }
 
     static class Rewriter {

@@ -1,0 +1,172 @@
+{
+  "inputSchema": {
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "properties": {
+    "tag-Pro": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "tag-Con": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "cdv-Fafa": {
+      "type": "string"
+    },
+    "cdv-Mario": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "cdv-Fafa",
+    "cdv-Mario",
+    "tag-Con",
+    "tag-Pro"
+  ]
+},
+  "spec": {
+        "tag-*": {
+            "@": [ "TagDimensions.&(0,1).Values", "TagDimensions.&(1,1).Values-canonical1" ],
+            "$(0,1)": [ "TagDimensions.&.Id", "TagDimensions.&(0,0).Id-canonical0", "TagDimensions.&0.Id-sugar0", "TagDimensions.&(1,1).Id-upref" ]
+        },
+
+        "cdv-*": [ "ContextDataValues.&(0,1).Value", "ContextDataValues.&(0,1).Value-sugar" ]
+    },
+  "expectedSchema": {
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "properties": {
+    "TagDimensions": {
+      "type": "object",
+      "properties": {
+        "Pro": {
+          "type": "object",
+          "properties": {
+            "Values": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "Values-canonical1": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "Id": {
+              "type": "string"
+            },
+            "Id-canonical0": {
+              "type": "string"
+            },
+            "Id-sugar0": {
+              "type": "string"
+            },
+            "Id-upref": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "Id",
+            "Id-canonical0",
+            "Id-sugar0",
+            "Id-upref",
+            "Values",
+            "Values-canonical1"
+          ]
+        },
+        "Con": {
+          "type": "object",
+          "properties": {
+            "Values": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "Values-canonical1": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "Id": {
+              "type": "string"
+            },
+            "Id-canonical0": {
+              "type": "string"
+            },
+            "Id-sugar0": {
+              "type": "string"
+            },
+            "Id-upref": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "Id",
+            "Id-canonical0",
+            "Id-sugar0",
+            "Id-upref",
+            "Values",
+            "Values-canonical1"
+          ]
+        }
+      },
+      "required": [
+        "Con",
+        "Pro"
+      ]
+    },
+    "ContextDataValues": {
+      "type": "object",
+      "properties": {
+        "Fafa": {
+          "type": "object",
+          "properties": {
+            "Value": {
+              "type": "string"
+            },
+            "Value-sugar": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "Value",
+            "Value-sugar"
+          ]
+        },
+        "Mario": {
+          "type": "object",
+          "properties": {
+            "Value": {
+              "type": "string"
+            },
+            "Value-sugar": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "Value",
+            "Value-sugar"
+          ]
+        }
+      },
+      "required": [
+        "Fafa",
+        "Mario"
+      ]
+    }
+  },
+  "required": [
+    "ContextDataValues",
+    "TagDimensions"
+  ]
+}
+}

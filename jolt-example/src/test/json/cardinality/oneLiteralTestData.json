@@ -1,0 +1,183 @@
+{
+  "inputSchema": {
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "properties": {
+    "review": {
+      "type": "object",
+      "properties": {
+        "rating": {
+          "type": "array",
+          "items": {
+            "type": "integer"
+          }
+        }
+      },
+      "required": [
+        "rating"
+      ]
+    },
+    "data": {
+      "type": "object",
+      "properties": {
+        "stats": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "viewed": {
+                "type": "integer"
+              },
+              "clicks": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "clicks",
+              "viewed"
+            ]
+          }
+        }
+      },
+      "required": [
+        "stats"
+      ]
+    },
+    "isMap": {
+      "type": "object",
+      "properties": {
+        "data": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "data"
+      ]
+    },
+    "isSingleton": {
+      "type": "string"
+    },
+    "emptyListContainer": {
+      "type": "object",
+      "properties": {
+        "emptyList": {
+          "type": "array"
+        }
+      },
+      "required": [
+        "emptyList"
+      ]
+    },
+    "nullData": {
+      "type": "null"
+    }
+  },
+  "required": [
+    "data",
+    "emptyListContainer",
+    "isMap",
+    "isSingleton",
+    "nullData",
+    "review"
+  ]
+},
+  "spec": {
+
+        "review" : {
+            // We want review.rating to be a single value, but in the input it is an Array
+            //  So pick the first item from the Array, and use that
+           "rating" : "ONE"
+        },
+
+        "data" : {
+            "stats" : "ONE"
+        },
+
+        "isMap" : "ONE",
+
+        "isSingleton" : "ONE",
+
+        "emptyListContainer" : {
+            "emptyList" : "ONE"
+        },
+
+        "nullData" : "ONE"
+
+    },
+  "expectedSchema": {
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "properties": {
+    "review": {
+      "type": "object",
+      "properties": {
+        "rating": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "rating"
+      ]
+    },
+    "data": {
+      "type": "object",
+      "properties": {
+        "stats": {
+          "type": "object",
+          "properties": {
+            "viewed": {
+              "type": "integer"
+            },
+            "clicks": {
+              "type": "integer"
+            }
+          },
+          "required": [
+            "clicks",
+            "viewed"
+          ]
+        }
+      },
+      "required": [
+        "stats"
+      ]
+    },
+    "isMap": {
+      "type": "object",
+      "properties": {
+        "data": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "data"
+      ]
+    },
+    "isSingleton": {
+      "type": "string"
+    },
+    "emptyListContainer": {
+      "type": "object",
+      "properties": {
+        "emptyList": {
+          "type": "null"
+        }
+      },
+      "required": [
+        "emptyList"
+      ]
+    },
+    "nullData": {
+      "type": "null"
+    }
+  },
+  "required": [
+    "data",
+    "emptyListContainer",
+    "isMap",
+    "isSingleton",
+    "nullData",
+    "review"
+  ]
+}
+}

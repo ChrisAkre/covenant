@@ -1,6 +1,5 @@
 package dev.akre.covenant.types;
 
-import dev.akre.covenant.api.Parameter;
 import dev.akre.covenant.types.parser.*;
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -10,7 +9,6 @@ import java.util.Set;
 
 public final class TypeParser {
     private final List<Parser<TypeExpr>> customConstraints;
-    private static final Set<String> KEYWORDS = Set.of("gt", "lt", "gte", "lte", "eq", "neq", "matches", "nmatches");
 
     public TypeParser(List<Parser<TypeExpr>> customConstraints) {
         this.customConstraints = List.copyOf(customConstraints);
@@ -61,18 +59,10 @@ public final class TypeParser {
 
     private Parser.Result<TypeExpr> nud(Parser.InputState input) {
         if (input.isEndOfInput()) {
-            return new Parser.Failure<>("Unexpected end of input");
+            return new Parser.Failure<>("Unexpected end of input", input);
         }
 
         Parser.Token token = input.head();
-
-        // Custom Constraints
-        for (Parser<TypeExpr> custom : customConstraints) {
-            Parser.Result<TypeExpr> res = custom.parse(input);
-            if (res.matched()) {
-                return res;
-            }
-        }
 
         switch (token.type()) {
             case TILDE: {
@@ -98,9 +88,9 @@ public final class TypeParser {
                         }
                         return new Parser.Success<>(res, next.tail());
                     }
-                    return new Parser.Failure<>("Expected ')'");
+                    return new Parser.Failure<>("Expected ')'", next);
                 }
-                return new Parser.Failure<>("Failed to parse expression in group");
+                return new Parser.Failure<>("Failed to parse expression in group", input);
             }
             case L_ANGLE: {
                 Parser.Result<List<TypeExpr.VarExpr>> vars = genericParams().parse(input);
@@ -122,7 +112,7 @@ public final class TypeParser {
                         }
                     }
                 }
-                return new Parser.Failure<>("Failed to parse generic signature");
+                return new Parser.Failure<>("Failed to parse generic signature", input);
             }
             case INT_LITERAL:
                 return new Parser.Success<>(new TypeExpr.IntExpr(new BigDecimal(token.value())), input.tail());
@@ -130,14 +120,21 @@ public final class TypeParser {
                 return new Parser.Success<>(new TypeExpr.FloatExpr(Double.valueOf(token.value())), input.tail());
             case STRING_LITERAL:
                 return new Parser.Success<>(new TypeExpr.StringExpr(stripQuotes(token.value(), "\"")), input.tail());
+            case REGEX_LITERAL:
+                return new Parser.Success<>(new TypeExpr.StringExpr(stripQuotes(token.value(), "/")), input.tail());
             case SYMBOL_LITERAL:
                 return new Parser.Success<>(new TypeExpr.SymbolExpr(stripQuotes(token.value(), "'")), input.tail());
-            case IDENTIFIER: {
-                if (KEYWORDS.contains(token.value())) {
-                    Parser.Result<TypeExpr> kw = keywordConstraint().parse(input);
-                    if (kw.matched()) {
-                        return kw;
+            case IDENTIFIER:
+            case UNKNOWN: {
+                for (Parser<TypeExpr> custom : customConstraints) {
+                    Parser.Result<TypeExpr> res = custom.parse(input);
+                    if (res.matched()) {
+                        return res;
                     }
+                }
+
+                if (token.type() == Parser.TokenType.UNKNOWN) {
+                    return new Parser.Failure<>("Unexpected token: " + token.type() + " (" + token.value() + ")", input);
                 }
 
                 Parser.InputState next = input.tail();
@@ -154,7 +151,7 @@ public final class TypeParser {
                 return new Parser.Success<>(new TypeExpr.RefExpr(token.value()), next);
             }
             default:
-                return new Parser.Failure<>("Unexpected token: " + token.type() + " (" + token.value() + ")");
+                return new Parser.Failure<>("Unexpected token: " + token.type() + " (" + token.value() + ")", input);
         }
     }
 
@@ -163,7 +160,7 @@ public final class TypeParser {
         Parser.Token token = state.head();
         switch (token.type()) {
             case PIPE: {
-                Parser.Result<TypeExpr> right = expression(10).parse(state.tail());
+                Parser.Result<TypeExpr> right = expression(bp).parse(state.tail());
                 if (right.matched()) {
                     List<TypeExpr> members = new ArrayList<>();
                     if (left instanceof TypeExpr.UnionExpr(List<TypeExpr> leftMembers)) {
@@ -181,7 +178,7 @@ public final class TypeParser {
                 return right;
             }
             case AMPERSAND: {
-                Parser.Result<TypeExpr> right = expression(20).parse(state.tail());
+                Parser.Result<TypeExpr> right = expression(bp).parse(state.tail());
                 if (right.matched()) {
                     List<TypeExpr> members = new ArrayList<>();
                     if (left instanceof TypeExpr.IntersectionExpr(List<TypeExpr> leftMembers)) {
@@ -199,7 +196,7 @@ public final class TypeParser {
                 return right;
             }
             case ARROW: {
-                Parser.Result<TypeExpr> ret = expression(30).parse(state.tail());
+                Parser.Result<TypeExpr> ret = expression(bp).parse(state.tail());
                 if (ret.matched()) {
                     List<TypeExpr> params = new ArrayList<>();
                     if (left instanceof TypeExpr.TupleExpr(List<TypeExpr> members)) {
@@ -220,7 +217,7 @@ public final class TypeParser {
                     String segment = stripQuotes(stripQuotes(next.value(), "'"), "\"");
                     return new Parser.Success<>(new TypeExpr.PathExpr(left, segment), afterColon.tail());
                 }
-                return new Parser.Failure<>("Expected segment after ':'");
+                return new Parser.Failure<>("Expected segment after ':'", afterColon);
             }
             case L_PAREN: {
                 Parser.Result<List<TypeExpr.ParamExpr>> argsResult = Parser.ofSequence(parameter(), Parser.ofToken(Parser.TokenType.COMMA)).parse(state.tail());
@@ -229,13 +226,53 @@ public final class TypeParser {
                     if (afterArgs.head().type() == Parser.TokenType.R_PAREN) {
                         return new Parser.Success<>(new TypeExpr.ApplyExpr(left, fixIndices(argsResult.value())), afterArgs.tail());
                     }
-                    return new Parser.Failure<>("Expected ')'");
+                    return new Parser.Failure<>("Expected ')'", afterArgs);
                 }
-                return new Parser.Failure<>("Failed to parse arguments");
+                return new Parser.Failure<>("Failed to parse arguments", state);
             }
             default:
-                return new Parser.Failure<>("Unexpected operator: " + token.type());
+                return new Parser.Failure<>("Unexpected operator: " + token.type(), state);
         }
+    }
+
+    private boolean isFunctionSignature(Parser.InputState state) {
+        if (state.isEndOfInput()) return false;
+
+        Parser.InputState current = state;
+
+        // Skip optional generic params
+        if (current.head().type() == Parser.TokenType.L_ANGLE) {
+            current = skipBalanced(current, Parser.TokenType.L_ANGLE, Parser.TokenType.R_ANGLE);
+            if (current == null || current.isEndOfInput()) return false;
+        }
+
+        // Must have parameters in parens
+        if (current.head().type() != Parser.TokenType.L_PAREN) {
+            return false;
+        }
+        current = skipBalanced(current, Parser.TokenType.L_PAREN, Parser.TokenType.R_PAREN);
+        if (current == null || current.isEndOfInput()) return false;
+
+        // Must be followed by arrow
+        return current.head().type() == Parser.TokenType.ARROW;
+    }
+
+    private Parser.InputState skipBalanced(Parser.InputState state, Parser.TokenType open, Parser.TokenType close) {
+        if (state.isEndOfInput() || state.head().type() != open) return null;
+        int depth = 0;
+        while (!state.isEndOfInput()) {
+            Parser.TokenType type = state.head().type();
+            if (type == open) {
+                depth++;
+            } else if (type == close) {
+                depth--;
+                if (depth == 0) {
+                    return state.tail();
+                }
+            }
+            state = state.tail();
+        }
+        return null;
     }
 
     private int peekBindingPower(Parser.InputState state) {
@@ -244,45 +281,48 @@ public final class TypeParser {
         }
         Parser.Token token = state.head();
         return switch (token.type()) {
-            case PIPE -> 10;
-            case AMPERSAND -> 20;
-            case ARROW -> 30; // Tight!
+            case ARROW -> 5;
+            case PIPE -> isFunctionSignature(state.tail()) ? 4 : 10;
+            case AMPERSAND -> isFunctionSignature(state.tail()) ? 4 : 20;
+            case QUESTION -> 50;
             case L_PAREN -> 60;
             case COLON -> 65;
-            case QUESTION -> 50;
             default -> -1;
-        };
-    }
-
-    private Parser<TypeExpr> keywordConstraint() {
-        return input -> {
-            Parser.Token token = input.head();
-            if (!KEYWORDS.contains(token.value())) {
-                return new Parser.Failure<>("Expected keyword");
-            }
-
-            Parser.InputState next = input.tail();
-            Parser.Result<TypeExpr> val = nud(next);
-            if (!val.matched()) {
-                return new Parser.Failure<>("Expected value after keyword");
-            }
-
-            String valStr = switch(val.value()) {
-                case TypeExpr.StringExpr s -> s.value();
-                case TypeExpr.IntExpr i -> i.value().toString();
-                case TypeExpr.FloatExpr f -> f.value().toString();
-                case TypeExpr.SymbolExpr sy -> sy.symbol();
-                case TypeExpr.RefExpr r -> r.name();
-                default -> val.value().toString();
-            };
-            return new Parser.Success<>(new TypeExpr.ConstraintExpr(token.value(), valStr), val.remaining());
         };
     }
 
     private Parser<TypeExpr.ParamExpr> parameter() {
         return input -> {
             if (input.head().type() == Parser.TokenType.ELLIPSIS) {
-                return new Parser.Success<>(new TypeExpr.ParamExpr(new TypeExpr.SpreadExpr(), new Parameter.Spread()), input.tail());
+                return new Parser.Success<>(new TypeExpr.ParamExpr.Spread(new TypeExpr.SpreadExpr()), input.tail());
+            }
+
+            if (input.head().type() == Parser.TokenType.L_BRACKET) {
+                Parser.Result<TypeExpr> constraintRes = new Parser.Failure<>("No constraint matched", input.tail());
+                for (Parser<TypeExpr> custom : customConstraints) {
+                    constraintRes = custom.parse(input.tail());
+                    if (constraintRes.matched()) break;
+                }
+
+                if (constraintRes.matched() && constraintRes.value() instanceof TypeExpr.ConstraintExpr c) {
+                    Parser.InputState afterBracket = constraintRes.remaining();
+                    if (afterBracket.head().type() == Parser.TokenType.R_BRACKET) {
+                        Parser.InputState temp = afterBracket.tail();
+                        boolean optional = false;
+                        if (temp.head().type() == Parser.TokenType.QUESTION) {
+                            optional = true;
+                            temp = temp.tail();
+                        }
+                        if (temp.head().type() == Parser.TokenType.COLON) {
+                            Parser.Result<TypeExpr> type = expression(0).parse(temp.tail());
+                            if (type.matched()) {
+                                return new Parser.Success<>(
+                                        new TypeExpr.ParamExpr.Constrained(type.value(), c.constraint(), optional),
+                                        type.remaining());
+                            }
+                        }
+                    }
+                }
             }
 
             Parser.Token t = input.head();
@@ -297,7 +337,7 @@ public final class TypeParser {
                     Parser.Result<TypeExpr> type = expression(0).parse(temp.tail());
                     if (type.matched()) {
                         String name = stripQuotes(stripQuotes(t.value(), "'"), "\"");
-                        return new Parser.Success<>(new TypeExpr.ParamExpr(type.value(), new Parameter.Named(name, 0, optional)), type.remaining());
+                        return new Parser.Success<>(new TypeExpr.ParamExpr.Named(type.value(), name, optional), type.remaining());
                     }
                 }
             }
@@ -310,16 +350,16 @@ public final class TypeParser {
                     variadic = true;
                     after = after.tail();
                 }
-                return new Parser.Success<>(new TypeExpr.ParamExpr(type.value(), new Parameter.Positional(0, variadic)), after);
+                return new Parser.Success<>(new TypeExpr.ParamExpr.Positional(type.value(), 0, variadic), after);
             }
-            return new Parser.Failure<>("Failed to parse parameter");
+            return new Parser.Failure<>("Failed to parse parameter", input);
         };
     }
 
     private Parser<List<TypeExpr.VarExpr>> genericParams() {
         return input -> {
             if (input.head().type() != Parser.TokenType.L_ANGLE) {
-                return new Parser.Failure<>("Expected '<'");
+                return new Parser.Failure<>("Expected '<'", input);
             }
             Parser.Result<List<TypeExpr.VarExpr>> vars = Parser.ofSequence(genericParam(), Parser.ofToken(Parser.TokenType.COMMA)).parse(input.tail());
             if (vars.matched()) {
@@ -327,9 +367,9 @@ public final class TypeParser {
                 if (after.head().type() == Parser.TokenType.R_ANGLE) {
                     return new Parser.Success<>(vars.value(), after.tail());
                 }
-                return new Parser.Failure<>("Expected '>'");
+                return new Parser.Failure<>("Expected '>'", after);
             }
-            return new Parser.Failure<>("Failed to parse generic parameters");
+            return new Parser.Failure<>("Failed to parse generic parameters", input);
         };
     }
 
@@ -337,7 +377,7 @@ public final class TypeParser {
         return input -> {
             Parser.Token t = input.head();
             if (t.type() != Parser.TokenType.IDENTIFIER) {
-                return new Parser.Failure<>("Expected identifier");
+                return new Parser.Failure<>("Expected identifier", input);
             }
             Parser.InputState next = input.tail();
             TypeExpr constraint = new TypeExpr.RefExpr("top");
@@ -354,12 +394,10 @@ public final class TypeParser {
 
     private List<TypeExpr.ParamExpr> fixIndices(List<TypeExpr.ParamExpr> params) {
         List<TypeExpr.ParamExpr> fixed = new ArrayList<>();
-        for (int i = 0; i < params.size(); i++) {
-            TypeExpr.ParamExpr p = params.get(i);
-            if (p.parameter() instanceof Parameter.Positional pos) {
-                fixed.add(new TypeExpr.ParamExpr(p.type(), new Parameter.Positional(i, pos.variadic())));
-            } else if (p.parameter() instanceof Parameter.Named n) {
-                fixed.add(new TypeExpr.ParamExpr(p.type(), new Parameter.Named(n.name(), i, n.optional())));
+        int positionalIndex = 0;
+        for (TypeExpr.ParamExpr p : params) {
+            if (p instanceof TypeExpr.ParamExpr.Positional pos) {
+                fixed.add(new TypeExpr.ParamExpr.Positional(pos.type(), positionalIndex++, pos.variadic()));
             } else {
                 fixed.add(p);
             }

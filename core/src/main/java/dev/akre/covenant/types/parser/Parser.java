@@ -4,19 +4,35 @@ import org.jspecify.annotations.NonNull;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 @FunctionalInterface
 public interface Parser<T> {
     Result<T> parse(InputState input);
 
-    default Parser<T> or(Parser<T> other) {
-        return input -> {
-            Result<T> result = parse(input);
-            if (result.matched()) {
-                return result;
-            }
-            return other.parse(input);
-        };
+    interface Result<T> {
+        boolean matched();
+        InputState remaining();
+        T value();
+    }
+
+    record Success<T>(T value, InputState remaining) implements Result<T> {
+        @Override
+        public boolean matched() {
+            return true;
+        }
+    }
+
+    record Failure<T>(String message, InputState remaining) implements Result<T> {
+        @Override
+        public boolean matched() {
+            return false;
+        }
+
+        @Override
+        public T value() {
+            throw new IllegalStateException("Cannot get value from a Failure result: " + message);
+        }
     }
 
     static Parser<Token> ofToken(TokenType type) {
@@ -25,7 +41,7 @@ public interface Parser<T> {
             if (current.type() == type) {
                 return new Success<>(current, input.tail());
             }
-            return new Failure<>("Expected " + type + " but found " + current.type());
+            return new Failure<>("Expected " + type + " but found " + current.type(), input);
         };
     }
 
@@ -37,9 +53,9 @@ public interface Parser<T> {
                 return new Success<>(results, input);
             }
             results.add(result.value());
-            InputState state = result.remaining();
+
             while (true) {
-                Result<?> sepResult = sep.parse(state);
+                Result<?> sepResult = sep.parse(result.remaining());
                 if (!sepResult.matched()) {
                     break;
                 }
@@ -48,78 +64,47 @@ public interface Parser<T> {
                     break;
                 }
                 results.add(nextResult.value());
-                state = nextResult.remaining();
+                result = nextResult;
             }
-            return new Success<>(results, state);
+
+            return new Success<>(results, result.remaining());
         };
     }
 
     interface InputState {
         Token head();
-
         InputState tail();
-
-        default boolean isEndOfInput() {
-            return head().type() == TokenType.EOF;
-        }
+        boolean isEndOfInput();
     }
 
-    record Token(TokenType type, String value, int position) {
-        @Override
-        public @NonNull String toString() {
-            return type + "(" + value + ")@" + position;
-        }
-    }
-
-    sealed interface Result<T> permits Success, Failure {
-        boolean matched();
-        InputState remaining();
-        T value();
-
-    }
-
-    record Failure<T>(String message) implements Result<T> {
-        @Override
-        public boolean matched() {
-            return false;
-        }
-        @Override
-        public InputState remaining() {
-            throw new IllegalStateException("Did not consumer tokens from a Failure result: " + message);
-        }
-
-        @Override
-        public T value() {
-            throw new IllegalStateException("Cannot get value from a Failure result: " + message);
-        }
-    }
-
-    record Success<T>(T value, InputState remaining) implements Result<T> {
-    @Override
-        public boolean matched() {
-            return true;
+    record Token(@NonNull TokenType type, String value, int position) {
+        public Token {
+            Objects.requireNonNull(type);
         }
     }
 
     enum TokenType {
-        IDENTIFIER,
-        STRING_LITERAL,
-        SYMBOL_LITERAL,
-        INT_LITERAL,
-        FLOAT_LITERAL,
-
         TILDE,      // ~
         PIPE,       // |
         AMPERSAND,  // &
-        QUESTION,   // ?
         COLON,      // :
+        QUESTION,   // ?
         L_PAREN,    // (
         R_PAREN,    // )
         L_ANGLE,    // <
         R_ANGLE,    // >
+        L_BRACKET,  // [
+        R_BRACKET,  // ]
         COMMA,      // ,
         ARROW,      // ->
         ELLIPSIS,   // ...
+
+        INT_LITERAL,
+        FLOAT_LITERAL,
+        STRING_LITERAL,
+        REGEX_LITERAL,
+        SYMBOL_LITERAL,
+        IDENTIFIER,
 
         UNKNOWN, EOF
     }

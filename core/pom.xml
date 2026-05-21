@@ -33,6 +33,21 @@
             <groupId>tools.jackson.core</groupId>
             <artifactId>jackson-databind</artifactId>
         </dependency>
+
+        <dependency>
+            <groupId>dev.akre.test</groupId>
+            <artifactId>lexical-assert</artifactId>
+            <version>0.1.1</version>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>dk.brics</groupId>
+            <artifactId>automaton</artifactId>
+            <version>1.12-4</version>
+            <scope>compile</scope>
+        </dependency>
+
     </dependencies>
 
     <build>
@@ -68,6 +83,11 @@
                     <fixturesSourceDirectory>${project.basedir}/src/testFixtures/java</fixturesSourceDirectory>
                     <copyTarget>${project.basedir}/tmp-test-fixtures-deploy/pom.xml</copyTarget>
                     <fixtureDependencies>
+                        <dependency>
+                            <groupId>dev.akre.test</groupId>
+                            <artifactId>lexical-assert</artifactId>
+                            <version>0.1.1</version>
+                        </dependency>
                     </fixtureDependencies>
                 </configuration>
                 <executions>
@@ -78,6 +98,36 @@
                             <goal>package-fixtures</goal>
                             <goal>install-fixtures</goal>
                             <goal>deploy-fixtures</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-invoker-plugin</artifactId>
+                <version>3.6.1</version>
+                <configuration>
+<!--                    <cloneProjectsTo>${project.build.directory}/it</cloneProjectsTo>-->
+                    <pomIncludes>
+                        <pomInclude>jsonpath-example/pom.xml</pomInclude>
+                        <pomInclude>javascript-example/pom.xml</pomInclude>
+                        <pomInclude>jolt-example/pom.xml</pomInclude>
+                    </pomIncludes>
+                    <projectsDirectory>${project.basedir}/..</projectsDirectory>
+                    <goals>
+                        <goal>clean</goal>
+                        <goal>test</goal>
+                    </goals>
+                    <streamLogsOnFailures>true</streamLogsOnFailures>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>integration-test</id>
+                        <goals>
+                            <goal>install</goal>
+                            <goal>run</goal>
                         </goals>
                     </execution>
                 </executions>

@@ -1,5 +1,6 @@
 package dev.akre.covenant.api;
 
+import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.List;
 
@@ -8,25 +9,33 @@ import java.util.List;
  */
 @SuppressWarnings("unused")
 public interface Type {
+
+    TypeSystem system();
+
     /**
      * @return a text representation of this type.
      */
     String repr();
 
-    /**
-     * @return true if this type has numeric semantics.
-     */
-    boolean isNumeric();
+    default boolean isNumeric() {
+        return attributes().contains(TypeAttribute.NUMERIC_SEMANTICS);
+    }
 
-    /**
-     * @return true if this type has string semantics.
-     */
-    boolean isString();
+    default boolean isString() {
+        return attributes().contains(TypeAttribute.STRING_SEMANTICS);
+    }
 
-    /**
-     * @return true if this type has boolean semantics.
-     */
-    boolean isBoolean();
+    default boolean isBoolean() {
+        return attributes().contains(TypeAttribute.BOOLEAN_SEMANTICS);
+    }
+
+    default boolean isTop() {
+        return attributes().contains(TypeAttribute.TOP_SEMANTICS);
+    }
+
+    default boolean isBottom() {
+        return attributes().contains(TypeAttribute.BOTTOM_SEMANTICS);
+    }
 
     /**
      * @return true if this type represents an object.
@@ -74,5 +83,9 @@ public interface Type {
 
     interface TemplateType extends Type {
         GenericType construct(List<TypeParameter> genericParameters);
+
+        default GenericType construct(TypeParameter... genericParameters) {
+            return construct(Arrays.asList(genericParameters));
+        }
     }
 }

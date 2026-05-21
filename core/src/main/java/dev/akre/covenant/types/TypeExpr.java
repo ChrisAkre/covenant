@@ -1,10 +1,13 @@
 package dev.akre.covenant.types;
 
-import dev.akre.covenant.api.Parameter;
 import org.jspecify.annotations.NonNull;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Objects;
+import java.util.stream.Collectors;
+
+import dk.brics.automaton.Automaton;
 
 /**
  * The purely syntactic, unevaluated Abstract Syntax Tree for Covenant types.
@@ -34,28 +37,50 @@ public sealed interface TypeExpr
     record TupleExpr(List<TypeExpr> members) implements TypeExpr {
         @Override
         public @NonNull String toString() {
-            return "(" + members.stream().map(Object::toString).collect(java.util.stream.Collectors.joining(", ")) + ")";
+            return "(" + members.stream().map(Object::toString).collect(Collectors.joining(", ")) + ")";
         }
     }
 
-    record ConstraintExpr(String keyword, String value) implements TypeExpr {
+    final class ConstraintExpr implements TypeExpr {
+        private final ValueConstraint constraint;
+
+        public ConstraintExpr(ValueConstraint constraint) {
+            this.constraint = Objects.requireNonNull(constraint);
+        }
+
+        public ValueConstraint constraint() {
+            return constraint;
+        }
+
         @Override
         public @NonNull String toString() {
-            return keyword + " " + value;
+            return constraint.repr();
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (!(o instanceof ConstraintExpr that)) return false;
+            return Objects.equals(constraint, that.constraint);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(constraint);
         }
     }
 
     record UnionExpr(List<TypeExpr> members) implements TypeExpr {
         @Override
         public @NonNull String toString() {
-            return members.stream().map(Object::toString).collect(java.util.stream.Collectors.joining(" | "));
+            return members.stream().map(Object::toString).collect(Collectors.joining(" | "));
         }
     }
 
     record IntersectionExpr(List<TypeExpr> members) implements TypeExpr {
         @Override
         public @NonNull String toString() {
-            return members.stream().map(Object::toString).collect(java.util.stream.Collectors.joining(" & "));
+            return members.stream().map(Object::toString).collect(Collectors.joining(" & "));
         }
     }
 
@@ -122,29 +147,86 @@ public sealed interface TypeExpr
         }
     }
 
-    record ParamExpr(TypeExpr type, Parameter parameter) implements TypeExpr {
-        @Override
-        public @NonNull String toString() {
-            return switch (parameter) {
-                case Parameter.Named n ->
-                    (n.name().contains(" ") || n.name().isEmpty()
-                                    ? "'" + n.name().replace("'", "''") + "'"
-                                    : n.name())
-                            + (n.optional() ? "?: " : ": ")
-                            + type;
-                case Parameter.Positional p -> type + (p.variadic() ? "..." : "");
-                case Parameter.Constrained c ->
-                    "[" + c.keyword() + " " + c.value() + "]" + (c.optional() ? "?: " : ": ") + type;
-                case Parameter.Spread ignored -> "...";
-            };
+    sealed interface ParamExpr extends TypeExpr {
+        TypeExpr type();
+
+        record Positional(TypeExpr type, Integer index, boolean variadic) implements ParamExpr {
+            @Override
+            public @NonNull String toString() {
+                return type + (variadic ? "..." : "");
+            }
+        }
+
+        record Named(TypeExpr type, String name, boolean optional) implements ParamExpr {
+            @Override
+            public @NonNull String toString() {
+                return (name.contains(" ") || name.isEmpty()
+                                ? "'" + name.replace("'", "''") + "'"
+                                : name)
+                        + (optional ? "?: " : ": ")
+                        + type;
+            }
+        }
+
+        final class Constrained implements ParamExpr {
+            private final TypeExpr type;
+            private final ValueConstraint constraint;
+            private final boolean optional;
+
+            public Constrained(TypeExpr type, ValueConstraint constraint, boolean optional) {
+                this.type = Objects.requireNonNull(type);
+                this.constraint = Objects.requireNonNull(constraint);
+                this.optional = optional;
+            }
+
+            @Override
+            public TypeExpr type() {
+                return type;
+            }
+
+            public ValueConstraint constraint() {
+                return constraint;
+            }
+
+            public boolean optional() {
+                return optional;
+            }
+
+            @Override
+            public @NonNull String toString() {
+                return "[" + constraint.repr() + "]" + (optional ? "?: " : ": ") + type;
+            }
+
+            @Override
+            public boolean equals(Object o) {
+                if (this == o) return true;
+                if (!(o instanceof Constrained that)) return false;
+                return optional == that.optional && Objects.equals(type, that.type) && Objects.equals(constraint, that.constraint);
+            }
+
+            @Override
+            public int hashCode() {
+                return Objects.hash(type, constraint, optional);
+            }
+        }
+
+        record Spread(TypeExpr type) implements ParamExpr {
+            @Override
+            public @NonNull String toString() {
+                return "...";
+            }
         }
     }
 
     record ApplyExpr(TypeExpr target, List<ParamExpr> arguments) implements TypeExpr {
+        public List<TypeExpr> argTypes() {
+            return arguments.stream().map(ParamExpr::type).toList();
+        }
+
         @Override
         public @NonNull String toString() {
             return target + "<"
-                    + arguments.stream().map(Object::toString).collect(java.util.stream.Collectors.joining(", ")) + ">";
+                    + arguments.stream().map(Object::toString).collect(Collectors.joining(", ")) + ">";
         }
     }
 
@@ -164,11 +246,11 @@ public sealed interface TypeExpr
                 sb.append("<")
                         .append(typeVars.stream()
                                 .map(Object::toString)
-                                .collect(java.util.stream.Collectors.joining(", ")))
+                                .collect(Collectors.joining(", ")))
                         .append(">");
             }
             sb.append("(");
-            sb.append(typeParams.stream().map(Object::toString).collect(java.util.stream.Collectors.joining(", ")));
+            sb.append(typeParams.stream().map(Object::toString).collect(Collectors.joining(", ")));
             sb.append(") -> ");
             sb.append(returnType);
             return sb.toString();

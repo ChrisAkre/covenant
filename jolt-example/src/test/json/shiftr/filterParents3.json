@@ -1,0 +1,148 @@
+{
+  "inputSchema": {
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "properties": {
+    "Planet": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "Satellite": {
+            "anyOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "PhysicalData": {
+                    "type": "object",
+                    "properties": {
+                      "pd1": {
+                        "type": "string"
+                      },
+                      "pd2": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "pd1",
+                      "pd2"
+                    ]
+                  },
+                  "ChemicalData": {
+                    "type": "object",
+                    "properties": {
+                      "cd1": {
+                        "type": "string"
+                      },
+                      "cd2": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "cd1",
+                      "cd2"
+                    ]
+                  }
+                },
+                "required": [
+                  "ChemicalData",
+                  "PhysicalData"
+                ]
+              }
+            ]
+          },
+          "Name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "Name",
+          "Satellite"
+        ]
+      }
+    }
+  },
+  "required": [
+    "Planet"
+  ]
+},
+  "spec": {
+        "Planet": {
+            "*": {
+                "Satellite": {
+                    "PhysicalData": {
+                        // @2 means look up the tree three levels (0, 1, 2), grab what is there (the whole planet object)
+                        // and then use that as the data to write to "PlanetsWithMoons"
+                        "@2": "PlanetsWithMoons[]"
+                    }
+                }
+            }
+        }
+    },
+  "expectedSchema": {
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "properties": {
+    "PlanetsWithMoons": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "Satellite": {
+            "type": "object",
+            "properties": {
+              "PhysicalData": {
+                "type": "object",
+                "properties": {
+                  "pd1": {
+                    "type": "string"
+                  },
+                  "pd2": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "pd1",
+                  "pd2"
+                ]
+              },
+              "ChemicalData": {
+                "type": "object",
+                "properties": {
+                  "cd1": {
+                    "type": "string"
+                  },
+                  "cd2": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "cd1",
+                  "cd2"
+                ]
+              }
+            },
+            "required": [
+              "ChemicalData",
+              "PhysicalData"
+            ]
+          },
+          "Name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "Name",
+          "Satellite"
+        ]
+      }
+    }
+  },
+  "required": [
+    "PlanetsWithMoons"
+  ]
+}
+}

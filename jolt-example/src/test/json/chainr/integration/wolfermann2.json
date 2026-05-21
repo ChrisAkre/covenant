@@ -1,0 +1,130 @@
+{
+  "inputSchema": {
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "properties": {
+    "environment": {
+      "type": "object",
+      "properties": {
+        "value": {
+          "type": "integer"
+        },
+        "orderLevel": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "rate": {
+                "type": "string"
+              },
+              "value": {
+                "type": "integer"
+              },
+              "start": {
+                "type": "integer"
+              },
+              "orderLevel-1": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "rate1": {
+                      "type": "string"
+                    },
+                    "value": {
+                      "type": "integer"
+                    },
+                    "rate": {
+                      "type": "string"
+                    },
+                    "start": {
+                      "type": "integer"
+                    }
+                  }
+                }
+              }
+            },
+            "required": [
+              "rate"
+            ]
+          }
+        }
+      },
+      "required": [
+        "orderLevel",
+        "value"
+      ]
+    }
+  },
+  "required": [
+    "environment"
+  ]
+},
+  "spec": [
+        {
+            "operation": "shift",
+            "spec": {
+                "environment": {
+                    "orderLevel": {
+                        "*": {
+                            "@": "Data[]",
+                            "orderLevel-1": {
+                                "*": "Data[]"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        {
+            "operation": "shift",
+            "spec": {
+                "Data": {
+                    "*": {
+                        "rate": "Data2.Data[&1].rate",
+                        "rate*": "Data2.Data[&1].&",
+                        "value": "Data2.Data[&1].value",
+                        "start": "Data2.Data[&1].start"
+                    }
+                }
+            }
+        }
+    ],
+  "expectedSchema": {
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "properties": {
+    "Data2": {
+      "type": "object",
+      "properties": {
+        "Data": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "rate": {
+                "type": "string"
+              },
+              "value": {
+                "type": "integer"
+              },
+              "start": {
+                "type": "integer"
+              },
+              "rate1": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
+      "required": [
+        "Data"
+      ]
+    }
+  },
+  "required": [
+    "Data2"
+  ]
+}
+}

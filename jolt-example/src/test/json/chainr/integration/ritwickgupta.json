@@ -1,0 +1,171 @@
+{
+  "inputSchema": {
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "properties": {
+    "orderId": {
+      "type": "null"
+    },
+    "restaurantId": {
+      "type": "string"
+    },
+    "chainId": {
+      "type": "string"
+    },
+    "customerPhoneNumber": {
+      "type": "string"
+    },
+    "orderItems": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "null"
+          },
+          "index": {
+            "type": "null"
+          },
+          "menuItemId": {
+            "type": "null"
+          },
+          "discountId": {
+            "type": "null"
+          },
+          "itemName": {
+            "type": "string"
+          },
+          "quantity": {
+            "type": "integer"
+          },
+          "price1": {
+            "type": "null"
+          },
+          "additionalCost": {
+            "type": "null"
+          },
+          "savings": {
+            "type": "null"
+          },
+          "orderId": {
+            "type": "null"
+          },
+          "categoryId": {
+            "type": "null"
+          },
+          "variantValue": {
+            "type": "null"
+          },
+          "singleSize": {
+            "type": "boolean"
+          },
+          "deposit": {
+            "type": "integer"
+          },
+          "extra": {
+            "type": "integer"
+          },
+          "selectionTypes": {
+            "type": "null"
+          },
+          "contents": {
+            "type": "null"
+          },
+          "singleOrderItems": {
+            "type": "null"
+          },
+          "special": {
+            "type": "boolean"
+          },
+          "percentReduction": {
+            "type": "boolean"
+          },
+          "success": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "additionalCost",
+          "categoryId",
+          "contents",
+          "deposit",
+          "discountId",
+          "extra",
+          "id",
+          "index",
+          "itemName",
+          "menuItemId",
+          "orderId",
+          "percentReduction",
+          "price1",
+          "quantity",
+          "savings",
+          "selectionTypes",
+          "singleOrderItems",
+          "singleSize",
+          "special",
+          "success",
+          "variantValue"
+        ]
+      }
+    }
+  },
+  "required": [
+    "chainId",
+    "customerPhoneNumber",
+    "orderId",
+    "orderItems",
+    "restaurantId"
+  ]
+},
+  "spec": [
+        {
+            "operation": "shift",
+            "spec": {
+                "restaurantId": "store_id",
+                "chainId": "retailer_id",
+                "customerPhoneNumber": "phone_num",
+                "orderItems": {
+                    "*": {
+                        "@quantity": "basket_item.[].@itemName"
+                    }
+                }
+            }
+        }
+    ],
+  "expectedSchema": {
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "properties": {
+    "phone_num": {
+      "type": "string"
+    },
+    "retailer_id": {
+      "type": "string"
+    },
+    "store_id": {
+      "type": "string"
+    },
+    "basket_item": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "Small Barqs": {
+            "type": "integer"
+          },
+          "Mozzz": {
+            "type": "integer"
+          }
+        }
+      }
+    }
+  },
+  "required": [
+    "basket_item",
+    "phone_num",
+    "retailer_id",
+    "store_id"
+  ]
+}
+}

@@ -1,6 +1,6 @@
 package dev.akre.covenant.types;
 
-import static dev.akre.covenant.types.TypeSystemUtils.permutateUnions;
+import static dev.akre.covenant.types.UnificationUtils.permutateUnions;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -29,14 +29,52 @@ public record FunctionType(Set<Signature> signatures) implements ApplicableDef {
 
     @Override
     public List<OverloadDef> overloads(AbstractTypeSystem system, List<TypeDef> args) {
+
+        // 1. Explicit UnionType Permutation (Mutually Recursive)
         if (args.stream().anyMatch(a -> a instanceof UnionType)) {
             List<OverloadDef> aggregated = new ArrayList<>();
-            for (List<TypeDef> permutation : permutateUnions(args)) {
-                aggregated.addAll(overloadsConcrete(system, permutation));
+            for (List<TypeDef> permutation : UnificationUtils.permutateUnions(args)) {
+                aggregated.addAll(overloads(system, permutation));
             }
             return aggregated.stream().distinct().toList();
         }
-        return overloadsConcrete(system, args);
+
+        // 2. Standard first-match evaluation (Fast path)
+        List<OverloadDef> direct = overloadsConcrete(system, args);
+        if (!direct.isEmpty()) {
+            return direct;
+        }
+
+        // 3. Domain Projection / Argument Partitioning
+        if (signatures.size() > 1) {
+            List<OverloadDef> aggregated = new ArrayList<>();
+            List<List<TypeDef>> successfulDomains = new ArrayList<>();
+
+            for (Signature sig : signatures) {
+                // 3a. Resolve the maximum bounds of the signature
+                List<TypeDef> sigDomain = UnificationUtils.resolveSignatureDomain(system, sig, args.size());
+                if (sigDomain.isEmpty()) continue;
+
+                // 3b. Slice the argument against those bounds
+                List<TypeDef> projectedArgs = UnificationUtils.projectArguments(system, args, sigDomain);
+
+                // 3c. If not disjoint, evaluate the narrowed arguments
+                if (projectedArgs != null) {
+                    List<OverloadDef> result = sig.overloadsConcrete(system, projectedArgs);
+                    if (!result.isEmpty()) {
+                        aggregated.addAll(result);
+                        successfulDomains.add(sigDomain);
+                    }
+                }
+            }
+
+            // 4. Coverage Verification
+            if (!aggregated.isEmpty() && UnificationUtils.verifyDomainCoverage(system, args, successfulDomains)) {
+                return aggregated.stream().distinct().toList();
+            }
+        }
+
+        return List.of();
     }
 
     private List<OverloadDef> overloadsConcrete(AbstractTypeSystem system, List<TypeDef> args) {
@@ -123,6 +161,8 @@ public record FunctionType(Set<Signature> signatures) implements ApplicableDef {
      */
     public record Signature(TypeExpr.SignatureExpr expr, Map<String, TypeDef> partialBindings)
             implements ApplicableDef {
+
+
 
         @Override
         public List<OverloadDef> overloads(AbstractTypeSystem system, List<TypeDef> args) {

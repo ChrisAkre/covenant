@@ -1,0 +1,66 @@
+{
+  "inputSchema": {
+    "$schema": "http://json-schema.org/schema#",
+    "type": "object",
+    "properties": {
+      "data": {
+        "type": "object",
+        "patternProperties": {
+          "^[0-9]+$": {
+            "type": "object",
+            "properties": {
+              "clientId": {
+                "type": "string",
+                "pattern": "^[0-9]+$"
+              },
+              "hidden": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "clientId",
+              "hidden"
+            ]
+          }
+        }
+      }
+    },
+    "required": [
+      "data"
+    ]
+  },
+  "spec": {
+    "data": {
+      "*": {
+        "hidden": {
+          "true": {
+            "#disabled": "clients.@(3,clientId)"
+          },
+          "false": {
+            "#enabled": "clients.@(3,clientId)"
+          }
+        }
+      }
+    }
+  },
+  "expectedSchema": {
+    "$schema": "http://json-schema.org/schema#",
+    "type": "object",
+    "properties": {
+      "clients": {
+        "type": "object",
+        "patternProperties": {
+          "^[0-9]+$": {
+            "enum": [
+              "disabled",
+              "enabled"
+            ]
+          }
+        }
+      }
+    },
+    "required": [
+      "clients"
+    ]
+  }
+}

@@ -1,10 +1,19 @@
 package dev.akre.covenant.types;
 
-import dev.akre.covenant.api.Parameter;
 import java.util.*;
 import java.util.stream.Collectors;
 
 public class UnificationUtils {
+
+    public static List<List<TypeDef>> permutateUnions(List<TypeDef> args) {
+        return args.stream()
+                .reduce(
+                        List.of(Collections.emptyList()),
+                        (permutations, arg) -> permutations.stream()
+                                .flatMap(prefix -> TypeSystemUtils.unionStream(arg).map(member -> TypeSystemUtils.append(prefix, member)))
+                                .toList(),
+                        TypeSystemUtils::concat);
+    }
 
     // Fix #7: Extract the mutable extraction state into a record to shrink the
     // extract() parameter list from 8 down to 4.
@@ -168,7 +177,7 @@ public class UnificationUtils {
                 }
             }
 
-            case TypeExpr.SpreadExpr s -> {
+            case TypeExpr.SpreadExpr ignored -> {
                 return true;
             }
 
@@ -180,18 +189,16 @@ public class UnificationUtils {
 
                 for (int i = 0; i < expArgs.size(); i++) {
                     TypeExpr.ParamExpr expArg = expArgs.get(i);
-                    boolean expectedIsVariadic = expArg.parameter() instanceof Parameter.Positional ep && ep.variadic();
+                    boolean expectedIsVariadic = expArg instanceof TypeExpr.ParamExpr.Positional ep && ep.variadic();
 
                     TypeDef actualMember;
 
                     if (i < actParams.size()) {
                         TypeDefParam tp = actParams.get(i);
-                        actualMember =
-                                tp.type() != null ? tp.type() : ctx.system().topDef();
-                        Parameter actParam = tp.parameter();
+                        actualMember = tp.type();
 
                         // Variadic Null-Padding: actual spreads, expected is strictly positional.
-                        if (actParam instanceof Parameter.Positional p && p.variadic() && !expectedIsVariadic) {
+                        if (tp instanceof TypeDefParam.Positional p && p.variadic() && !expectedIsVariadic) {
                             TypeDef nullType = ctx.system().nilDef();
                             if (nullType != null) {
                                 actualMember = ctx.system().unionDef(actualMember, nullType);
@@ -200,14 +207,12 @@ public class UnificationUtils {
                     } else {
                         // Actual is out of explicit elements.
                         boolean actualLastIsVariadic = !actParams.isEmpty()
-                                && actParams.getLast().parameter() instanceof Parameter.Positional p
+                                && actParams.getLast() instanceof TypeDefParam.Positional p
                                 && p.variadic();
 
                         if (actualLastIsVariadic) {
                             // The actual array has a spread (e.g. `Bool...`); keep extracting against it.
-                            actualMember = actParams.getLast().type() != null
-                                    ? actParams.getLast().type()
-                                    : ctx.system().topDef();
+                            actualMember = actParams.getLast().type();
 
                             if (!expectedIsVariadic) {
                                 // Apply null-padding if expected is positional.
@@ -277,15 +282,99 @@ public class UnificationUtils {
     }
 
     private static boolean containsTypeVars(TypeExpr expr, Set<String> typeVars) {
+        if (expr == null) return false;
         return switch (expr) {
             case TypeExpr.RefExpr ref -> typeVars.contains(ref.name());
-            case TypeExpr.UnionExpr u -> u.members().stream().anyMatch(m -> containsTypeVars(m, typeVars));
-            case TypeExpr.IntersectionExpr i -> i.members().stream().anyMatch(m -> containsTypeVars(m, typeVars));
-            case TypeExpr.ApplyExpr a -> a.arguments().stream().anyMatch(arg -> containsTypeVars(arg.type(), typeVars));
+            case TypeExpr.UnionExpr u -> containsTypeVars(u.members(), typeVars);
+            case TypeExpr.IntersectionExpr i -> containsTypeVars(i.members(), typeVars);
+            case TypeExpr.ApplyExpr a -> containsTypeVars(a.argTypes(), typeVars);
             case TypeExpr.SignatureExpr s ->
-                containsTypeVars(s.returnType(), typeVars)
-                        || s.typeParams().stream().anyMatch(p -> containsTypeVars(p, typeVars));
-            case null, default -> false;
+                containsTypeVars(s.returnType(), typeVars) || containsTypeVars(s.typeParams(), typeVars);
+            default -> false;
         };
+    }
+
+    private static boolean containsTypeVars(Iterable<? extends TypeExpr> exprs, Set<String> typeVars) {
+        for (TypeExpr expr : exprs) {
+            if (containsTypeVars(expr, typeVars)) return true;
+        }
+        return false;
+    }
+
+    /**
+     * Calculates the maximum accepted domain for a given signature based on its upper bounds.
+     * Returns an empty list if the arity does not match the provided argument count.
+     */
+    public static List<TypeDef> resolveSignatureDomain(AbstractTypeSystem system, FunctionType.Signature sig, int argCount) {
+        if (sig.expr() == null) return Collections.emptyList();
+
+        Map<String, TypeDef> bounds = new HashMap<>(sig.partialBindings());
+        Bindings defaultScope = new Bindings(system, sig.partialBindings());
+
+        // Elevate all generics to their upper bounds (or Top) to find the maximum domain
+        for (TypeExpr.VarExpr tv : sig.expr().typeVars()) {
+            TypeDef upperBound = defaultScope.resolve(tv.upperBound());
+            bounds.put(tv.name(), upperBound != null ? upperBound : system.topDef());
+        }
+        Bindings domainScope = new Bindings(system, bounds);
+
+        List<TypeDef> sigDomain = new ArrayList<>();
+        for (int i = 0; i < argCount; i++) {
+            if (i >= sig.expr().typeParams().size()) {
+                TypeExpr.ParamExpr lastParam = (TypeExpr.ParamExpr) sig.expr().typeParams().getLast();
+                if (lastParam instanceof TypeExpr.ParamExpr.Positional p && p.variadic()) {
+                    TypeDef resolved = domainScope.resolve(lastParam.type());
+                    sigDomain.add(resolved != null ? resolved : system.topDef());
+                } else {
+                    return Collections.emptyList(); // Arity mismatch
+                }
+            } else {
+                TypeDef resolved = domainScope.resolve(sig.expr().typeParams().get(i));
+                sigDomain.add(resolved != null ? resolved : system.topDef());
+            }
+        }
+        return sigDomain;
+    }
+
+    /**
+     * Slices the provided arguments against the signature's domain.
+     * Returns null if any resulting argument evaluates to Bottom (meaning the sets are disjoint).
+     */
+    public static List<TypeDef> projectArguments(AbstractTypeSystem system, List<TypeDef> args, List<TypeDef> domain) {
+        if (args.size() != domain.size()) return null;
+
+        List<TypeDef> projectedArgs = new ArrayList<>();
+        for (int i = 0; i < args.size(); i++) {
+            TypeDef projected = system.intersectDef(args.get(i), domain.get(i));
+
+            // If the intersection is Bottom, but the original arg wasn't Bottom,
+            // the argument falls completely outside this signature's domain.
+            if (projected == system.bottomDef() && args.get(i) != system.bottomDef()) {
+                return null;
+            }
+            projectedArgs.add(projected);
+        }
+        return projectedArgs;
+    }
+
+    /**
+     * Proves that the union of all successfully evaluated domains fully subsumes
+     * the original arguments passed to the function.
+     */
+    public static boolean verifyDomainCoverage(AbstractTypeSystem system, List<TypeDef> originalArgs, List<List<TypeDef>> successfulDomains) {
+        if (successfulDomains.isEmpty()) return false;
+
+        for (int i = 0; i < originalArgs.size(); i++) {
+            TypeDef unionOfDomains = system.bottomDef();
+            for (List<TypeDef> dom : successfulDomains) {
+                unionOfDomains = system.unionDef(unionOfDomains, dom.get(i));
+            }
+
+            // If the original argument contains types not covered by the successful domains, fail.
+            if (!system.satisfies(originalArgs.get(i), unionOfDomains)) {
+                return false;
+            }
+        }
+        return true;
     }
 }

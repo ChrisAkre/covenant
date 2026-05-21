@@ -1,0 +1,45 @@
+{
+  "inputSchema": {
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "properties": {
+    "foo": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "foo"
+  ]
+},
+  "spec": {
+        "foo": "a.b.c"
+    },
+  "expectedSchema": {
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "properties": {
+    "a": {
+      "type": "object",
+      "properties": {
+        "b": {
+          "type": "object",
+          "properties": {
+            "c": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "c"
+          ]
+        }
+      },
+      "required": [
+        "b"
+      ]
+    }
+  },
+  "required": [
+    "a"
+  ]
+}
+}

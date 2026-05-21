@@ -1,0 +1,65 @@
+{
+  "inputSchema": {
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "properties": {
+    "sillyPhotoData": {
+      "type": "object",
+      "properties": {
+        "captions": {
+          "type": "array",
+          "items": [
+            { "enum": ["Hi!"] },
+            { "enum": ["Sunny"] }
+          ]
+        },
+        "fileNames": {
+          "type": "array",
+          "items": [
+            { "enum": ["hola.jpg"] },
+            { "enum": ["sunny.jpg"] }
+          ]
+        }
+      },
+      "required": [
+        "captions",
+        "fileNames"
+      ]
+    }
+  },
+  "required": [
+    "sillyPhotoData"
+  ]
+},
+  "spec": {
+        "sillyPhotoData" : {
+            // This is a rather silly test, but it does prove you can have [0] inside an @()
+            "@(fileNames[0])" : "sillyPhotoData.@(captions[0])",
+            "@(fileNames[1])" : "sillyPhotoData.@(captions[1])"
+        }
+    },
+  "expectedSchema": {
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "properties": {
+    "sillyPhotoData": {
+      "type": "object",
+      "properties": {
+        "Hi!": {
+          "type": "string"
+        },
+        "Sunny": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "Hi!",
+        "Sunny"
+      ]
+    }
+  },
+  "required": [
+    "sillyPhotoData"
+  ]
+}
+}

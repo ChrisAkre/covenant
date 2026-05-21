@@ -4,8 +4,8 @@ import static dev.akre.covenant.types.NormalizerUtils.cartesianProduct;
 import static dev.akre.covenant.types.NormalizerUtils.unionCollector;
 import static java.util.Optional.*;
 
-import dev.akre.covenant.api.Parameter;
 import dev.akre.covenant.api.Type;
+import dev.akre.covenant.api.TypeParameter;
 import dev.akre.covenant.api.TypeSystem;
 import dev.akre.covenant.types.parser.Parser;
 import java.util.*;
@@ -63,6 +63,12 @@ public interface AbstractTypeSystem extends TypeSystem {
                 typesDef().entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, e -> wrap(e.getValue()))));
     }
 
+    @Override
+    default java.util.Set<Type> commonSubtypes(Type self, Type other) {
+        return NormalizerUtils.greatestLowerBounds(this, unwrap(self), unwrap(other))
+                .stream().map(this::wrap).collect(Collectors.toUnmodifiableSet());
+    }
+
     /**
      * Returns the universal top type.
      */
@@ -90,37 +96,52 @@ public interface AbstractTypeSystem extends TypeSystem {
         return wrap(nilDef());
     }
 
-    /**
-     * Unwraps an OwnedTypeDef to its underlying TypeDef, ensuring it belongs to this system.
-     */
-    default TypeDef unwrap(OwnedTypeDef owned) {
-        if (owned == null) return null;
-        if (owned.system() != this) {
-            throw new IllegalArgumentException("OwnedTypeDef does not belong to this TypeSystem");
+    default TypeDef unwrap(Type type) {
+        if (type == null) {
+            return null;
+        } else if (type instanceof OwnedTypeDef(AbstractTypeSystem system, TypeDef def) && system == this) {
+            return def;
         }
-        return owned.def();
+        throw new IllegalArgumentException("Type does not belong to this TypeSystem");
     }
 
-    default TypeDef unwrap(Type type) {
-        if (type == null) return null;
-        if (type instanceof OwnedTypeDef o) return unwrap(o);
-        throw new IllegalArgumentException(
-                "Not an OwnedTypeDef: " + type.getClass().getName());
+    default List<TypeDef> unwrap(List<Type> types) {
+        return types == null ? null : types.stream().map(this::unwrap).toList();
     }
 
     /**
      * Constructs a type using the constructor associated with an atom.
      */
-    default TypeDef constructDef(String name, List<TypeDef> members, List<Parameter> parameters) {
+    default TypeDef constructDef(String name, List<TypeDefParam> parameters) {
         TypeDef def = typesDef().get(name);
         if (!(def instanceof TemplateType template) || template.constructor() == null) {
             throw new IllegalArgumentException("Unknown type template or atom: " + name);
         }
-        return template.constructor().construct(this, template, members, parameters);
+        return template.constructor().construct(this, template, parameters);
     }
 
-    default OwnedTypeDef construct(String name, List<TypeDef> members, List<Parameter> parameters) {
-        return wrap(constructDef(name, members, parameters));
+    default OwnedTypeDef construct(String name, List<TypeParameter> parameters) {
+        return wrap(constructDef(name, unwrapParams(parameters)));
+    }
+
+    default List<TypeDefParam> unwrapParams(List<TypeParameter> parameters) {
+        return parameters == null ? null : parameters.stream()
+                .map(p -> (TypeDefParam) switch (p) {
+                    case TypeParameter.Positional pos ->
+                            new TypeDefParam.Positional(unwrap(pos.type()), pos.index(), pos.variadic());
+                    case TypeParameter.Named n ->
+                            new TypeDefParam.Named(unwrap(n.type()), n.name(), n.optional());
+                    case TypeParameter.Constrained c -> {
+                        TypeExpr expr = parser().parse(c.keyword() + " " + c.value());
+                        if (expr instanceof TypeExpr.ConstraintExpr ce) {
+                            yield new TypeDefParam.Constrained(unwrap(c.type()), ce.constraint(), c.optional());
+                        }
+                        throw new IllegalArgumentException("Invalid constraint: " + c.keyword() + " " + c.value());
+                    }
+                    case TypeParameter.Spread s ->
+                            new TypeDefParam.Spread(unwrap(s.type()));
+                })
+                .toList();
     }
 
 
@@ -197,20 +218,12 @@ public interface AbstractTypeSystem extends TypeSystem {
                 def.parameters().stream().map(this::wrap).map(Type.class::cast).toList());
     }
 
-    default OwnedTypeDef intersect(OwnedTypeDef... types) {
-        TypeDef[] defs = new TypeDef[types.length];
-        for (int i = 0; i < types.length; i++) {
-            defs[i] = unwrap(types[i]);
-        }
-        return wrap(intersectDef(defs));
+    default Type intersect(Type... types) {
+        return wrap(intersectDef(Arrays.stream(types).map(this::unwrap).toArray(TypeDef[]::new)));
     }
 
-    default OwnedTypeDef union(OwnedTypeDef... types) {
-        TypeDef[] defs = new TypeDef[types.length];
-        for (int i = 0; i < types.length; i++) {
-            defs[i] = unwrap(types[i]);
-        }
-        return wrap(unionDef(defs));
+    default Type union(Type... types) {
+        return wrap(unionDef(Arrays.stream(types).map(this::unwrap).toArray(TypeDef[]::new)));
     }
 
     default OwnedTypeDef negate(OwnedTypeDef type) {

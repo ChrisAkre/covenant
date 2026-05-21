@@ -13,7 +13,7 @@ public class DynamicConstraintTest {
             if (input.head().value().equals("#custom")) {
                 return new Parser.Success<>(new TypeExpr.SymbolExpr("#custom"), input.tail());
             }
-            return new Parser.Failure<>("Not #custom");
+            return new Parser.Failure<>("Not #custom", input);
         };
 
         AbstractTypeSystem system = new TypeSystemBuilderImpl(JsonTypeSystem.INSTANCE)

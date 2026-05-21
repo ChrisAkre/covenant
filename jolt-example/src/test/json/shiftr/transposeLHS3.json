@@ -1,0 +1,51 @@
+{
+  "inputSchema": {
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "properties": {
+    "data": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "clientId": {
+            "type": "string"
+          },
+          "data": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "clientId",
+          "data"
+        ]
+      }
+    }
+  },
+  "required": [
+    "data"
+  ]
+},
+  "spec": {
+        "*" : {  // catch the data
+            "*": {  // for all array elements
+                "@&1": "CLIENTNAME" // match the key "data" based on what the key was two levels up
+            }
+        }
+    },
+  "expectedSchema": {
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "properties": {
+    "CLIENTNAME": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "required": [
+    "CLIENTNAME"
+  ]
+}
+}

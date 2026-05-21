@@ -3,7 +3,6 @@ package dev.akre.covenant.types;
 import static dev.akre.covenant.types.TypeSystemUtils.concat;
 import static java.util.function.Predicate.not;
 
-import dev.akre.covenant.api.Parameter;
 import java.math.BigDecimal;
 import java.util.*;
 import java.util.function.Function;
@@ -59,12 +58,20 @@ public record Bindings(AbstractTypeSystem system, Map<String, TypeDef> values) {
                     throw new IllegalStateException(
                             "Expected template type, but was: '" + a.target() + "' (" + target.getClass() + ")");
                 }
-                List<TypeDef> args = a.arguments().stream().map(this::resolve).toList();
-                List<Parameter> params = a.arguments().stream()
-                        .map(TypeExpr.ParamExpr::parameter)
+                List<TypeDefParam> params = a.arguments().stream()
+                        .map(arg -> (TypeDefParam) switch (arg) {
+                            case TypeExpr.ParamExpr.Positional pos ->
+                                    new TypeDefParam.Positional(resolve(pos.type()), pos.index(), pos.variadic());
+                            case TypeExpr.ParamExpr.Named n ->
+                                    new TypeDefParam.Named(resolve(n.type()), n.name(), n.optional());
+                            case TypeExpr.ParamExpr.Constrained c ->
+                                    new TypeDefParam.Constrained(resolve(c.type()), c.constraint(), c.optional());
+                            case TypeExpr.ParamExpr.Spread s ->
+                                    new TypeDefParam.Spread(resolve(s.type()));
+                        })
                         .toList();
                 // system.apply handles constructing Generics or invoking Constraint Factories
-                yield t.constructor().construct(system, t, args, params);
+                yield t.constructor().construct(system, t, params);
             }
 
             case TypeExpr.PathExpr p -> {
@@ -107,34 +114,9 @@ public record Bindings(AbstractTypeSystem system, Map<String, TypeDef> values) {
                 yield new FunctionType.Signature(sig, values);
             }
             case TypeExpr.ParamExpr a -> resolve(a.type());
-            case TypeExpr.ConstraintExpr c -> {
-                ValueConstraint.Operator op =
-                        switch (c.keyword()) {
-                            case "gt" -> ValueConstraint.Operator.GT;
-                            case "gte" -> ValueConstraint.Operator.GTE;
-                            case "lt" -> ValueConstraint.Operator.LT;
-                            case "lte" -> ValueConstraint.Operator.LTE;
-                            case "eq" -> ValueConstraint.Operator.EQ;
-                            case "neq" -> ValueConstraint.Operator.NEQ;
-                            case "matches" -> ValueConstraint.Operator.MATCHES;
-                            case "nmatches" -> ValueConstraint.Operator.NOT_MATCHES;
-                            default ->
-                                throw new UnsupportedOperationException("Unknown constraint keyword: " + c.keyword());
-                        };
-
-                String val = c.value();
-                if (val.equals("true") || val.equals("false")) {
-                    yield new BooleanConstraint(op, Boolean.parseBoolean(val));
-                }
-
-                try {
-                    yield new NumberConstraint(op, new BigDecimal(val));
-                } catch (NumberFormatException e) {
-                    yield new StringConstraint(op, val);
-                }
-            }
+            case TypeExpr.ConstraintExpr c -> c.constraint();
             case TypeExpr.NullExpr __ -> system.nilDef();
-            case TypeExpr.SpreadExpr __ -> new SymbolType("...");
+            case TypeExpr.SpreadExpr __ -> system.topDef();
             case TypeExpr.TupleExpr t ->
                 system.intersectDef(t.members().stream().map(this::resolve).toArray(TypeDef[]::new));
         };

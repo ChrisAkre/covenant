@@ -1,0 +1,81 @@
+{
+  "inputSchema": {
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "properties": {
+    "books": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "availability": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "availability",
+          "title"
+        ]
+      }
+    }
+  },
+  "required": [
+    "books"
+  ]
+},
+  "spec": [
+        {
+            "operation": "shift",
+            "spec": {
+
+                "books": {
+                    "*": {
+                        "availability": {
+                            "*": {
+                                "paperback": {
+                                    "@3": "PaperBooks[]"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    ],
+  "expectedSchema": {
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "properties": {
+    "PaperBooks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "availability": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "availability",
+          "title"
+        ]
+      }
+    }
+  },
+  "required": [
+    "PaperBooks"
+  ]
+}
+}

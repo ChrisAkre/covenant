@@ -1,0 +1,23 @@
+{
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "a": { "type": "integer" }
+    },
+    "additionalProperties": true
+  },
+  "spec": {
+    "a": "explicit_a",
+    "*": "wildcard_&"
+  },
+  "expectedSchema": {
+    "type": "object",
+    "properties": {
+      "explicit_a": { "type": "integer" }
+    },
+    "patternProperties": {
+      "^wildcard_.*$": {}
+    },
+    "additionalProperties": false
+  }
+}

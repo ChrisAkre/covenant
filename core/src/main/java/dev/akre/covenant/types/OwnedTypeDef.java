@@ -1,6 +1,5 @@
 package dev.akre.covenant.types;
 
-import dev.akre.covenant.api.Parameter;
 import dev.akre.covenant.api.Type;
 import dev.akre.covenant.api.TypeAttribute;
 import dev.akre.covenant.api.TypeParameter;
@@ -63,14 +62,6 @@ public record OwnedTypeDef(AbstractTypeSystem system, TypeDef def)
         return system.isAssignableTo(other, this);
     }
 
-    public OwnedTypeDef intersect(OwnedTypeDef other) {
-        return system.intersect(this, other);
-    }
-
-    public OwnedTypeDef union(OwnedTypeDef other) {
-        return system.union(this, other);
-    }
-
     @Override
     public OwnedTypeDef negate() {
         return system.negate(this);
@@ -130,8 +121,17 @@ public record OwnedTypeDef(AbstractTypeSystem system, TypeDef def)
         if (def instanceof GenericTypeDef g) {
             return g.parameters().stream()
                     .map(tp -> {
-                        Type type = tp.type() != null ? system.wrap(tp.type()) : null;
-                        return new TypeParameter(type, tp.parameter());
+                        Type type = system.wrap(tp.type());
+                        return switch (tp) {
+                            case TypeDefParam.Positional pos ->
+                                    new TypeParameter.Positional(type, pos.index(), pos.variadic());
+                            case TypeDefParam.Named n ->
+                                    new TypeParameter.Named(type, n.name(), n.optional());
+                            case TypeDefParam.Constrained c ->
+                                    new TypeParameter.Constrained(type, c.constraint().keywordString(), c.constraint().valueString(), c.optional());
+                            case TypeDefParam.Spread s ->
+                                    new TypeParameter.Spread(type);
+                        };
                     })
                     .collect(Collectors.toList());
         }
@@ -149,24 +149,22 @@ public record OwnedTypeDef(AbstractTypeSystem system, TypeDef def)
     @Override
     public Type.GenericType construct(List<TypeParameter> genericParameters) {
         if (def instanceof dev.akre.covenant.types.TemplateType template) {
-            List<TypeDef> members = new ArrayList<>();
-            List<Parameter> parameters = new ArrayList<>();
+            List<TypeParameter> parameters = new ArrayList<>();
+            int positionalIndex = 0;
             for (TypeParameter tp : genericParameters) {
-                Parameter p = tp.parameter();
-                if (tp.type() != null) {
-                    int newIndex = members.size();
-                    members.add(system.unwrap(tp.type()));
-                    p = switch (p) {
-                        case Parameter.Positional pos -> new Parameter.Positional(newIndex, pos.variadic());
-                        case Parameter.Named n -> new Parameter.Named(n.name(), newIndex, n.optional());
-                        case Parameter.Constrained c ->
-                            new Parameter.Constrained(c.keyword(), c.value(), newIndex, c.optional());
-                        case Parameter.Spread s -> new Parameter.Spread(newIndex);
-                    };
-                }
+                TypeParameter p = switch (tp) {
+                    case TypeParameter.Positional pos ->
+                            new TypeParameter.Positional(pos.type(), positionalIndex++, pos.variadic());
+                    case TypeParameter.Named n ->
+                            new TypeParameter.Named(n.type(), n.name(), n.optional());
+                    case TypeParameter.Constrained c ->
+                            new TypeParameter.Constrained(c.type(), c.keyword(), c.value(), c.optional());
+                    case TypeParameter.Spread s ->
+                            new TypeParameter.Spread(s.type());
+                };
                 parameters.add(p);
             }
-            return system.construct(template.name(), members, parameters);
+            return system.construct(template.name(), parameters);
         }
         throw new UnsupportedOperationException(
                 "Not a template type: " + (def == null ? "null" : def.getClass().getName()));
