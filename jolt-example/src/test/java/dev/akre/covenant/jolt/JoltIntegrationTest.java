@@ -61,12 +61,21 @@ public class JoltIntegrationTest {
     }
 
     static Stream<Path> jsonFilesProvider() throws IOException {
-        Path jsonDir = Paths.get("src/test/json/shiftr");
+        Path jsonDir = Paths.get("src/test/json");
         if (!Files.exists(jsonDir)) {
             // fallback if running from root
-             jsonDir = Paths.get("jolt-example/src/test/json/shiftr");
+             jsonDir = Paths.get("jolt-example/src/test/json");
         }
-        return Files.walk(jsonDir)
+        Path testdir = jsonDir;
+
+        return Stream.of("shiftr", "other")
+                .flatMap(d -> {
+                    try {
+                        return Files.walk(testdir.resolve(d));
+                    } catch (IOException e) {
+                        throw new RuntimeException(e);
+                    }
+                })
                 .filter(Files::isRegularFile)
                 .filter(path -> path.toString().endsWith(".json"))
                 .sorted();

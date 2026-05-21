@@ -168,15 +168,20 @@ public class JoltCovenantChecker {
             if (finalPlacements.isEmpty()) {
                 return typeSystem.nil();
             }
-            return typeSystem.intersect(finalPlacements.toArray(new Type[0]));
+            Type intersected = typeSystem.intersect(finalPlacements.toArray(new Type[0]));
+            return close(intersected);
         } catch (Exception e) {
             return typeSystem.nil();
         }
     }
 
     private Type close(Type type) {
+        if (type == null || type.isBottom()) return type;
         TypeDef def = typeSystem.unwrap(type);
         try {
+            if (def instanceof UnionType u) {
+                return typeSystem.union(u.members().stream().map(m -> close(typeSystem.wrap(m))).toArray(Type[]::new));
+            }
             if (def instanceof GenericTypeDef g && g.pattern() == AbstractTypeSystemBuilder.PatternConstructor.Pattern.OBJECT) {
                 List<TypeParameter> params = new ArrayList<>();
                 for (TypeDefParam tp : g.parameters()) {
@@ -188,8 +193,6 @@ public class JoltCovenantChecker {
                     }
                 }
                 return typeSystem.template(g.template().name()).construct(params);
-            } else if (def instanceof UnionType u) {
-                return typeSystem.union(u.members().stream().map(m -> close(typeSystem.wrap(m))).toArray(Type[]::new));
             }
         } catch (Exception e) { /* ignoring exception to fallback to parentType */ }
         return type;
@@ -213,6 +216,18 @@ public class JoltCovenantChecker {
                 traverse(currentType, element, frameStack, pathPlacements);
             }
         } else if (specNode.isObject()) {
+            Set<String> literalKeys = new HashSet<>();
+            for (Map.Entry<String, JsonNode> field : specNode.properties()) {
+                String rawSpecKey = field.getKey();
+                String[] splitKeys = rawSpecKey.split("\\|");
+                for (String specKey : splitKeys) {
+                    MatchablePathElement pathElement = PathElementBuilder.buildMatchablePathElement(specKey);
+                    if (pathElement instanceof LiteralPathElement literal) {
+                        literalKeys.add(literal.getRawKey());
+                    }
+                }
+            }
+
             for (Map.Entry<String, JsonNode> field : specNode.properties()) {
                 String rawSpecKey = field.getKey();
                 JsonNode subSpec = field.getValue();
@@ -228,11 +243,11 @@ public class JoltCovenantChecker {
                     } else if (pathElement instanceof LiteralPathElement literal) {
                         processLiteralMatch(currentType, literal, subSpec, frameStack, pathPlacements);
                     } else if (pathElement instanceof StarPathElement star) {
-                        processStarMatch(currentType, star, subSpec, frameStack, pathPlacements);
+                        processStarMatch(currentType, star, subSpec, frameStack, pathPlacements, literalKeys);
                     } else if (pathElement instanceof AmpPathElement amp) {
-                        processAmpMatch(currentType, amp, subSpec, frameStack, pathPlacements);
+                        processAmpMatch(currentType, amp, subSpec, frameStack, pathPlacements, literalKeys);
                     } else if (pathElement instanceof DollarPathElement dollar) {
-                        processDollarMatch(currentType, dollar, subSpec, frameStack, pathPlacements);
+                        processDollarMatch(currentType, dollar, subSpec, frameStack, pathPlacements, literalKeys);
                     } else if (pathElement instanceof HashPathElement hash) {
                         processHashMatch(currentType, hash, subSpec, frameStack, pathPlacements);
                     }
@@ -251,42 +266,41 @@ public class JoltCovenantChecker {
             String trimmedRhs = rhs.trim();
             List<PathElement> outputPaths = PathElementBuilder.parseDotNotationRHS(trimmedRhs);
             
-            // Dual evaluation for convergence check
-            String path0 = evaluateRhs(outputPaths, frameStack, -1);
-            if (path0 == null) continue;
-
-            boolean convergent = true;
-            for (int i = 0; i < frameStack.size(); i++) {
-                if (frameStack.get(i).isMulti()) {
-                    String path1 = evaluateRhs(outputPaths, frameStack, i);
-                    if (path1 != null && !path1.equals(path0)) {
-                        convergent = false;
-                        break;
+            List<String> paths0 = evaluateRhs(outputPaths, frameStack, -1);
+            for (String path0 : paths0) {
+                boolean convergent = true;
+                for (int i = 0; i < frameStack.size(); i++) {
+                    if (frameStack.get(i).isMulti()) {
+                        List<String> paths1 = evaluateRhs(outputPaths, frameStack, i);
+                        if (!paths1.contains(path0)) {
+                            convergent = false;
+                            break;
+                        }
                     }
                 }
-            }
 
-            String finalPath = path0;
-            if (convergent) {
-                // If inside any loop, and it is convergent, it accumulates into a list
-                boolean insideLoop = false;
-                for (EvaluationFrame frame : frameStack) {
-                    if (frame.isMulti()) {
-                        insideLoop = true;
-                        break;
+                String finalPath = path0;
+                if (convergent) {
+                    // If inside any loop, and it is convergent, it accumulates into a list
+                    boolean insideLoop = false;
+                    for (EvaluationFrame frame : frameStack) {
+                        if (frame.isMulti()) {
+                            insideLoop = true;
+                            break;
+                        }
+                    }
+                    // Only wrap if it's a static path. Pattern paths from loops usually mean branching to different keys.
+                    if (insideLoop && !finalPath.endsWith("[]") && !finalPath.contains(".[]") && isStaticPath(finalPath)) {
+                        finalPath = finalPath.isEmpty() ? "[]" : finalPath + ".[]";
                     }
                 }
-                // Only wrap if it's a static path. Pattern paths from loops usually mean branching to different keys.
-                if (insideLoop && !finalPath.endsWith("[]") && !finalPath.contains(".[]") && isStaticPath(finalPath)) {
-                    finalPath = finalPath.isEmpty() ? "[]" : finalPath + ".[]";
-                }
-            }
 
-            pathPlacements.computeIfAbsent(finalPath, k -> new ArrayList<>()).add(matchedType);
+                pathPlacements.computeIfAbsent(finalPath, k -> new ArrayList<>()).add(matchedType);
+            }
         }
     }
 
-    private String evaluateRhs(List<PathElement> outputPaths, List<EvaluationFrame> frameStack, int loopFrameIndexToOverride) {
+    private List<String> evaluateRhs(List<PathElement> outputPaths, List<EvaluationFrame> frameStack, int loopFrameIndexToOverride) {
         WalkedPath walkedPath;
         if (loopFrameIndexToOverride >= 0) {
             String[] currentGroups = frameStack.get(loopFrameIndexToOverride).getMatchGroups();
@@ -304,43 +318,61 @@ public class JoltCovenantChecker {
             walkedPath = createWalkedPath(frameStack);
         }
 
-        StringBuilder evaluatedPathBuilder = new StringBuilder();
+        List<String> paths = new ArrayList<>();
+        paths.add("");
+        
         for (PathElement expression : outputPaths) {
-            String segment = null;
-            try {
-                if (expression instanceof EvaluatablePathElement evaluatable) {
-                    segment = evaluatable.evaluate(walkedPath);
-                    if (segment == null && expression instanceof ArrayPathElement) {
-                        segment = "*";
-                    }
-                    if (segment != null) {
-                        if (expression instanceof ArrayPathElement) {
-                            if (expression.getRawKey().contains("#")) segment = "[]";
-                            else if (!segment.startsWith("[")) segment = "[" + segment + "]";
-                        } else {
-                            segment = segment.replace("\\", "\\\\").replace(".", "\\.");
-                        }
+            List<String> nextPaths = new ArrayList<>();
+            List<String> segments = evaluateSegmentOptions(expression, walkedPath);
+            if (segments.isEmpty()) return Collections.emptyList();
+            
+            for (String path : paths) {
+                for (String segment : segments) {
+                    String formattedSegment = formatSegment(expression, segment);
+                    StringBuilder sb = new StringBuilder(path);
+                    if (sb.length() > 0) sb.append(".");
+                    sb.append(formattedSegment);
+                    nextPaths.add(sb.toString());
+                }
+            }
+            paths = nextPaths;
+        }
+        return paths;
+    }
+
+    private String formatSegment(PathElement expression, String segment) {
+        if (expression instanceof ArrayPathElement) {
+            if (expression.getRawKey().contains("#")) return "[]";
+            if (!segment.startsWith("[")) return "[" + segment + "]";
+            return segment;
+        } else {
+            return segment.replace("\\", "\\\\").replace(".", "\\.");
+        }
+    }
+
+    private List<String> evaluateSegmentOptions(PathElement expression, WalkedPath walkedPath) {
+        try {
+            if (expression instanceof EvaluatablePathElement evaluatable) {
+                if (expression instanceof TransposePathElement transpose) {
+                    com.bazaarvoice.jolt.common.Optional<Object> opt = transpose.objectEvaluate(walkedPath);
+                    if (opt.isPresent()) {
+                        Type t = unwrapType(opt.get());
+                        return expandForMatch(t).stream()
+                                .map(this::getRepresentativeValue)
+                                .collect(Collectors.toList());
                     }
                 } else {
-                    String raw = expression.getRawKey();
-                    if (expression instanceof ArrayPathElement) {
-                        if (raw.contains("#")) segment = "[]";
-                        else if (!raw.startsWith("[")) segment = "[" + raw + "]";
-                        else segment = raw;
-                    } else {
-                        segment = raw.replace("\\", "\\\\").replace(".", "\\.");
-                    }
+                    String segment = evaluatable.evaluate(walkedPath);
+                    if (segment != null) return List.of(segment);
                 }
-            } catch (Exception e) {
-                segment = null;
+                if (expression instanceof ArrayPathElement) return List.of("*");
+                return Collections.emptyList();
+            } else {
+                return List.of(expression.getRawKey());
             }
-
-            if (segment == null) return null;
-            
-            if (evaluatedPathBuilder.length() > 0) evaluatedPathBuilder.append(".");
-            evaluatedPathBuilder.append(segment);
+        } catch (Exception e) {
+            return Collections.emptyList();
         }
-        return evaluatedPathBuilder.toString();
     }
 
 
@@ -408,12 +440,14 @@ public class JoltCovenantChecker {
         }
     }
 
-    private void processStarMatch(Type currentType, StarPathElement star, JsonNode subSpec, List<EvaluationFrame> frameStack, Map<String, List<Type>> pathPlacements) {
+    private void processStarMatch(Type currentType, StarPathElement star, JsonNode subSpec, List<EvaluationFrame> frameStack, Map<String, List<Type>> pathPlacements, Set<String> literalKeys) {
         Set<String> allInputKeys = extractKeys(currentType);
         WalkedPath walkedPath = createWalkedPath(frameStack);
         boolean matchedAny = false;
         
         for (String key : allInputKeys) {
+            if (literalKeys.contains(key)) continue;
+
             MatchedElement match = star.match(key, walkedPath);
             if (match != null) {
                 Type childType = narrowNonNull(term(currentType, key));
@@ -455,7 +489,7 @@ public class JoltCovenantChecker {
         }
     }
 
-    private void processAmpMatch(Type currentType, AmpPathElement amp, JsonNode subSpec, List<EvaluationFrame> frameStack, Map<String, List<Type>> pathPlacements) {
+    private void processAmpMatch(Type currentType, AmpPathElement amp, JsonNode subSpec, List<EvaluationFrame> frameStack, Map<String, List<Type>> pathPlacements, Set<String> literalKeys) {
         WalkedPath walkedPath = createWalkedPath(frameStack);
         String key = null;
         try {
@@ -463,6 +497,8 @@ public class JoltCovenantChecker {
         } catch (Exception e) { /* ignoring exception to fallback to parentType */ }
         
         if (key != null) {
+            if (literalKeys.contains(key)) return;
+
             Type childType = narrowNonNull(term(currentType, key));
             if (childType != null && !childType.isBottom()) {
                 List<EvaluationFrame> nextStack = new ArrayList<>(frameStack);
@@ -480,13 +516,30 @@ public class JoltCovenantChecker {
             Object val = optional.get();
             Type lookupValue = narrowNonNull(unwrapType(val));
             if (lookupValue != null && !lookupValue.isBottom()) {
-                List<EvaluationFrame> nextStack = new ArrayList<>(frameStack);
-                String matchGroup = (val instanceof String s) ? s : getRepresentativeValue(lookupValue);
-                nextStack.add(new EvaluationFrame(currentType, new String[]{matchGroup}));
-                nextStack = refineStack(nextStack);
-                traverse(lookupValue, subSpec, nextStack, pathPlacements);
+                List<Type> branches = expandForMatch(lookupValue);
+                for (Type branch : branches) {
+                    List<EvaluationFrame> nextStack = new ArrayList<>(frameStack);
+                    String matchGroup = getRepresentativeValue(branch);
+                    nextStack.add(new EvaluationFrame(currentType, new String[]{matchGroup}));
+                    nextStack = refineStack(nextStack);
+                    traverse(branch, subSpec, nextStack, pathPlacements);
+                }
             }
         }
+    }
+
+    private List<Type> expandForMatch(Type type) {
+        TypeDef def = typeSystem.unwrap(type);
+        if (def instanceof UnionType u) {
+            return u.members().stream().map(typeSystem::wrap).collect(Collectors.toList());
+        }
+        if (def instanceof NominalDef n && n.name().equals("Bool")) {
+            return List.of(
+                (Type) typeSystem.expression("true"),
+                (Type) typeSystem.expression("false")
+            );
+        }
+        return List.of(type);
     }
 
     private void processAtMatch(Type currentType, AtPathElement at, JsonNode subSpec, List<EvaluationFrame> frameStack, Map<String, List<Type>> pathPlacements) {
@@ -496,7 +549,7 @@ public class JoltCovenantChecker {
         }
     }
 
-    private void processDollarMatch(Type currentType, DollarPathElement dollar, JsonNode subSpec, List<EvaluationFrame> frameStack, Map<String, List<Type>> pathPlacements) {
+    private void processDollarMatch(Type currentType, DollarPathElement dollar, JsonNode subSpec, List<EvaluationFrame> frameStack, Map<String, List<Type>> pathPlacements, Set<String> literalKeys) {
         WalkedPath walkedPath = createWalkedPath(frameStack);
         MatchedElement match = null;
         try {
@@ -504,6 +557,9 @@ public class JoltCovenantChecker {
         } catch (Exception e) { /* ignoring exception to fallback to parentType */ }
         
         if (match != null) {
+            String key = match.getRawKey();
+            if (literalKeys.contains(key)) return;
+
             Type keyType = typeSystem.type("String");
             List<EvaluationFrame> nextStack = new ArrayList<>(frameStack);
             // Dollar match should push the matched key value into the frame
@@ -665,9 +721,13 @@ public class JoltCovenantChecker {
                 current = typeSystem.template("Array").construct(List.of(new TypeParameter.Positional(current, 0, true)));
             } else {
                 String sub = unescape(seg);
-                if (sub.equals("*") || sub.equals("{{TYPE:Any}}") || sub.equals("{{TYPE:top}}")) {
+                if (sub.equals("*") || sub.contains("*") || sub.equals("{{TYPE:Any}}") || sub.equals("{{TYPE:top}}")) {
+                    String pattern = "/.*/";
+                    if (sub.contains("*") && !sub.equals("*")) {
+                         pattern = "/^" + sub.replace("*", ".*") + "$/";
+                    }
                     current = typeSystem.template("Object").construct(List.of(
-                        new TypeParameter.Constrained(current, "matches", "/.*/", true),
+                        new TypeParameter.Constrained(current, "matches", pattern, true),
                         new TypeParameter.Spread(typeSystem.top())
                     ));
                 } else if (sub.startsWith("{{TYPE:")) {
