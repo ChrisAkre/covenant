@@ -545,7 +545,10 @@ public class JoltCovenantChecker {
     private void processAtMatch(Type currentType, AtPathElement at, JsonNode subSpec, List<EvaluationFrame> frameStack, Map<String, List<Type>> pathPlacements) {
         Type narrowed = narrowNonNull(currentType);
         if (narrowed != null && !narrowed.isBottom()) {
-            traverse(narrowed, subSpec, frameStack, pathPlacements);
+            List<EvaluationFrame> nextStack = new ArrayList<>(frameStack);
+            nextStack.add(new EvaluationFrame(narrowed, new String[]{at.getRawKey()}));
+            nextStack = refineStack(nextStack);
+            traverse(narrowed, subSpec, nextStack, pathPlacements);
         }
     }
 
@@ -681,6 +684,12 @@ public class JoltCovenantChecker {
 
         Type narrowed = narrowNonNull(type);
         TypeDef def = typeSystem.unwrap(narrowed);
+
+        String eqValue = extractEq(def);
+        if (eqValue != null) {
+            return eqValue;
+        }
+
         String regex = extractRegex(def);
         if (regex != null) {
             return "{{REGEX:" + regex + "}}";
@@ -694,6 +703,25 @@ public class JoltCovenantChecker {
         }
         
         return "{{TYPE:Any}}";
+    }
+
+    private String extractEq(TypeDef def) {
+        if (def instanceof StringConstraint sc && sc.operator() == ValueConstraint.Operator.EQ) {
+            return sc.value();
+        }
+        if (def instanceof NumberConstraint nc && nc.operator() == ValueConstraint.Operator.EQ) {
+            return nc.value().toPlainString();
+        }
+        if (def instanceof BooleanConstraint bc && bc.operator() == ValueConstraint.Operator.EQ) {
+            return String.valueOf(bc.value());
+        }
+        if (def instanceof IntersectionType i) {
+            for (TypeDef member : i.members()) {
+                String eq = extractEq(member);
+                if (eq != null) return eq;
+            }
+        }
+        return null;
     }
 
     private String extractRegex(TypeDef def) {

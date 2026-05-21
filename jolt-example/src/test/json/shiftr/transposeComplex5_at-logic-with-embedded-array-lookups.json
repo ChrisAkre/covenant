@@ -9,15 +9,15 @@
         "captions": {
           "type": "array",
           "items": [
-            { "enum": ["Caption 1"] },
-            { "enum": ["Caption 2"] }
+            { "enum": ["Hi!"] },
+            { "enum": ["Sunny"] }
           ]
         },
         "fileNames": {
           "type": "array",
           "items": [
-            { "enum": ["Hi!"] },
-            { "enum": ["Sunny"] }
+            { "enum": ["hola.jpg"] },
+            { "enum": ["sunny.jpg"] }
           ]
         }
       },
