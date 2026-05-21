@@ -22,13 +22,15 @@
           "clientId",
           "clientName",
           "otherStuff"
-        ]
+        ],
+        "additionalProperties": false
       }
     }
   },
   "required": [
     "data"
-  ]
+  ],
+  "additionalProperties": false
 },
   "spec": {
         "data" : {

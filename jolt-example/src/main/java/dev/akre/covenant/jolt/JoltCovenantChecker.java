@@ -16,6 +16,8 @@ public class JoltCovenantChecker {
 
     private final AbstractTypeSystem typeSystem;
 
+    private static record Placement(Type type, boolean isMulti) {}
+
     public JoltCovenantChecker(AbstractTypeSystem typeSystem) {
         this.typeSystem = typeSystem;
     }
@@ -150,24 +152,32 @@ public class JoltCovenantChecker {
     }
 
     public Type infer(Type inputSchema, JsonNode spec) {
-        Map<String, List<Type>> pathPlacements = new LinkedHashMap<>();
+        Map<String, List<Placement>> pathPlacements = new LinkedHashMap<>();
         List<EvaluationFrame> frameStack = new ArrayList<>();
         frameStack.add(new EvaluationFrame(inputSchema, new String[]{"root"}));
         
         traverse(inputSchema, spec, frameStack, pathPlacements);
         
-
         if (pathPlacements.isEmpty()) {
             return typeSystem.nil();
         }
 
         List<Type> finalPlacements = new ArrayList<>();
-        for (Map.Entry<String, List<Type>> entry : pathPlacements.entrySet()) {
+        for (Map.Entry<String, List<Placement>> entry : pathPlacements.entrySet()) {
             String path = entry.getKey();
-            List<Type> types = entry.getValue();
+            List<Placement> placements = entry.getValue();
             
-            Type combinedType = typeSystem.union(types.toArray(new Type[0]));
-            if (types.size() > 1 && !path.contains("[]") && !path.contains(".[]") && isStaticPath(path) && !path.contains("[#")) {
+            Type combinedType = typeSystem.union(placements.stream().map(p -> p.type).toArray(Type[]::new));
+            
+            boolean anyMulti = false;
+            for (Placement p : placements) {
+                if (p.isMulti()) {
+                    anyMulti = true;
+                    break;
+                }
+            }
+
+            if ((placements.size() > 1 || anyMulti) && !path.contains("[]") && !path.contains(".[]") && isStaticPath(path) && !path.contains("[#")) {
                 path = path.isEmpty() ? "[]" : path + ".[]";
             }
             
@@ -218,7 +228,7 @@ public class JoltCovenantChecker {
         return typeSystem.isAssignableTo(inferred, expectedSchema);
     }
 
-    private void traverse(Type currentType, JsonNode specNode, List<EvaluationFrame> frameStack, Map<String, List<Type>> pathPlacements) {
+    private void traverse(Type currentType, JsonNode specNode, List<EvaluationFrame> frameStack, Map<String, List<Placement>> pathPlacements) {
         if (specNode.isTextual()) {
             processLeafProjection(currentType, specNode.asText(), frameStack, pathPlacements);
         } else if (specNode.isArray()) {
@@ -270,7 +280,7 @@ public class JoltCovenantChecker {
         return !path.contains("{{") && !path.contains("*");
     }
 
-    private void processLeafProjection(Type matchedType, String rhsString, List<EvaluationFrame> frameStack, Map<String, List<Type>> pathPlacements) {
+    private void processLeafProjection(Type matchedType, String rhsString, List<EvaluationFrame> frameStack, Map<String, List<Placement>> pathPlacements) {
         List<String> rhsParts = safeSplit(rhsString, ',');
         for (String rhs : rhsParts) {
             String trimmedRhs = rhs.trim();
@@ -290,22 +300,17 @@ public class JoltCovenantChecker {
                 }
 
                 String finalPath = path0;
+                boolean insideLoop = false;
                 if (convergent) {
-                    // If inside any loop, and it is convergent, it accumulates into a list
-                    boolean insideLoop = false;
                     for (EvaluationFrame frame : frameStack) {
                         if (frame.isMulti()) {
                             insideLoop = true;
                             break;
                         }
                     }
-                    // Only wrap if it's a static path. Pattern paths from loops usually mean branching to different keys.
-                    if (insideLoop && !finalPath.endsWith("[]") && !finalPath.contains(".[]") && isStaticPath(finalPath)) {
-                        finalPath = finalPath.isEmpty() ? "[]" : finalPath + ".[]";
-                    }
                 }
 
-                pathPlacements.computeIfAbsent(finalPath, k -> new ArrayList<>()).add(matchedType);
+                pathPlacements.computeIfAbsent(finalPath, k -> new ArrayList<>()).add(new Placement(matchedType, insideLoop));
             }
         }
     }
@@ -439,7 +444,7 @@ public class JoltCovenantChecker {
         }
         return refined;
     }
-    private void processLiteralMatch(Type currentType, LiteralPathElement literal, JsonNode subSpec, List<EvaluationFrame> frameStack, Map<String, List<Type>> pathPlacements) {
+    private void processLiteralMatch(Type currentType, LiteralPathElement literal, JsonNode subSpec, List<EvaluationFrame> frameStack, Map<String, List<Placement>> pathPlacements) {
         String key = literal.getRawKey();
         Type childType = narrowNonNull(term(currentType, key));
         if (childType != null && !childType.isBottom()) {
@@ -450,7 +455,7 @@ public class JoltCovenantChecker {
         }
     }
 
-    private void processStarMatch(Type currentType, StarPathElement star, JsonNode subSpec, List<EvaluationFrame> frameStack, Map<String, List<Type>> pathPlacements, Set<String> literalKeys) {
+    private void processStarMatch(Type currentType, StarPathElement star, JsonNode subSpec, List<EvaluationFrame> frameStack, Map<String, List<Placement>> pathPlacements, Set<String> literalKeys) {
         Set<String> allInputKeys = extractKeys(currentType);
         WalkedPath walkedPath = createWalkedPath(frameStack);
         boolean matchedAny = false;
@@ -499,7 +504,7 @@ public class JoltCovenantChecker {
         }
     }
 
-    private void processAmpMatch(Type currentType, AmpPathElement amp, JsonNode subSpec, List<EvaluationFrame> frameStack, Map<String, List<Type>> pathPlacements, Set<String> literalKeys) {
+    private void processAmpMatch(Type currentType, AmpPathElement amp, JsonNode subSpec, List<EvaluationFrame> frameStack, Map<String, List<Placement>> pathPlacements, Set<String> literalKeys) {
         WalkedPath walkedPath = createWalkedPath(frameStack);
         String key = null;
         try {
@@ -519,7 +524,7 @@ public class JoltCovenantChecker {
         }
     }
 
-    private void processTransposeMatch(Type currentType, TransposePathElement transpose, JsonNode subSpec, List<EvaluationFrame> frameStack, Map<String, List<Type>> pathPlacements) {
+    private void processTransposeMatch(Type currentType, TransposePathElement transpose, JsonNode subSpec, List<EvaluationFrame> frameStack, Map<String, List<Placement>> pathPlacements) {
         WalkedPath walkedPath = createWalkedPath(frameStack);
         com.bazaarvoice.jolt.common.Optional<Object> optional = transpose.objectEvaluate(walkedPath);
         if (optional.isPresent()) {
@@ -552,7 +557,7 @@ public class JoltCovenantChecker {
         return List.of(type);
     }
 
-    private void processAtMatch(Type currentType, AtPathElement at, JsonNode subSpec, List<EvaluationFrame> frameStack, Map<String, List<Type>> pathPlacements) {
+    private void processAtMatch(Type currentType, AtPathElement at, JsonNode subSpec, List<EvaluationFrame> frameStack, Map<String, List<Placement>> pathPlacements) {
         Type narrowed = narrowNonNull(currentType);
         if (narrowed != null && !narrowed.isBottom()) {
             List<EvaluationFrame> nextStack = new ArrayList<>(frameStack);
@@ -566,7 +571,7 @@ public class JoltCovenantChecker {
         }
     }
 
-    private void processDollarMatch(Type currentType, DollarPathElement dollar, JsonNode subSpec, List<EvaluationFrame> frameStack, Map<String, List<Type>> pathPlacements, Set<String> literalKeys) {
+    private void processDollarMatch(Type currentType, DollarPathElement dollar, JsonNode subSpec, List<EvaluationFrame> frameStack, Map<String, List<Placement>> pathPlacements, Set<String> literalKeys) {
         WalkedPath walkedPath = createWalkedPath(frameStack);
         MatchedElement match = null;
         try {
@@ -586,7 +591,7 @@ public class JoltCovenantChecker {
         }
     }
 
-    private void processHashMatch(Type currentType, HashPathElement hash, JsonNode subSpec, List<EvaluationFrame> frameStack, Map<String, List<Type>> pathPlacements) {
+    private void processHashMatch(Type currentType, HashPathElement hash, JsonNode subSpec, List<EvaluationFrame> frameStack, Map<String, List<Placement>> pathPlacements) {
         WalkedPath walkedPath = createWalkedPath(frameStack);
         MatchedElement match = null;
         try {

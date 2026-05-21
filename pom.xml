@@ -8,7 +8,6 @@
     <modules>
         <module>api</module>
         <module>core</module>
-        <module>jolt-example</module>
     </modules>
     <packaging>pom</packaging>
 
